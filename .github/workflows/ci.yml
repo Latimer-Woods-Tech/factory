@@ -3,6 +3,8 @@ on: [push, pull_request]
 jobs:
   validate:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         package: [errors, monitoring, logger, auth, neon, stripe, llm, telephony, analytics, deploy, testing, email, copy, content, social, seo, crm, compliance, admin]
