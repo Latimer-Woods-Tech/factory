@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": false,
   "publishConfig": { "registry": "https://npm.pkg.github.com" },
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.mts"
     }
   },
   "files": ["dist", "README.md", "CHANGELOG.md"],
@@ -20,7 +20,13 @@
     "typecheck": "tsc --noEmit",
     "prepublish": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
+  "dependencies": {
+    "@factory/errors": "file:../errors",
+    "@factory/monitoring": "file:../monitoring",
+    "hono": "^4.12.14"
+  },
   "devDependencies": {
+    "@types/node": "^25.6.0",
     "typescript": "^5.4.0",
     "tsup": "^8.1.0",
     "vitest": "^1.6.0",
