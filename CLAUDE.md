@@ -3,6 +3,8 @@
 ## Mission
 Bootstrap and evolve the Factory Core repository as the shared infrastructure layer for Factory applications.
 Stage 0 produces scaffolding only; later stages implement package behavior without violating these standing orders.
+- Keep package boundaries clean so apps can install only the shared infrastructure they need.
+- Treat every package as reusable infrastructure, never as a home for app-specific business logic.
 
 ## Stack
 - Runtime: Cloudflare Workers only
@@ -77,3 +79,8 @@ Before writing any code:
 4. Run `npm test` and note the current coverage baseline.
 5. Check `git log --oneline -10` to understand recent changes.
 6. Confirm the phase being built by checking `/prompts/`.
+
+## Stage Discipline
+- Stage 0 stops at scaffolding and repository policy setup only.
+- Do not start package implementations until the matching prompt exists in `/prompts/`.
+- Preserve the documented dependency order to avoid circular imports between packages.
