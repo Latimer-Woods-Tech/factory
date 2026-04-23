@@ -1,0 +1,17 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [errors, monitoring, logger, auth, neon, stripe, llm, telephony, analytics, deploy, testing, email, copy, content, social, seo, crm, compliance, admin]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: cd packages/${{ matrix.package }} && npm ci
+      - run: cd packages/${{ matrix.package }} && npm run lint
+      - run: cd packages/${{ matrix.package }} && npm run typecheck
+      - run: cd packages/${{ matrix.package }} && npm run test

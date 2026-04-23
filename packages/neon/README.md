@@ -1,0 +1,3 @@
+# @factory/neon
+
+Neon Postgres helpers for Hyperdrive-backed data access.

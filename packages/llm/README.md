@@ -1,0 +1,3 @@
+# @factory/llm
+
+LLM failover orchestration across Factory AI providers.

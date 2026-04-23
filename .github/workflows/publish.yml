@@ -1,0 +1,24 @@
+name: Publish Package
+on:
+  push:
+    tags: ['*/v*']
+permissions:
+  contents: read
+  packages: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@factory'
+      - name: Detect package from tag
+        run: echo "PACKAGE=$(echo $GITHUB_REF_NAME | cut -d'/' -f1)" >> $GITHUB_ENV
+      - run: cd packages/${{ env.PACKAGE }} && npm ci
+      - run: cd packages/${{ env.PACKAGE }} && npm run prepublish
+      - run: cd packages/${{ env.PACKAGE }} && npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

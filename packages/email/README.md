@@ -1,0 +1,3 @@
+# @factory/email
+
+Resend-powered email delivery primitives and template helpers.
