@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest';
+
 import * as moduleExports from './index';
 
 describe('content package scaffold', () => {
