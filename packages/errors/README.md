@@ -1,0 +1,3 @@
+# @factory/errors
+
+Standard error classes and response envelopes for Factory services.

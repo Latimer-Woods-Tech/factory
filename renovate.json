@@ -1,0 +1,14 @@
+{
+  "extends": ["config:base"],
+  "packageRules": [
+    {
+      "matchPackagePatterns": ["@factory/*"],
+      "pinVersions": true,
+      "automerge": false,
+      "labels": ["factory-core-upgrade"],
+      "reviewers": ["adrper79-dot"]
+    }
+  ],
+  "prConcurrentLimit": 3,
+  "commitMessagePrefix": "chore(deps):"
+}

@@ -1,0 +1,3 @@
+# @factory/admin
+
+Reusable admin tooling for Factory applications.

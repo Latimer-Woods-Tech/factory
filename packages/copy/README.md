@@ -1,0 +1,3 @@
+# @factory/copy
+
+Brand voice and copy-generation helpers for Factory apps.

@@ -1,0 +1,3 @@
+# @factory/stripe
+
+Stripe billing integrations and webhook helpers.

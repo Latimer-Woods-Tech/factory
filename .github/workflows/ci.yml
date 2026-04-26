@@ -1,0 +1,47 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate packages in dependency order
+        run: |
+          set -euo pipefail
+          packages=(
+            errors
+            monitoring
+            logger
+            auth
+            neon
+            stripe
+            llm
+            telephony
+            analytics
+            deploy
+            testing
+            email
+            copy
+            content
+            social
+            seo
+            crm
+            compliance
+            admin
+          )
+
+          for package in "${packages[@]}"; do
+            echo "=== ${package} ==="
+            cd "packages/${package}"
+            npm ci --ignore-scripts
+            npm run lint
+            npm run typecheck
+            npm run test
+            npm run build
+            cd ../..
+          done
