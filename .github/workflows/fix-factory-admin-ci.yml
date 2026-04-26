@@ -1,0 +1,28 @@
+name: Fix factory-admin CI (generate lock file)
+
+on:
+  workflow_dispatch:
+
+# One-time fixup:
+# 1. Rewrites CI/deploy workflows to use npm install (not npm ci)
+# 2. Runs npm install to generate package-lock.json
+# 3. Commits both changes to factory-admin
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@adrper79-dot'
+
+      - name: Fix workflows and generate lock file
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN }}
+        run: node packages/deploy/scripts/fix-factory-admin-ci.mjs
+
