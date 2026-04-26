@@ -1,0 +1,107 @@
+name: Run DB Migrations (Phase 7.5)
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: 'Single app to migrate (leave empty for all 6)'
+        required: false
+        default: ''
+
+# For each app:
+# 1. Clones the app repo
+# 2. Runs drizzle-kit generate (produces SQL migration files)
+# 3. Runs drizzle-kit migrate (applies to the production Neon branch)
+# 4. Commits generated migration files back to the app repo
+#
+# Requires these secrets in the Factory repo:
+#   WORDISBOND_CONNECTION_STRING
+#   CYPHEROFHEALING_CONNECTION_STRING
+#   SELFPRIME_CONNECTION_STRING
+#   KAIROSCOUNCIL_CONNECTION_STRING
+#   THECALLING_CONNECTION_STRING
+#   NICHESTREAM_CONNECTION_STRING
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: wordis-bond
+            conn_secret: WORDISBOND_CONNECTION_STRING
+          - app: cypher-healing
+            conn_secret: CYPHEROFHEALING_CONNECTION_STRING
+          - app: prime-self
+            conn_secret: SELFPRIME_CONNECTION_STRING
+          - app: ijustus
+            conn_secret: KAIROSCOUNCIL_CONNECTION_STRING
+          - app: the-calling
+            conn_secret: THECALLING_CONNECTION_STRING
+          - app: neighbor-aid
+            conn_secret: NICHESTREAM_CONNECTION_STRING
+
+    steps:
+      - name: Skip if filter set and app doesn't match
+        if: ${{ github.event.inputs.app != '' && github.event.inputs.app != matrix.app }}
+        run: echo "Skipping ${{ matrix.app }} — filter is '${{ github.event.inputs.app }}'"
+
+      - name: Clone app repo
+        if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/adrper79-dot/${{ matrix.app }}.git" app
+          cd app
+          git config user.email "ci@factory.dev"
+          git config user.name "Factory CI"
+
+      - uses: actions/setup-node@v4
+        if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
+        with:
+          node-version: '22'
+
+      - name: Install drizzle-kit
+        if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
+        run: npm install -g drizzle-kit@latest
+
+      - name: Install drizzle-orm (local to app)
+        if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
+        run: |
+          cd app
+          # drizzle-kit needs drizzle-orm available; install just that + postgres driver
+          npm install --no-save drizzle-orm postgres
+
+      - name: Generate migration SQL
+        if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
+        env:
+          DATABASE_URL: ${{ secrets[matrix.conn_secret] }}
+        run: |
+          cd app
+          drizzle-kit generate
+          echo "✅ Migration SQL generated for ${{ matrix.app }}"
+
+      - name: Apply migration to Neon
+        if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
+        env:
+          DATABASE_URL: ${{ secrets[matrix.conn_secret] }}
+        run: |
+          cd app
+          drizzle-kit migrate
+          echo "✅ Migration applied to Neon for ${{ matrix.app }}"
+
+      - name: Commit migration files back to app repo
+        if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          cd app
+          git add src/db/migrations/
+          if git diff --staged --quiet; then
+            echo "No new migration files to commit."
+          else
+            git commit -m "chore(db): add initial drizzle migration via factory CI"
+            git push origin main
+            echo "✅ Migration files committed to ${{ matrix.app }}"
+          fi
