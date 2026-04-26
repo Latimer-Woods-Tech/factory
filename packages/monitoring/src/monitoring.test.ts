@@ -32,6 +32,7 @@ const sentryMocks = vi.hoisted(() => {
 
 type TestMiddlewareContext = {
   get: (key: 'requestId') => string | undefined;
+  env?: Record<string, string | undefined>;
 };
 
 type TestMiddlewareHandler = (
@@ -151,5 +152,52 @@ describe('monitoring', () => {
     });
     expect(sentryMocks.setTag).toHaveBeenCalledWith('requestId', 'req-123');
     expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('sentryMiddleware wraps handler in a Sentry performance transaction', async () => {
+    const middleware = sentryMiddleware({
+      dsn: 'https://dsn.example',
+      environment: 'production',
+      workerName: 'my-worker',
+    }) as unknown as TestMiddlewareHandler;
+    const next = vi.fn(() => Promise.resolve());
+    const context: TestMiddlewareContext = { get: () => undefined };
+
+    await middleware(context, next);
+
+    expect(sentryMocks.startSpan).toHaveBeenCalledWith(
+      { name: 'my-worker', op: 'http.server' },
+      expect.any(Function),
+    );
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('sentryMiddleware falls back to "worker" when no worker name is configured', async () => {
+    const middleware = sentryMiddleware({
+      dsn: 'https://dsn.example',
+      environment: 'staging',
+    }) as unknown as TestMiddlewareHandler;
+    const next = vi.fn(() => Promise.resolve());
+    const context: TestMiddlewareContext = { get: () => undefined };
+
+    await middleware(context, next);
+
+    expect(sentryMocks.startSpan).toHaveBeenCalledWith(
+      { name: 'worker', op: 'http.server' },
+      expect.any(Function),
+    );
+  });
+
+  it('sentryMiddleware captures and rethrows errors', async () => {
+    const middleware = sentryMiddleware({
+      dsn: 'https://dsn.example',
+      environment: 'development',
+    }) as unknown as TestMiddlewareHandler;
+    const boom = new Error('boom');
+    const next = vi.fn(() => Promise.reject(boom));
+    const context: TestMiddlewareContext = { get: () => 'req-err' };
+
+    await expect(middleware(context, next)).rejects.toThrow('boom');
+    expect(sentryMocks.captureException).toHaveBeenCalledWith(boom);
   });
 });

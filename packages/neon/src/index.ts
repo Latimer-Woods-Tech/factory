@@ -9,6 +9,8 @@ import { InternalError, ErrorCodes } from '@factory/errors';
  */
 export type FactoryDb = NeonHttpDatabase<Record<string, never>>;
 
+export { sql } from 'drizzle-orm';
+
 /**
  * Minimal Cloudflare Hyperdrive-compatible binding shape.
  * Only `connectionString` is consumed.
