@@ -52,7 +52,7 @@ const PROJECTS = [
 ];
 
 const BASE_URL = `https://sentry.io/api/0`;
-const PLATFORM = 'javascript-cloudflare';
+const PLATFORM = 'node-cloudflare-workers';
 
 // ─── API Helpers ──────────────────────────────────────────────────────────────
 
