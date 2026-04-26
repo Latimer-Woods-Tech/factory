@@ -5,7 +5,7 @@ const monitoringMocks = vi.hoisted(() => ({
   captureError: vi.fn(),
 }));
 
-vi.mock('@factory/monitoring', () => monitoringMocks);
+vi.mock('@adrper79-dot/monitoring', () => monitoringMocks);
 
 import { createLogger, withRequestId } from './index';
 

@@ -1,4 +1,4 @@
-import { ValidationError } from '@factory/errors';
+import { ValidationError } from '@adrper79-dot/errors';
 
 /**
  * Options for {@link generateMetaTags}.

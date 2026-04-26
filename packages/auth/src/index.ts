@@ -1,4 +1,4 @@
-import { AuthError, ErrorCodes, ForbiddenError, toErrorResponse } from '@factory/errors';
+import { AuthError, ErrorCodes, ForbiddenError, toErrorResponse } from '@adrper79-dot/errors';
 import type { MiddlewareHandler } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 

@@ -1,7 +1,7 @@
-import { sql } from '@factory/neon';
-import type { FactoryDb } from '@factory/neon';
-import { NotFoundError, InternalError, ErrorCodes } from '@factory/errors';
-import type { Analytics } from '@factory/analytics';
+import { sql } from '@adrper79-dot/neon';
+import type { FactoryDb } from '@adrper79-dot/neon';
+import { NotFoundError, InternalError, ErrorCodes } from '@adrper79-dot/errors';
+import type { Analytics } from '@adrper79-dot/analytics';
 
 // ---------------------------------------------------------------------------
 // Types

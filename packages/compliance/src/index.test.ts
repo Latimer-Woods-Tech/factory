@@ -9,7 +9,7 @@ import {
   CREATE_COMPLIANCE_CONTACTS_TABLE,
   CREATE_TCPA_SUPPRESSION_TABLE,
 } from './index';
-import type { FactoryDb } from '@factory/neon';
+import type { FactoryDb } from '@adrper79-dot/neon';
 
 function makeDb(overrides: { rows?: unknown[]; rowCount?: number } = {}): FactoryDb {
   const rows = overrides.rows ?? [];

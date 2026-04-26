@@ -1,16 +1,16 @@
 ---
-title: "@factory/stripe"
+title: "@adrper79-dot/stripe"
 description: Stripe webhook handling and subscription lifecycle management.
 ---
 
-# @factory/stripe
+# @adrper79-dot/stripe
 
-Stripe webhook verification and subscription event routing for Cloudflare Workers. Depends on `@factory/errors` and `@factory/logger`.
+Stripe webhook verification and subscription event routing for Cloudflare Workers. Depends on `@adrper79-dot/errors` and `@adrper79-dot/logger`.
 
 ## Installation
 
 ```bash
-npm install @factory/stripe
+npm install @adrper79-dot/stripe
 ```
 
 ## Secrets required
@@ -79,7 +79,7 @@ function createPortalSession(opts: {
 ## Webhook example
 
 ```typescript
-import { verifyWebhook, handleSubscriptionEvent } from '@factory/stripe';
+import { verifyWebhook, handleSubscriptionEvent } from '@adrper79-dot/stripe';
 
 app.post('/webhook/stripe', async (c) => {
   const event = await verifyWebhook(c.req.raw, c.env.STRIPE_WEBHOOK_SECRET);

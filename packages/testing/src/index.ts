@@ -160,7 +160,7 @@ export function mockNeon(): MockNeonDatabase {
 }
 
 /**
- * Mock Stripe client matching the surface used by `@factory/stripe`.
+ * Mock Stripe client matching the surface used by `@adrper79-dot/stripe`.
  */
 export interface MockStripeClient {
   webhooks: { constructEventAsync: MockFn<unknown[], Promise<unknown>> };
@@ -194,7 +194,7 @@ export function mockStripe(): MockStripeClient {
 }
 
 /**
- * Mock LLM client used in tests for code paths that depend on `@factory/llm`.
+ * Mock LLM client used in tests for code paths that depend on `@adrper79-dot/llm`.
  */
 export interface MockLLMClient {
   complete: MockFn<unknown[], Promise<{ data: { content: string }; error: null }>>;
@@ -238,7 +238,7 @@ export function mockTelnyxWebhook(event: string): Request {
 }
 
 /**
- * Mock VoiceSession exposing the public surface from `@factory/telephony`.
+ * Mock VoiceSession exposing the public surface from `@adrper79-dot/telephony`.
  */
 export interface MockVoiceSession {
   start: MockFn<unknown[], Promise<void>>;

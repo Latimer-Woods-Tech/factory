@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { initAnalytics, type AnalyticsConfig } from './index';
-import type { FactoryDb } from '@factory/neon';
+import type { FactoryDb } from '@adrper79-dot/neon';
 
 type FetchCall = [string, RequestInit];
 

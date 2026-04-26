@@ -1,22 +1,22 @@
 ---
-title: "@factory/content"
+title: "@adrper79-dot/content"
 description: Content management backed by Neon Postgres.
 ---
 
-# @factory/content
+# @adrper79-dot/content
 
-CRUD content management with Neon Postgres and optional LLM-assisted generation. Depends on `@factory/neon` and `@factory/copy`.
+CRUD content management with Neon Postgres and optional LLM-assisted generation. Depends on `@adrper79-dot/neon` and `@adrper79-dot/copy`.
 
 ## Installation
 
 ```bash
-npm install @factory/content
+npm install @adrper79-dot/content
 ```
 
 ## Database
 
 ```typescript
-import { CREATE_CONTENT_TABLE } from '@factory/content';
+import { CREATE_CONTENT_TABLE } from '@adrper79-dot/content';
 await db.execute(CREATE_CONTENT_TABLE);
 ```
 
@@ -89,7 +89,7 @@ function publishContent(db: Db, id: string): Promise<Content>;
 ## Example
 
 ```typescript
-import { createContent, publishContent } from '@factory/content';
+import { createContent, publishContent } from '@adrper79-dot/content';
 
 const article = await createContent(db, {
   appId: 'focusbro',

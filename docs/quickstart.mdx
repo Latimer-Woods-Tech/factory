@@ -8,7 +8,7 @@ description: Add Factory Core packages to a Cloudflare Workers app in minutes.
 ## Prerequisites
 
 - Cloudflare Workers project with `wrangler.jsonc`
-- Neon Postgres database (for packages that need `@factory/neon`)
+- Neon Postgres database (for packages that need `@adrper79-dot/neon`)
 - Node.js 20+
 
 ## Install packages
@@ -17,12 +17,12 @@ Install only the packages your app needs:
 
 ```bash
 # Minimal: errors + logger + auth
-npm install @factory/errors @factory/logger @factory/auth
+npm install @adrper79-dot/errors @adrper79-dot/logger @adrper79-dot/auth
 
 # Full stack
-npm install @factory/errors @factory/monitoring @factory/logger \
-            @factory/auth @factory/neon @factory/stripe \
-            @factory/analytics @factory/llm @factory/email
+npm install @adrper79-dot/errors @adrper79-dot/monitoring @adrper79-dot/logger \
+            @adrper79-dot/auth @adrper79-dot/neon @adrper79-dot/stripe \
+            @adrper79-dot/analytics @adrper79-dot/llm @adrper79-dot/email
 ```
 
 ## Configure bindings
@@ -54,8 +54,8 @@ wrangler secret put STRIPE_WEBHOOK_SECRET
 
 ```typescript
 import { Hono } from 'hono';
-import { jwtMiddleware, requireRole } from '@factory/auth';
-import { createLogger } from '@factory/logger';
+import { jwtMiddleware, requireRole } from '@adrper79-dot/auth';
+import { createLogger } from '@adrper79-dot/logger';
 
 type Env = {
   DB: Hyperdrive;

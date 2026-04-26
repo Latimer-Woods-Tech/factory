@@ -5,8 +5,8 @@ import {
   getCustomerView,
   CREATE_CRM_LEADS_TABLE,
 } from './index';
-import type { FactoryDb } from '@factory/neon';
-import type { Analytics } from '@factory/analytics';
+import type { FactoryDb } from '@adrper79-dot/neon';
+import type { Analytics } from '@adrper79-dot/analytics';
 
 // ---------------------------------------------------------------------------
 // Mock DB factory

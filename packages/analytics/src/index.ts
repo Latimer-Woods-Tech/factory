@@ -1,6 +1,6 @@
-import { InternalError } from '@factory/errors';
-import { sql } from '@factory/neon';
-import type { FactoryDb } from '@factory/neon';
+import { InternalError } from '@adrper79-dot/errors';
+import { sql } from '@adrper79-dot/neon';
+import type { FactoryDb } from '@adrper79-dot/neon';
 
 /**
  * Routing destination for an analytics event.

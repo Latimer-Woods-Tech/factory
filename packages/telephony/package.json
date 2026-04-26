@@ -1,5 +1,5 @@
 {
-  "name": "@factory/telephony",
+  "name": "@adrper79-dot/telephony",
   "version": "0.1.0",
   "private": false,
   "publishConfig": { "registry": "https://npm.pkg.github.com" },
@@ -21,12 +21,12 @@
     "prepublish": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
-    "@factory/errors": "file:../errors",
-    "@factory/logger": "file:../logger",
-    "@factory/llm": "file:../llm"
+    "@adrper79-dot/errors": "file:../errors",
+    "@adrper79-dot/logger": "file:../logger",
+    "@adrper79-dot/llm": "file:../llm"
   },
   "devDependencies": {
-    "@factory/monitoring": "file:../monitoring",
+    "@adrper79-dot/monitoring": "file:../monitoring",
     "@types/node": "^25.6.0",
     "typescript": "^5.4.0",
     "tsup": "^8.1.0",

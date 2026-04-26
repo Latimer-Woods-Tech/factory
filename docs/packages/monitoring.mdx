@@ -1,16 +1,16 @@
 ---
-title: "@factory/monitoring"
+title: "@adrper79-dot/monitoring"
 description: Sentry error reporting for Cloudflare Workers.
 ---
 
-# @factory/monitoring
+# @adrper79-dot/monitoring
 
-Sentry integration scoped to Cloudflare Workers. Depends on `@factory/errors`.
+Sentry integration scoped to Cloudflare Workers. Depends on `@adrper79-dot/errors`.
 
 ## Installation
 
 ```bash
-npm install @factory/monitoring
+npm install @adrper79-dot/monitoring
 ```
 
 ## Bindings required
@@ -60,7 +60,7 @@ function withSentry(
 ## Example
 
 ```typescript
-import { withSentry } from '@factory/monitoring';
+import { withSentry } from '@adrper79-dot/monitoring';
 import { Hono } from 'hono';
 
 const app = new Hono();

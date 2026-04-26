@@ -1,4 +1,4 @@
-import { captureError } from '@factory/monitoring';
+import { captureError } from '@adrper79-dot/monitoring';
 import type { MiddlewareHandler } from 'hono';
 
 declare module 'hono' {

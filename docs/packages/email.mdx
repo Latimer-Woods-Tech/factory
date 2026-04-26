@@ -1,16 +1,16 @@
 ---
-title: "@factory/email"
+title: "@adrper79-dot/email"
 description: Transactional email via Resend with typed templates.
 ---
 
-# @factory/email
+# @adrper79-dot/email
 
-Typed transactional email using Resend. Depends on `@factory/errors` and `@factory/logger`.
+Typed transactional email using Resend. Depends on `@adrper79-dot/errors` and `@adrper79-dot/logger`.
 
 ## Installation
 
 ```bash
-npm install @factory/email
+npm install @adrper79-dot/email
 ```
 
 ## Secrets required
@@ -62,7 +62,7 @@ function renderTemplate(
 ## Example
 
 ```typescript
-import { sendEmail, renderTemplate } from '@factory/email';
+import { sendEmail, renderTemplate } from '@adrper79-dot/email';
 
 const { subject, html, text } = renderTemplate('welcome', {
   firstName: 'Jane',

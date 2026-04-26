@@ -1,16 +1,16 @@
 ---
-title: "@factory/admin"
+title: "@adrper79-dot/admin"
 description: Hono sub-router for admin operations — users, events, health, and suspend.
 ---
 
-# @factory/admin
+# @adrper79-dot/admin
 
-Drop-in Hono admin router with user management, event inspection, and health check endpoints. Depends on `@factory/auth` and `@factory/analytics`.
+Drop-in Hono admin router with user management, event inspection, and health check endpoints. Depends on `@adrper79-dot/auth` and `@adrper79-dot/analytics`.
 
 ## Installation
 
 ```bash
-npm install @factory/admin
+npm install @adrper79-dot/admin
 ```
 
 ## API
@@ -43,9 +43,9 @@ All routes return `401` without a valid JWT and `403` without the `admin` role (
 ## Example
 
 ```typescript
-import { createAdminRouter } from '@factory/admin';
-import { createDb } from '@factory/neon';
-import { jwtMiddleware } from '@factory/auth';
+import { createAdminRouter } from '@adrper79-dot/admin';
+import { createDb } from '@adrper79-dot/neon';
+import { jwtMiddleware } from '@adrper79-dot/auth';
 import { Hono } from 'hono';
 
 const app = new Hono<{ Bindings: Env }>();

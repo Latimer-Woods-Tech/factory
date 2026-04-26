@@ -1,16 +1,16 @@
 ---
-title: "@factory/auth"
+title: "@adrper79-dot/auth"
 description: JWT issue, verify, refresh, and Hono middleware for role-based access control.
 ---
 
-# @factory/auth
+# @adrper79-dot/auth
 
-Self-managed JWTs using the Web Crypto API (HMAC SHA-256). No external JWT library. Depends on `@factory/errors` and `@factory/logger`.
+Self-managed JWTs using the Web Crypto API (HMAC SHA-256). No external JWT library. Depends on `@adrper79-dot/errors` and `@adrper79-dot/logger`.
 
 ## Installation
 
 ```bash
-npm install @factory/auth
+npm install @adrper79-dot/auth
 ```
 
 ## API
@@ -83,7 +83,7 @@ interface TokenPayload {
 ## Example
 
 ```typescript
-import { issueToken, jwtMiddleware, requireRole } from '@factory/auth';
+import { issueToken, jwtMiddleware, requireRole } from '@adrper79-dot/auth';
 
 // Issue a token at login
 const token = await issueToken(

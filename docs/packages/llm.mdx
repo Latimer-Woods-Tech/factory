@@ -1,16 +1,16 @@
 ---
-title: "@factory/llm"
+title: "@adrper79-dot/llm"
 description: Anthropic → Grok → Groq automatic failover chain with streaming.
 ---
 
-# @factory/llm
+# @adrper79-dot/llm
 
-LLM completions with a three-provider failover chain (Anthropic → Grok → Groq). Includes streaming and system-prompt binding. Depends on `@factory/errors` and `@factory/logger`.
+LLM completions with a three-provider failover chain (Anthropic → Grok → Groq). Includes streaming and system-prompt binding. Depends on `@adrper79-dot/errors` and `@adrper79-dot/logger`.
 
 ## Installation
 
 ```bash
-npm install @factory/llm
+npm install @adrper79-dot/llm
 ```
 
 ## Secrets required
@@ -28,7 +28,7 @@ wrangler secret put GROQ_API_KEY
 3. On Grok failure → try **Groq** (`llama-3.3-70b-versatile`)
 4. All fail → return `FactoryError` with code `LLM_ALL_PROVIDERS_FAILED`
 
-Each failover is logged via `@factory/logger`.
+Each failover is logged via `@adrper79-dot/logger`.
 
 ## API
 
@@ -94,7 +94,7 @@ interface LLMOptions {
 ## Example
 
 ```typescript
-import { complete, withSystem } from '@factory/llm';
+import { complete, withSystem } from '@adrper79-dot/llm';
 
 // Direct completion
 const result = await complete(

@@ -5,8 +5,8 @@ import {
   RateLimitError,
   ValidationError,
   type FactoryResponse,
-} from '@factory/errors';
-import type { Logger } from '@factory/logger';
+} from '@adrper79-dot/errors';
+import type { Logger } from '@adrper79-dot/logger';
 
 /**
  * Single chat message exchanged with an LLM provider.

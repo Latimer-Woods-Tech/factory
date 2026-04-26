@@ -1,5 +1,5 @@
 {
-  "name": "@factory/stripe",
+  "name": "@adrper79-dot/stripe",
   "version": "0.1.0",
   "private": false,
   "publishConfig": { "registry": "https://npm.pkg.github.com" },
@@ -21,9 +21,9 @@
     "prepublish": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
-    "@factory/errors": "file:../errors",
-    "@factory/logger": "file:../logger",
-    "@factory/neon": "file:../neon",
+    "@adrper79-dot/errors": "file:../errors",
+    "@adrper79-dot/logger": "file:../logger",
+    "@adrper79-dot/neon": "file:../neon",
     "hono": "^4.12.14",
     "stripe": "^17.4.0"
   },

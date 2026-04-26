@@ -1,5 +1,5 @@
 {
-  "name": "@factory/analytics",
+  "name": "@adrper79-dot/analytics",
   "version": "0.1.0",
   "private": false,
   "publishConfig": { "registry": "https://npm.pkg.github.com" },
@@ -21,8 +21,8 @@
     "prepublish": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
-    "@factory/errors": "file:../errors",
-    "@factory/neon": "file:../neon"
+    "@adrper79-dot/errors": "file:../errors",
+    "@adrper79-dot/neon": "file:../neon"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

@@ -8,8 +8,8 @@ import {
   CREATE_CONTENT_ITEMS_TABLE,
 } from './index.js';
 import type { ContentItem, ContentStatus } from './index.js';
-import { ValidationError } from '@factory/errors';
-import type { FactoryDb } from '@factory/neon';
+import { ValidationError } from '@adrper79-dot/errors';
+import type { FactoryDb } from '@adrper79-dot/neon';
 
 // ---------------------------------------------------------------------------
 // Mock FactoryDb
@@ -78,7 +78,7 @@ describe('createContent', () => {
 
   it('throws InternalError when db returns no rows', async () => {
     const db = makeMockDb([]);
-    const { InternalError } = await import('@factory/errors');
+    const { InternalError } = await import('@adrper79-dot/errors');
     await expect(
       createContent(db as unknown as FactoryDb, { tenantId: 'x', title: 'T', body: 'B' }),
     ).rejects.toBeInstanceOf(InternalError);

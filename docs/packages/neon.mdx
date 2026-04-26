@@ -1,16 +1,16 @@
 ---
-title: "@factory/neon"
+title: "@adrper79-dot/neon"
 description: Neon Postgres client via Cloudflare Hyperdrive with connection retry.
 ---
 
-# @factory/neon
+# @adrper79-dot/neon
 
-Thin wrapper around `@neondatabase/serverless` scoped to Cloudflare's Hyperdrive binding. Depends on `@factory/errors` and `@factory/logger`.
+Thin wrapper around `@neondatabase/serverless` scoped to Cloudflare's Hyperdrive binding. Depends on `@adrper79-dot/errors` and `@adrper79-dot/logger`.
 
 ## Installation
 
 ```bash
-npm install @factory/neon
+npm install @adrper79-dot/neon
 ```
 
 ## Bindings required
@@ -63,7 +63,7 @@ class DbError extends FactoryError {
 ## Example
 
 ```typescript
-import { createDb, withDbRetry } from '@factory/neon';
+import { createDb, withDbRetry } from '@adrper79-dot/neon';
 
 const db = createDb(env.DB);
 

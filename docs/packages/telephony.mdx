@@ -1,16 +1,16 @@
 ---
-title: "@factory/telephony"
+title: "@adrper79-dot/telephony"
 description: Deepgram STT, ElevenLabs TTS, Telnyx webhooks, and VoiceSession orchestration.
 ---
 
-# @factory/telephony
+# @adrper79-dot/telephony
 
-Voice pipeline for inbound/outbound calls: Deepgram speech-to-text, ElevenLabs text-to-speech, Telnyx call control webhooks, and a `VoiceSession` orchestrator. Depends on `@factory/errors`, `@factory/logger`, and `@factory/llm`.
+Voice pipeline for inbound/outbound calls: Deepgram speech-to-text, ElevenLabs text-to-speech, Telnyx call control webhooks, and a `VoiceSession` orchestrator. Depends on `@adrper79-dot/errors`, `@adrper79-dot/logger`, and `@adrper79-dot/llm`.
 
 ## Installation
 
 ```bash
-npm install @factory/telephony
+npm install @adrper79-dot/telephony
 ```
 
 ## Secrets required
@@ -90,7 +90,7 @@ interface VoiceSessionConfig {
 ## Example
 
 ```typescript
-import { VoiceSession, verifyTelnyxWebhook } from '@factory/telephony';
+import { VoiceSession, verifyTelnyxWebhook } from '@adrper79-dot/telephony';
 
 app.post('/webhook/telnyx', async (c) => {
   const event = await verifyTelnyxWebhook(c.req.raw, c.env.TELNYX_API_KEY);

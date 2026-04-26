@@ -8,7 +8,7 @@ import {
   TIKTOK_WEBHOOK_ONLY,
   INSTAGRAM_WEBHOOK_ONLY,
 } from './index.js';
-import { ValidationError, InternalError } from '@factory/errors';
+import { ValidationError, InternalError } from '@adrper79-dot/errors';
 
 const TWITTER_CONFIG = { bearerToken: 'twitter-token' };
 const PINTEREST_CONFIG = { accessToken: 'pinterest-token' };

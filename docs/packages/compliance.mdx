@@ -1,16 +1,16 @@
 ---
-title: "@factory/compliance"
+title: "@adrper79-dot/compliance"
 description: TCPA suppression, FDCPA contact windows, and immutable consent logging.
 ---
 
-# @factory/compliance
+# @adrper79-dot/compliance
 
-TCPA suppression list management, FDCPA 24-hour contact window enforcement, and immutable consent records. Depends on `@factory/neon`.
+TCPA suppression list management, FDCPA 24-hour contact window enforcement, and immutable consent records. Depends on `@adrper79-dot/neon`.
 
 ## Installation
 
 ```bash
-npm install @factory/compliance
+npm install @adrper79-dot/compliance
 ```
 
 ## Database
@@ -20,7 +20,7 @@ import {
   CREATE_COMPLIANCE_CONSENTS_TABLE,
   CREATE_COMPLIANCE_CONTACTS_TABLE,
   CREATE_TCPA_SUPPRESSION_TABLE,
-} from '@factory/compliance';
+} from '@adrper79-dot/compliance';
 
 await db.execute(CREATE_COMPLIANCE_CONSENTS_TABLE);
 await db.execute(CREATE_COMPLIANCE_CONTACTS_TABLE);
@@ -90,7 +90,7 @@ function recordContact(db: Db, opts: {
 ## Example
 
 ```typescript
-import { checkTCPA, logConsent, checkFDCPA, recordContact } from '@factory/compliance';
+import { checkTCPA, logConsent, checkFDCPA, recordContact } from '@adrper79-dot/compliance';
 
 // Before placing a call
 const tcpa = await checkTCPA({ db, phone: '+15551234567' });

@@ -4,9 +4,9 @@ import {
   InternalError,
   ValidationError,
   type FactoryResponse,
-} from '@factory/errors';
-import { complete as llmComplete, type LLMEnv, type LLMMessage } from '@factory/llm';
-import type { Logger } from '@factory/logger';
+} from '@adrper79-dot/errors';
+import { complete as llmComplete, type LLMEnv, type LLMMessage } from '@adrper79-dot/llm';
+import type { Logger } from '@adrper79-dot/logger';
 
 /**
  * Configuration for a {@link VoiceSession}.

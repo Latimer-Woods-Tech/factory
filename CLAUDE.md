@@ -14,7 +14,7 @@ Stage 0 produces scaffolding only; later stages implement package behavior witho
 - LLM chain: Anthropic → Grok → Groq
 - Telephony: Telnyx + Deepgram + ElevenLabs
 - Email: Resend
-- Errors: Sentry via `@factory/monitoring`
+- Errors: Sentry via `@adrper79-dot/monitoring`
 - Analytics: PostHog plus the first-party `factory_events` table
 - Docs: Mintlify
 - Build: tsup (ESM only)
@@ -30,25 +30,25 @@ Stage 0 produces scaffolding only; later stages implement package behavior witho
 - No secrets in source code or in `wrangler.jsonc` `vars`
 
 ## Package Dependency Order
-1. `@factory/errors` (no deps)
-2. `@factory/monitoring` (deps: errors)
-3. `@factory/logger` (deps: errors, monitoring)
-4. `@factory/auth` (deps: errors, logger)
-5. `@factory/neon` (deps: errors, logger)
-6. `@factory/stripe` (deps: errors, logger, neon)
-7. `@factory/llm` (deps: errors, logger)
-8. `@factory/telephony` (deps: errors, logger, llm)
-9. `@factory/analytics` (deps: errors, neon)
-10. `@factory/deploy` (no deps; scripts only)
-11. `@factory/testing` (no deps; mock factories)
-12. `@factory/email` (deps: errors, logger)
-13. `@factory/copy` (deps: llm)
-14. `@factory/content` (deps: neon, copy)
-15. `@factory/social` (deps: content)
-16. `@factory/seo` (no deps)
-17. `@factory/crm` (deps: neon, analytics)
-18. `@factory/compliance` (deps: neon)
-19. `@factory/admin` (deps: auth, analytics)
+1. `@adrper79-dot/errors` (no deps)
+2. `@adrper79-dot/monitoring` (deps: errors)
+3. `@adrper79-dot/logger` (deps: errors, monitoring)
+4. `@adrper79-dot/auth` (deps: errors, logger)
+5. `@adrper79-dot/neon` (deps: errors, logger)
+6. `@adrper79-dot/stripe` (deps: errors, logger, neon)
+7. `@adrper79-dot/llm` (deps: errors, logger)
+8. `@adrper79-dot/telephony` (deps: errors, logger, llm)
+9. `@adrper79-dot/analytics` (deps: errors, neon)
+10. `@adrper79-dot/deploy` (no deps; scripts only)
+11. `@adrper79-dot/testing` (no deps; mock factories)
+12. `@adrper79-dot/email` (deps: errors, logger)
+13. `@adrper79-dot/copy` (deps: llm)
+14. `@adrper79-dot/content` (deps: neon, copy)
+15. `@adrper79-dot/social` (deps: content)
+16. `@adrper79-dot/seo` (no deps)
+17. `@adrper79-dot/crm` (deps: neon, analytics)
+18. `@adrper79-dot/compliance` (deps: neon)
+19. `@adrper79-dot/admin` (deps: auth, analytics)
 
 ## Quality Gates
 - TypeScript strict: zero errors
@@ -60,7 +60,7 @@ Stage 0 produces scaffolding only; later stages implement package behavior witho
 ## Commit Format
 Use `<type>(<scope>): <description>`.
 Allowed types: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `perf`.
-Scope must be the package name without the `@factory/` prefix.
+Scope must be the package name without the `@adrper79-dot/` prefix.
 Example: `feat(errors): add ValidationError with field-level context`
 
 ## Error Recovery Protocol

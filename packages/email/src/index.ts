@@ -1,4 +1,4 @@
-import { InternalError } from '@factory/errors';
+import { InternalError } from '@adrper79-dot/errors';
 
 const RESEND_SEND_URL = 'https://api.resend.com/emails';
 

@@ -6,7 +6,7 @@ import {
   InternalError,
   ValidationError,
   toErrorResponse,
-} from '@factory/errors';
+} from '@adrper79-dot/errors';
 
 /**
  * Normalized subscription state used across Factory apps.

@@ -1,5 +1,5 @@
 {
-  "name": "@factory/copy",
+  "name": "@adrper79-dot/copy",
   "version": "0.1.0",
   "private": false,
   "publishConfig": {
@@ -27,8 +27,8 @@
     "prepublish": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
-    "@factory/errors": "file:../errors",
-    "@factory/llm": "file:../llm"
+    "@adrper79-dot/errors": "file:../errors",
+    "@adrper79-dot/llm": "file:../llm"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

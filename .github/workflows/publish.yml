@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@factory'
+          scope: '@adrper79-dot'
       - name: Detect package from tag
         run: echo "PACKAGE=$(echo $GITHUB_REF_NAME | cut -d'/' -f1)" >> $GITHUB_ENV
       - run: cd packages/${{ env.PACKAGE }} && npm ci

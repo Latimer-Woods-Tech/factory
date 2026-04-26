@@ -1,16 +1,16 @@
 ---
-title: "@factory/logger"
+title: "@adrper79-dot/logger"
 description: Structured JSON logger for Cloudflare Workers.
 ---
 
-# @factory/logger
+# @adrper79-dot/logger
 
-Structured JSON logger with levels, context binding, and child loggers. Depends on `@factory/errors` and `@factory/monitoring`.
+Structured JSON logger with levels, context binding, and child loggers. Depends on `@adrper79-dot/errors` and `@adrper79-dot/monitoring`.
 
 ## Installation
 
 ```bash
-npm install @factory/logger
+npm install @adrper79-dot/logger
 ```
 
 ## API
@@ -51,7 +51,7 @@ requestLogger.info('Request received', { path: c.req.path });
 ## Example
 
 ```typescript
-import { createLogger } from '@factory/logger';
+import { createLogger } from '@adrper79-dot/logger';
 
 const logger = createLogger({ service: 'my-app', level: 'info' });
 

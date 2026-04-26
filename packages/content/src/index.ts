@@ -1,6 +1,6 @@
-import { sql } from '@factory/neon';
-import type { FactoryDb } from '@factory/neon';
-import { ValidationError, InternalError } from '@factory/errors';
+import { sql } from '@adrper79-dot/neon';
+import type { FactoryDb } from '@adrper79-dot/neon';
+import { ValidationError, InternalError } from '@adrper79-dot/errors';
 
 // ---------------------------------------------------------------------------
 // Status state machine

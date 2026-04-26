@@ -1,6 +1,6 @@
-import { sql } from '@factory/neon';
-import type { FactoryDb } from '@factory/neon';
-import { InternalError, NotFoundError, ValidationError, ErrorCodes } from '@factory/errors';
+import { sql } from '@adrper79-dot/neon';
+import type { FactoryDb } from '@adrper79-dot/neon';
+import { InternalError, NotFoundError, ValidationError, ErrorCodes } from '@adrper79-dot/errors';
 
 // ---------------------------------------------------------------------------
 // Types

@@ -1,22 +1,22 @@
 ---
-title: "@factory/crm"
+title: "@adrper79-dot/crm"
 description: Lead tracking, conversion events, and customer health view.
 ---
 
-# @factory/crm
+# @adrper79-dot/crm
 
-CRM primitives: lead upsert, subscription conversion tracking, and a customer health view with churn risk scoring. Depends on `@factory/neon` and `@factory/analytics`.
+CRM primitives: lead upsert, subscription conversion tracking, and a customer health view with churn risk scoring. Depends on `@adrper79-dot/neon` and `@adrper79-dot/analytics`.
 
 ## Installation
 
 ```bash
-npm install @factory/crm
+npm install @adrper79-dot/crm
 ```
 
 ## Database
 
 ```typescript
-import { CREATE_CRM_LEADS_TABLE } from '@factory/crm';
+import { CREATE_CRM_LEADS_TABLE } from '@adrper79-dot/crm';
 await db.execute(CREATE_CRM_LEADS_TABLE);
 ```
 
@@ -57,7 +57,7 @@ function trackLead(db: Db, opts: {
 
 ### `trackConversion(db, opts, analytics?)`
 
-Updates a lead's status and MRR. Optionally fires a `subscription.converted` event to `@factory/analytics`.
+Updates a lead's status and MRR. Optionally fires a `subscription.converted` event to `@adrper79-dot/analytics`.
 
 ```typescript
 function trackConversion(
@@ -92,7 +92,7 @@ Churn risk is computed from days since last event and subscription status.
 ## Example
 
 ```typescript
-import { trackLead, trackConversion, getCustomerView } from '@factory/crm';
+import { trackLead, trackConversion, getCustomerView } from '@adrper79-dot/crm';
 
 // On sign-up
 await trackLead(db, {

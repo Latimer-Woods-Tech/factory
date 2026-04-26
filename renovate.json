@@ -2,7 +2,7 @@
   "extends": ["config:base"],
   "packageRules": [
     {
-      "matchPackagePatterns": ["@factory/*"],
+      "matchPackagePatterns": ["@adrper79-dot/*"],
       "pinVersions": true,
       "automerge": false,
       "labels": ["factory-core-upgrade"],

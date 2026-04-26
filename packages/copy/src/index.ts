@@ -1,6 +1,6 @@
-import { complete } from '@factory/llm';
-import type { LLMEnv } from '@factory/llm';
-import { InternalError } from '@factory/errors';
+import { complete } from '@adrper79-dot/llm';
+import type { LLMEnv } from '@adrper79-dot/llm';
+import { InternalError } from '@adrper79-dot/errors';
 
 /**
  * Defines the voice and stylistic parameters of a brand or persona.
@@ -106,7 +106,7 @@ export interface GenerateCopyOpts {
 
 /**
  * Generates brand-voice-aligned copy by combining the registered voice profile
- * with the given prompt and calling the `@factory/llm` completion chain
+ * with the given prompt and calling the `@adrper79-dot/llm` completion chain
  * (Anthropic → Grok → Groq failover).
  *
  * @example

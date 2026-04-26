@@ -2,7 +2,7 @@ import { neon } from '@neondatabase/serverless';
 import { drizzle, type NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { migrate } from 'drizzle-orm/neon-http/migrator';
 import { sql } from 'drizzle-orm';
-import { InternalError, ErrorCodes } from '@factory/errors';
+import { InternalError, ErrorCodes } from '@adrper79-dot/errors';
 
 /**
  * Drizzle client bound to a Neon HTTP connection.

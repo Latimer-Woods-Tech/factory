@@ -1,16 +1,16 @@
 ---
-title: "@factory/errors"
+title: "@adrper79-dot/errors"
 description: Typed error hierarchy and HTTP error response serialization.
 ---
 
-# @factory/errors
+# @adrper79-dot/errors
 
 Typed error classes and utilities used across all Factory packages. No dependencies.
 
 ## Installation
 
 ```bash
-npm install @factory/errors
+npm install @adrper79-dot/errors
 ```
 
 ## API
@@ -60,14 +60,14 @@ type ErrorResponse = {
 Constant map of all well-known error code strings:
 
 ```typescript
-import { ErrorCodes } from '@factory/errors';
+import { ErrorCodes } from '@adrper79-dot/errors';
 // ErrorCodes.AUTH_TOKEN_INVALID, ErrorCodes.AUTH_TOKEN_EXPIRED, etc.
 ```
 
 ## Example
 
 ```typescript
-import { ValidationError, toErrorResponse } from '@factory/errors';
+import { ValidationError, toErrorResponse } from '@adrper79-dot/errors';
 
 throw new ValidationError('Email is required', {
   code: 'VALIDATION_EMAIL_REQUIRED',

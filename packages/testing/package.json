@@ -1,5 +1,5 @@
 {
-  "name": "@factory/testing",
+  "name": "@adrper79-dot/testing",
   "version": "0.1.0",
   "private": false,
   "publishConfig": { "registry": "https://npm.pkg.github.com" },

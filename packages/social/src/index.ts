@@ -1,4 +1,4 @@
-import { InternalError, ValidationError } from '@factory/errors';
+import { InternalError, ValidationError } from '@adrper79-dot/errors';
 
 // ---------------------------------------------------------------------------
 // Shared types

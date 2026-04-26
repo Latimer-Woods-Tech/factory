@@ -1,6 +1,8 @@
-# BLOCKED: Stage 1 Publish to GitHub Packages
+# ~~BLOCKED~~: Stage 1 Publish to GitHub Packages — RESOLVED
 
-## Status
+> **Resolution**: Scope renamed from `@factory/*` to `@adrper79-dot/*` on $(date +%Y-%m-%d). See commit `chore!: rename scope @factory/* -> @adrper79-dot/*`.
+
+## Status (Historical)
 
 - All 6 Stage 1 packages (`errors`, `monitoring`, `logger`, `auth`, `neon`, `stripe`) are implemented and merged to `main`.
 - Quality gates pass for every package: lint=0, typecheck=0, tests passing with coverage thresholds met, ESM build artifacts produced.
@@ -21,7 +23,7 @@
 
 GitHub Packages requires the npm scope to match the GitHub user or organization
 that owns the repository. The repository is owned by `adrper79-dot`, but every
-package is named `@factory/*`. There is no GitHub user or organization named
+package is named `@adrper79-dot/*`. There is no GitHub user or organization named
 `factory`, so `npm.pkg.github.com` rejects the upload with
 `The requested installation does not exist`.
 
@@ -31,7 +33,7 @@ This is independent of the workflow's `GITHUB_TOKEN`: the token has
 ## Resolution Options (require user decision)
 
 1. **Create a GitHub organization named `factory`** and transfer this repository
-   into it. The `@factory/*` scope then maps cleanly to the org. No code changes
+   into it. The `@adrper79-dot/*` scope then maps cleanly to the org. No code changes
    required. Most aligned with the spec.
 
 2. **Rename the scope to `@adrper79-dot/*`** across every `package.json`,
