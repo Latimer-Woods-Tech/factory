@@ -20,6 +20,12 @@ export interface MonitoringConfig {
   environment: MonitoringEnvironment;
   release?: string;
   tracesSampleRate?: number;
+  /**
+   * Worker name used as the root span name in Sentry performance transactions.
+   * If omitted, the middleware attempts to read `WORKER_NAME` from the Cloudflare
+   * env binding; if that is also absent, it falls back to `'worker'`.
+   */
+  workerName?: string;
 }
 
 /**
@@ -127,7 +133,8 @@ export function setUserContext(user: MonitoringUserContext): void {
 }
 
 /**
- * Initializes Sentry for each request and captures uncaught errors.
+ * Initializes Sentry for each request, wraps the full handler in a Sentry
+ * performance transaction, and captures uncaught errors.
  */
 export function sentryMiddleware(config: MonitoringConfig): MiddlewareHandler {
   let initialized = false;
@@ -138,19 +145,21 @@ export function sentryMiddleware(config: MonitoringConfig): MiddlewareHandler {
       initialized = true;
     }
 
-    try {
-      const requestId = c.get('requestId');
-      if (requestId) {
-        Sentry.setTag('requestId', requestId);
-      }
+    const envBinding = c.env as { WORKER_NAME?: string } | undefined;
+    const workerName = config.workerName ?? envBinding?.WORKER_NAME ?? 'worker';
 
-      await next();
-    } catch (err) {
-      const requestId = c.get('requestId');
-      captureError(err, {
-        requestId,
-      });
-      throw err;
+    const requestId = c.get('requestId');
+    if (requestId) {
+      Sentry.setTag('requestId', requestId);
     }
+
+    await Sentry.startSpan({ name: workerName, op: 'http.server' }, async () => {
+      try {
+        await next();
+      } catch (err) {
+        captureError(err, { requestId });
+        throw err;
+      }
+    });
   };
 }

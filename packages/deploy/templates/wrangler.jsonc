@@ -1,0 +1,31 @@
+name = "my-factory-app"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# ── Hyperdrive (Neon Postgres) ─────────────────────────────────────────────
+[[hyperdrive]]
+binding = "DB"
+id = "REPLACE_WITH_HYPERDRIVE_ID"
+
+# ── KV Namespaces ──────────────────────────────────────────────────────────
+# [[kv_namespaces]]
+# binding = "SESSIONS"
+# id     = "REPLACE_WITH_KV_ID"
+
+# ── R2 Buckets ─────────────────────────────────────────────────────────────
+# [[r2_buckets]]
+# binding = "ASSETS"
+# bucket_name = "my-factory-app-assets"
+
+# ── Non-secret vars ────────────────────────────────────────────────────────
+# Do NOT put secrets here — use `wrangler secret put` or scripts/setup-secrets.sh
+[vars]
+ENVIRONMENT = "production"
+WORKER_NAME = "my-factory-app"
+
+# ── Environments ───────────────────────────────────────────────────────────
+[env.staging]
+name = "my-factory-app-staging"
+[env.staging.vars]
+ENVIRONMENT = "staging"
+WORKER_NAME = "my-factory-app-staging"
