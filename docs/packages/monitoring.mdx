@@ -1,0 +1,72 @@
+---
+title: "@factory/monitoring"
+description: Sentry error reporting for Cloudflare Workers.
+---
+
+# @factory/monitoring
+
+Sentry integration scoped to Cloudflare Workers. Depends on `@factory/errors`.
+
+## Installation
+
+```bash
+npm install @factory/monitoring
+```
+
+## Bindings required
+
+```jsonc
+// wrangler.jsonc vars (or secrets for DSN)
+// Set via: wrangler secret put SENTRY_DSN
+```
+
+## API
+
+### `initSentry(opts)`
+
+Initializes the Sentry client for the current request lifecycle.
+
+```typescript
+function initSentry(opts: {
+  dsn: string;
+  environment?: string;
+  release?: string;
+}): SentryClient;
+```
+
+### `captureException(client, error, context?)`
+
+Reports a `FactoryError` or unknown error to Sentry.
+
+```typescript
+function captureException(
+  client: SentryClient,
+  error: unknown,
+  context?: Record<string, unknown>,
+): void;
+```
+
+### `withSentry(handler, opts)`
+
+Wraps a Hono handler to automatically catch and report unhandled errors.
+
+```typescript
+function withSentry(
+  handler: MiddlewareHandler,
+  opts: { dsn: string; environment?: string },
+): MiddlewareHandler;
+```
+
+## Example
+
+```typescript
+import { withSentry } from '@factory/monitoring';
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+app.use('*', withSentry((c, next) => next(), {
+  dsn: c.env.SENTRY_DSN,
+  environment: 'production',
+}));
+```

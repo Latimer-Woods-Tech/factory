@@ -1,0 +1,111 @@
+---
+title: "@factory/telephony"
+description: Deepgram STT, ElevenLabs TTS, Telnyx webhooks, and VoiceSession orchestration.
+---
+
+# @factory/telephony
+
+Voice pipeline for inbound/outbound calls: Deepgram speech-to-text, ElevenLabs text-to-speech, Telnyx call control webhooks, and a `VoiceSession` orchestrator. Depends on `@factory/errors`, `@factory/logger`, and `@factory/llm`.
+
+## Installation
+
+```bash
+npm install @factory/telephony
+```
+
+## Secrets required
+
+```bash
+wrangler secret put TELNYX_API_KEY
+wrangler secret put DEEPGRAM_API_KEY
+wrangler secret put ELEVENLABS_API_KEY
+```
+
+## API
+
+### `transcribeAudio(audioBuffer, env, opts?)`
+
+Transcribes audio using Deepgram Nova-2.
+
+```typescript
+function transcribeAudio(
+  audioBuffer: Uint8Array,
+  env: { DEEPGRAM_API_KEY: string },
+  opts?: { language?: string; model?: string },
+): Promise<string>;
+```
+
+### `synthesizeSpeech(text, env, opts?)`
+
+Synthesizes speech using ElevenLabs. Returns a `Uint8Array` of MP3 audio.
+
+```typescript
+function synthesizeSpeech(
+  text: string,
+  env: { ELEVENLABS_API_KEY: string },
+  opts?: { voiceId?: string; modelId?: string },
+): Promise<Uint8Array>;
+```
+
+### `verifyTelnyxWebhook(request, secret)`
+
+Verifies a Telnyx webhook signature. Throws `ValidationError` on failure.
+
+```typescript
+function verifyTelnyxWebhook(
+  request: Request,
+  secret: string,
+): Promise<TelnyxEvent>;
+```
+
+### `VoiceSession`
+
+Orchestrates a full conversation turn: transcribe → LLM → synthesize.
+
+```typescript
+class VoiceSession {
+  constructor(config: VoiceSessionConfig);
+  processAudio(audioBuffer: Uint8Array): Promise<Uint8Array>; // returns TTS audio
+  getHistory(): LLMMessage[];
+  end(): void;
+}
+
+interface VoiceSessionConfig {
+  callId: string;
+  direction: 'inbound' | 'outbound';
+  voiceId: string;
+  language?: string;
+  systemPrompt: string;
+  env: {
+    TELNYX_API_KEY: string;
+    DEEPGRAM_API_KEY: string;
+    ELEVENLABS_API_KEY: string;
+    ANTHROPIC_API_KEY: string;
+    GROK_API_KEY: string;
+    GROQ_API_KEY: string;
+  };
+}
+```
+
+## Example
+
+```typescript
+import { VoiceSession, verifyTelnyxWebhook } from '@factory/telephony';
+
+app.post('/webhook/telnyx', async (c) => {
+  const event = await verifyTelnyxWebhook(c.req.raw, c.env.TELNYX_API_KEY);
+
+  if (event.data.event_type === 'call.answered') {
+    const session = new VoiceSession({
+      callId: event.data.payload.call_control_id,
+      direction: 'inbound',
+      voiceId: 'eleven-turbo-v2',
+      systemPrompt: 'You are a friendly receptionist for Acme Corp.',
+      env: c.env,
+    });
+    // Store session in Durable Object or KV by callId
+  }
+
+  return c.json({ received: true });
+});
+```

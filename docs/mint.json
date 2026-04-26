@@ -1,0 +1,84 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "Factory Core",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#0D9373",
+    "light": "#07C983",
+    "dark": "#0D9373"
+  },
+  "topbarLinks": [
+    {
+      "name": "GitHub",
+      "url": "https://github.com/adrper79-dot/Factory"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "Changelog",
+      "icon": "list",
+      "url": "https://github.com/adrper79-dot/Factory/releases"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Get Started",
+      "pages": ["introduction", "quickstart"]
+    },
+    {
+      "group": "Foundations",
+      "pages": [
+        "packages/errors",
+        "packages/monitoring",
+        "packages/logger",
+        "packages/auth",
+        "packages/neon"
+      ]
+    },
+    {
+      "group": "Payments",
+      "pages": ["packages/stripe"]
+    },
+    {
+      "group": "AI",
+      "pages": ["packages/llm"]
+    },
+    {
+      "group": "Telephony",
+      "pages": ["packages/telephony"]
+    },
+    {
+      "group": "Operations",
+      "pages": [
+        "packages/analytics",
+        "packages/deploy",
+        "packages/testing"
+      ]
+    },
+    {
+      "group": "Marketing",
+      "pages": [
+        "packages/email",
+        "packages/copy",
+        "packages/content",
+        "packages/social",
+        "packages/seo"
+      ]
+    },
+    {
+      "group": "Revenue Ops",
+      "pages": [
+        "packages/crm",
+        "packages/compliance",
+        "packages/admin"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "github": "https://github.com/adrper79-dot/Factory"
+  }
+}

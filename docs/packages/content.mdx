@@ -1,0 +1,103 @@
+---
+title: "@factory/content"
+description: Content management backed by Neon Postgres.
+---
+
+# @factory/content
+
+CRUD content management with Neon Postgres and optional LLM-assisted generation. Depends on `@factory/neon` and `@factory/copy`.
+
+## Installation
+
+```bash
+npm install @factory/content
+```
+
+## Database
+
+```typescript
+import { CREATE_CONTENT_TABLE } from '@factory/content';
+await db.execute(CREATE_CONTENT_TABLE);
+```
+
+Schema:
+
+```sql
+CREATE TABLE IF NOT EXISTS content (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  app_id      TEXT NOT NULL,
+  slug        TEXT NOT NULL,
+  title       TEXT NOT NULL,
+  body        TEXT NOT NULL,
+  status      TEXT DEFAULT 'draft',
+  author_id   TEXT,
+  metadata    JSONB DEFAULT '{}',
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  updated_at  TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (app_id, slug)
+);
+```
+
+## API
+
+### `createContent(db, opts)`
+
+```typescript
+function createContent(db: Db, opts: {
+  appId: string;
+  slug: string;
+  title: string;
+  body: string;
+  authorId?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<Content>;
+```
+
+### `getContent(db, appId, slug)`
+
+```typescript
+function getContent(db: Db, appId: string, slug: string): Promise<Content | null>;
+```
+
+### `listContent(db, opts)`
+
+```typescript
+function listContent(db: Db, opts: {
+  appId: string;
+  status?: 'draft' | 'published';
+  limit?: number;
+  offset?: number;
+}): Promise<Content[]>;
+```
+
+### `updateContent(db, id, updates)`
+
+```typescript
+function updateContent(
+  db: Db,
+  id: string,
+  updates: Partial<Pick<Content, 'title' | 'body' | 'status' | 'metadata'>>,
+): Promise<Content>;
+```
+
+### `publishContent(db, id)`
+
+```typescript
+function publishContent(db: Db, id: string): Promise<Content>;
+```
+
+## Example
+
+```typescript
+import { createContent, publishContent } from '@factory/content';
+
+const article = await createContent(db, {
+  appId: 'focusbro',
+  slug: 'getting-started-with-focus',
+  title: 'Getting Started with Deep Focus',
+  body: '<p>...</p>',
+  authorId: user.id,
+});
+
+await publishContent(db, article.id);
+```

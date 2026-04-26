@@ -1,0 +1,55 @@
+---
+title: "@factory/deploy"
+description: Deployment scripts and CI helpers for Cloudflare Workers monorepos.
+---
+
+# @factory/deploy
+
+CLI helpers and shell scripts for deploying Factory apps to Cloudflare Workers. No runtime dependencies.
+
+## Installation
+
+```bash
+npm install @factory/deploy
+```
+
+## Scripts
+
+### `deploy-all`
+
+Deploys all packages in dependency order using `wrangler deploy`.
+
+```bash
+npx deploy-all --env production
+```
+
+### `validate-bindings`
+
+Checks that all required Wrangler bindings are present in `wrangler.jsonc` before deploy.
+
+```typescript
+function validateBindings(
+  config: WranglerConfig,
+  required: string[],
+): { valid: boolean; missing: string[] };
+```
+
+### `tagRelease`
+
+Creates and pushes a version tag in `<package>/v<version>` format.
+
+```typescript
+function tagRelease(pkg: string, version: string): Promise<void>;
+```
+
+## CI integration
+
+Add to `.github/workflows/deploy.yml`:
+
+```yaml
+- name: Deploy to Cloudflare Workers
+  run: npx deploy-all --env production
+  env:
+    CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+```

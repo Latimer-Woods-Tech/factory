@@ -1,0 +1,103 @@
+---
+title: "@factory/analytics"
+description: PostHog event tracking plus a first-party factory_events database table.
+---
+
+# @factory/analytics
+
+Dual-track analytics: PostHog for product analytics and a first-party `factory_events` table for business intelligence. Depends on `@factory/errors` and `@factory/neon`.
+
+## Installation
+
+```bash
+npm install @factory/analytics
+```
+
+## Secrets required
+
+```bash
+wrangler secret put POSTHOG_API_KEY
+```
+
+## Database
+
+Run the DDL constant to create the table:
+
+```typescript
+import { CREATE_FACTORY_EVENTS_TABLE } from '@factory/analytics';
+await db.execute(CREATE_FACTORY_EVENTS_TABLE);
+```
+
+Schema:
+
+```sql
+CREATE TABLE IF NOT EXISTS factory_events (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  app_id      TEXT NOT NULL,
+  user_id     TEXT,
+  event       TEXT NOT NULL,
+  properties  JSONB DEFAULT '{}',
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+```
+
+## API
+
+### `track(opts)`
+
+Sends an event to PostHog and inserts into `factory_events`.
+
+```typescript
+function track(opts: {
+  db: Db;
+  posthogKey: string;
+  appId: string;
+  event: string;
+  userId?: string;
+  properties?: Record<string, unknown>;
+}): Promise<void>;
+```
+
+### `identify(opts)`
+
+Creates or updates a PostHog person profile.
+
+```typescript
+function identify(opts: {
+  posthogKey: string;
+  userId: string;
+  traits: Record<string, unknown>;
+}): Promise<void>;
+```
+
+### `getEvents(db, opts)`
+
+Queries `factory_events` with optional filtering.
+
+```typescript
+function getEvents(
+  db: Db,
+  opts: {
+    appId: string;
+    userId?: string;
+    event?: string;
+    limit?: number;
+    since?: Date;
+  },
+): Promise<FactoryEvent[]>;
+```
+
+## Example
+
+```typescript
+import { track } from '@factory/analytics';
+
+await track({
+  db: createDb(env.DB),
+  posthogKey: env.POSTHOG_API_KEY,
+  appId: 'focusbro',
+  event: 'subscription.created',
+  userId: user.id,
+  properties: { plan: 'pro', mrr: 29 },
+});
+```

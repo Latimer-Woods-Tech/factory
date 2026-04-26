@@ -1,0 +1,60 @@
+---
+title: "@factory/logger"
+description: Structured JSON logger for Cloudflare Workers.
+---
+
+# @factory/logger
+
+Structured JSON logger with levels, context binding, and child loggers. Depends on `@factory/errors` and `@factory/monitoring`.
+
+## Installation
+
+```bash
+npm install @factory/logger
+```
+
+## API
+
+### `createLogger(opts)`
+
+```typescript
+function createLogger(opts: {
+  service: string;
+  level?: 'debug' | 'info' | 'warn' | 'error';
+  context?: Record<string, unknown>;
+}): Logger;
+```
+
+### `Logger`
+
+```typescript
+interface Logger {
+  debug(message: string, context?: Record<string, unknown>): void;
+  info(message: string, context?: Record<string, unknown>): void;
+  warn(message: string, context?: Record<string, unknown>): void;
+  error(message: string, context?: Record<string, unknown>): void;
+  child(context: Record<string, unknown>): Logger;
+}
+```
+
+All log methods emit a JSON line to `console.log` — Cloudflare Workers streams this to Logpush.
+
+### `child(context)`
+
+Creates a child logger that inherits the parent's service and merges in additional context fields.
+
+```typescript
+const requestLogger = logger.child({ requestId: c.req.header('x-request-id') });
+requestLogger.info('Request received', { path: c.req.path });
+```
+
+## Example
+
+```typescript
+import { createLogger } from '@factory/logger';
+
+const logger = createLogger({ service: 'my-app', level: 'info' });
+
+logger.info('User signed in', { userId: 'user-123', tenantId: 'tenant-1' });
+// {"level":"info","service":"my-app","message":"User signed in","userId":"user-123","tenantId":"tenant-1","ts":"2026-04-25T00:00:00.000Z"}
+```

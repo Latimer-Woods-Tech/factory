@@ -1,0 +1,93 @@
+---
+title: "@factory/seo"
+description: Meta tag generation, OpenGraph, Twitter Cards, and JSON-LD structured data.
+---
+
+# @factory/seo
+
+Server-side SEO tag generation for Cloudflare Workers. No dependencies.
+
+## Installation
+
+```bash
+npm install @factory/seo
+```
+
+## API
+
+### `generateMetaTags(opts)`
+
+Returns an HTML string of `<meta>` tags for a page.
+
+```typescript
+function generateMetaTags(opts: {
+  title: string;
+  description: string;
+  url: string;
+  image?: string;
+  type?: 'website' | 'article' | 'product';
+  locale?: string;
+  siteName?: string;
+}): string;
+```
+
+Includes:
+- Standard `<title>` and `<meta name="description">`
+- OpenGraph (`og:title`, `og:description`, `og:image`, `og:url`, `og:type`)
+- Twitter Card (`twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`)
+- Canonical `<link rel="canonical">`
+
+### `generateJsonLd(schema)`
+
+Serializes a JSON-LD schema object into a `<script type="application/ld+json">` tag.
+
+```typescript
+function generateJsonLd(schema: Record<string, unknown>): string;
+```
+
+### `generateSitemap(pages)`
+
+Generates an XML sitemap string.
+
+```typescript
+function generateSitemap(pages: Array<{
+  url: string;
+  lastmod?: string;
+  changefreq?: 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never';
+  priority?: number;
+}>): string;
+```
+
+### `generateRobotsTxt(opts)`
+
+Generates a `robots.txt` content string.
+
+```typescript
+function generateRobotsTxt(opts?: {
+  disallow?: string[];
+  sitemapUrl?: string;
+}): string;
+```
+
+## Example
+
+```typescript
+import { generateMetaTags, generateJsonLd } from '@factory/seo';
+
+const metaTags = generateMetaTags({
+  title: 'FocusBro — Deep Work for ADHD Professionals',
+  description: 'Stay in the zone for 2x longer with science-backed focus sessions.',
+  url: 'https://focusbro.app',
+  image: 'https://focusbro.app/og-image.png',
+  siteName: 'FocusBro',
+});
+
+const jsonLd = generateJsonLd({
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  'name': 'FocusBro',
+  'applicationCategory': 'ProductivityApplication',
+});
+
+return c.html(`<!DOCTYPE html><html><head>${metaTags}${jsonLd}</head><body>...</body></html>`);
+```

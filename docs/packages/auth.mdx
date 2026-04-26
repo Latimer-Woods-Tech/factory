@@ -1,0 +1,97 @@
+---
+title: "@factory/auth"
+description: JWT issue, verify, refresh, and Hono middleware for role-based access control.
+---
+
+# @factory/auth
+
+Self-managed JWTs using the Web Crypto API (HMAC SHA-256). No external JWT library. Depends on `@factory/errors` and `@factory/logger`.
+
+## Installation
+
+```bash
+npm install @factory/auth
+```
+
+## API
+
+### `issueToken(payload, secret, expiresIn?)`
+
+Signs and returns a JWT string.
+
+```typescript
+function issueToken(
+  payload: Omit<TokenPayload, 'iat' | 'exp'>,
+  secret: string,
+  expiresIn?: number, // seconds, default 3600
+): Promise<string>;
+```
+
+### `verifyToken(token, secret)`
+
+Verifies the signature and expiry. Throws `AuthError` on failure.
+
+```typescript
+function verifyToken(token: string, secret: string): Promise<TokenPayload>;
+```
+
+### `refreshToken(token, secret, expiresIn?)`
+
+Verifies the current token and issues a new one with a fresh expiry.
+
+```typescript
+function refreshToken(
+  token: string,
+  secret: string,
+  expiresIn?: number,
+): Promise<string>;
+```
+
+### `jwtMiddleware(secret)`
+
+Hono middleware that extracts `Authorization: Bearer <token>`, verifies it, and sets `c.get('user')`.
+
+```typescript
+function jwtMiddleware(secret: string): MiddlewareHandler;
+```
+
+Returns `401` with an `ErrorResponse` body if the token is missing or invalid.
+
+### `requireRole(role)`
+
+Hono middleware that enforces a minimum role level. Must run after `jwtMiddleware`.
+
+```typescript
+function requireRole(role: TokenPayload['role']): MiddlewareHandler;
+// Roles in ascending order: 'viewer' < 'member' < 'admin' < 'owner'
+```
+
+Returns `403` if the user's role is below the required level.
+
+### `TokenPayload`
+
+```typescript
+interface TokenPayload {
+  sub: string;
+  tenantId: string;
+  role: 'owner' | 'admin' | 'member' | 'viewer';
+  iat: number;
+  exp: number;
+}
+```
+
+## Example
+
+```typescript
+import { issueToken, jwtMiddleware, requireRole } from '@factory/auth';
+
+// Issue a token at login
+const token = await issueToken(
+  { sub: user.id, tenantId: user.tenantId, role: 'member' },
+  c.env.JWT_SECRET,
+);
+
+// Protect routes
+app.use('/api/*', (c, next) => jwtMiddleware(c.env.JWT_SECRET)(c, next));
+app.use('/api/admin/*', requireRole('admin'));
+```

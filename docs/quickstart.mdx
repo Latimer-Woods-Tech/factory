@@ -1,0 +1,89 @@
+---
+title: Quickstart
+description: Add Factory Core packages to a Cloudflare Workers app in minutes.
+---
+
+# Quickstart
+
+## Prerequisites
+
+- Cloudflare Workers project with `wrangler.jsonc`
+- Neon Postgres database (for packages that need `@factory/neon`)
+- Node.js 20+
+
+## Install packages
+
+Install only the packages your app needs:
+
+```bash
+# Minimal: errors + logger + auth
+npm install @factory/errors @factory/logger @factory/auth
+
+# Full stack
+npm install @factory/errors @factory/monitoring @factory/logger \
+            @factory/auth @factory/neon @factory/stripe \
+            @factory/analytics @factory/llm @factory/email
+```
+
+## Configure bindings
+
+Add your secrets to `wrangler.jsonc` as bindings (never as plaintext `vars`):
+
+```jsonc
+// wrangler.jsonc
+{
+  "name": "my-app",
+  "compatibility_date": "2025-01-01",
+  "hyperdrive": [
+    {
+      "binding": "DB",
+      "id": "<your-hyperdrive-id>"
+    }
+  ]
+}
+```
+
+Store secrets via Wrangler:
+```bash
+wrangler secret put JWT_SECRET
+wrangler secret put ANTHROPIC_API_KEY
+wrangler secret put STRIPE_WEBHOOK_SECRET
+```
+
+## Wire up your Worker
+
+```typescript
+import { Hono } from 'hono';
+import { jwtMiddleware, requireRole } from '@factory/auth';
+import { createLogger } from '@factory/logger';
+
+type Env = {
+  DB: Hyperdrive;
+  JWT_SECRET: string;
+};
+
+const app = new Hono<{ Bindings: Env }>();
+
+app.use('*', (c, next) => {
+  const logger = createLogger({ service: 'my-app' });
+  c.set('logger', logger);
+  return next();
+});
+
+app.use('/api/*', (c, next) => jwtMiddleware(c.env.JWT_SECRET)(c, next));
+app.use('/api/admin/*', requireRole('admin'));
+
+app.get('/api/me', (c) => {
+  const user = c.get('user');
+  return c.json({ sub: user.sub, role: user.role });
+});
+
+export default app;
+```
+
+## Next steps
+
+- Read the [Auth](/packages/auth) docs to issue tokens
+- Set up [Neon](/packages/neon) for database access
+- Add [Analytics](/packages/analytics) to track user events
+- Use [LLM](/packages/llm) for AI completions with automatic failover

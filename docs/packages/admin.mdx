@@ -1,0 +1,73 @@
+---
+title: "@factory/admin"
+description: Hono sub-router for admin operations — users, events, health, and suspend.
+---
+
+# @factory/admin
+
+Drop-in Hono admin router with user management, event inspection, and health check endpoints. Depends on `@factory/auth` and `@factory/analytics`.
+
+## Installation
+
+```bash
+npm install @factory/admin
+```
+
+## API
+
+### `createAdminRouter(opts)`
+
+Returns a Hono sub-application to mount at an admin path.
+
+```typescript
+function createAdminRouter(opts: {
+  db: Db;
+  appId: string;
+  requireAdminRole?: boolean; // default true, enforces 'admin' role via requireRole()
+}): Hono;
+```
+
+## Routes
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/` | Dashboard summary: `totalUsers`, `activeUsers`, `recentEvents` |
+| `GET` | `/users` | Paginated user list. Query: `?limit=20&offset=0` |
+| `GET` | `/users/:id` | User detail with subscriptions |
+| `POST` | `/users/:id/suspend` | Suspends a user (sets `status = 'suspended'`) |
+| `GET` | `/events` | Recent `factory_events` for the app. Query: `?limit=50` |
+| `GET` | `/health` | DB connectivity ping. Returns `{ status: 'ok' | 'degraded' }` |
+
+All routes return `401` without a valid JWT and `403` without the `admin` role (when `requireAdminRole` is true).
+
+## Example
+
+```typescript
+import { createAdminRouter } from '@factory/admin';
+import { createDb } from '@factory/neon';
+import { jwtMiddleware } from '@factory/auth';
+import { Hono } from 'hono';
+
+const app = new Hono<{ Bindings: Env }>();
+
+// Global JWT guard
+app.use('*', (c, next) => jwtMiddleware(c.env.JWT_SECRET)(c, next));
+
+// Mount admin router
+app.route('/admin', createAdminRouter({
+  db: createDb(env.DB),
+  appId: 'focusbro',
+}));
+```
+
+### Dashboard response example
+
+```json
+{
+  "totalUsers": 1204,
+  "activeUsers": 847,
+  "recentEvents": [
+    { "event": "subscription.created", "userId": "user-abc", "created_at": "2026-04-25T10:00:00Z" }
+  ]
+}
+```

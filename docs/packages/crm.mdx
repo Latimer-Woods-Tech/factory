@@ -1,0 +1,117 @@
+---
+title: "@factory/crm"
+description: Lead tracking, conversion events, and customer health view.
+---
+
+# @factory/crm
+
+CRM primitives: lead upsert, subscription conversion tracking, and a customer health view with churn risk scoring. Depends on `@factory/neon` and `@factory/analytics`.
+
+## Installation
+
+```bash
+npm install @factory/crm
+```
+
+## Database
+
+```typescript
+import { CREATE_CRM_LEADS_TABLE } from '@factory/crm';
+await db.execute(CREATE_CRM_LEADS_TABLE);
+```
+
+Schema:
+
+```sql
+CREATE TABLE IF NOT EXISTS crm_leads (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     TEXT NOT NULL,
+  app_id      TEXT NOT NULL,
+  email       TEXT,
+  status      TEXT DEFAULT 'lead',
+  mrr         NUMERIC DEFAULT 0,
+  source      TEXT,
+  metadata    JSONB DEFAULT '{}',
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  updated_at  TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (user_id, app_id)
+);
+```
+
+## API
+
+### `trackLead(db, opts)`
+
+Upserts a CRM lead. Idempotent on `(user_id, app_id)` conflict.
+
+```typescript
+function trackLead(db: Db, opts: {
+  userId: string;
+  appId: string;
+  email?: string;
+  status?: 'lead' | 'trial' | 'active' | 'churned';
+  source?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<CrmLead>;
+```
+
+### `trackConversion(db, opts, analytics?)`
+
+Updates a lead's status and MRR. Optionally fires a `subscription.converted` event to `@factory/analytics`.
+
+```typescript
+function trackConversion(
+  db: Db,
+  opts: {
+    userId: string;
+    appId: string;
+    status: 'trial' | 'active' | 'churned';
+    mrr: number;
+  },
+  analytics?: AnalyticsClient,
+): Promise<CrmLead>;
+```
+
+### `getCustomerView(db, userId)`
+
+Returns a unified customer view: lead + subscriptions + recent events + churn risk score.
+
+```typescript
+function getCustomerView(db: Db, userId: string): Promise<CustomerView>;
+
+interface CustomerView {
+  lead: CrmLead;
+  subscriptions: Subscription[];
+  recentEvents: FactoryEvent[];
+  churnRisk: 'low' | 'medium' | 'high';
+}
+```
+
+Churn risk is computed from days since last event and subscription status.
+
+## Example
+
+```typescript
+import { trackLead, trackConversion, getCustomerView } from '@factory/crm';
+
+// On sign-up
+await trackLead(db, {
+  userId: user.id,
+  appId: 'focusbro',
+  email: user.email,
+  status: 'lead',
+  source: 'google-ads',
+});
+
+// On subscription
+await trackConversion(db, {
+  userId: user.id,
+  appId: 'focusbro',
+  status: 'active',
+  mrr: 29,
+});
+
+// Admin dashboard
+const view = await getCustomerView(db, user.id);
+console.log(view.churnRisk); // 'low' | 'medium' | 'high'
+```
