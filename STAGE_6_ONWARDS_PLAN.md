@@ -340,13 +340,21 @@ echo "neighbor-aid: $HYPERDRIVE_NEIGHBOR"
 
 **Record all 7 Hyperdrive IDs** — needed by `setup-all-apps.mjs` and scaffold.mjs.
 
-### 6.3 Cloudflare Rate Limiter Setup
+### 6.3 Cloudflare Rate Limiter Setup ✅ COMPLETE
 
-One rate limiter per app — create via Cloudflare dashboard:
-- Name pattern: `{app-name}-rl`
-- Config: 60 requests / 60 seconds per IP (auth routes)
+**Note:** CF Workers Rate Limiting `namespace_id` is a user-assigned integer string — no API or dashboard needed.
+Assigned and stored as `RATE_LIMITER_*` GitHub secrets:
 
-Record the 6 namespace IDs.
+| App | namespace_id | Secret |
+|---|---|---|
+| wordis-bond | `1001` | `RATE_LIMITER_WORDIS_BOND` |
+| cypher-healing | `1002` | `RATE_LIMITER_CYPHER_HEALING` |
+| prime-self | `1003` | `RATE_LIMITER_PRIME_SELF` |
+| ijustus | `1004` | `RATE_LIMITER_IJUSTUS` |
+| the-calling | `1005` | `RATE_LIMITER_THE_CALLING` |
+| neighbor-aid | `1006` | `RATE_LIMITER_NEIGHBOR_AID` |
+
+Pass to scaffold.mjs at Phase 7 time via `--rate-limiter-id <id>`.
 
 ### 6.4 GitHub Repository Creation
 

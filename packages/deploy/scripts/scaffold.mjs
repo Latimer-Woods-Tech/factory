@@ -4,10 +4,13 @@
  *
  * Usage:
  *   node scaffold.mjs <app-name> [--github] [--no-deploy]
+ *     [--hyperdrive-id <id>] [--rate-limiter-id <id>]
  *
  * Flags:
- *   --github      Create a private GitHub repo and push (requires gh CLI + auth)
- *   --no-deploy   Skip the optional first Cloudflare deploy prompt
+ *   --github             Create a private GitHub repo and push (requires gh CLI + auth)
+ *   --no-deploy          Skip the optional first Cloudflare deploy prompt
+ *   --hyperdrive-id <id> Skip the Neon prompt and use this Hyperdrive ID directly
+ *   --rate-limiter-id <id> Use this rate limiter namespace ID instead of placeholder
  *
  * Creates ./<app-name>/ in the current working directory with a fully wired
  * Cloudflare Worker that consumes @adrper79-dot/* packages.
@@ -23,6 +26,16 @@ import { createInterface } from 'node:readline';
 const APP_NAME = process.argv[2];
 const CREATE_GITHUB = process.argv.includes('--github');
 const SKIP_DEPLOY = process.argv.includes('--no-deploy');
+
+const CLI_HYPERDRIVE_ID = (() => {
+  const idx = process.argv.indexOf('--hyperdrive-id');
+  return idx !== -1 ? process.argv[idx + 1] : null;
+})();
+
+const CLI_RATE_LIMITER_ID = (() => {
+  const idx = process.argv.indexOf('--rate-limiter-id');
+  return idx !== -1 ? process.argv[idx + 1] : null;
+})();
 
 if (!APP_NAME) {
   console.error('Usage: node scaffold.mjs <app-name> [--github] [--no-deploy]');
@@ -102,7 +115,7 @@ function checkPrerequisites() {
 
 // ── File Generation ───────────────────────────────────────────────────────────
 
-function generateFiles(hyperdriveId) {
+function generateFiles(hyperdriveId, rateLimiterId) {
   console.log('\n📁 Generating files...');
 
   // .gitignore
@@ -196,7 +209,7 @@ coverage/
   "rate_limiters": [
     {
       "binding": "AUTH_RATE_LIMITER",
-      "namespace_id": "REPLACE_WITH_RATE_LIMITER_NAMESPACE_ID",
+      "namespace_id": "${rateLimiterId}",
       "simple": { "limit": 60, "period": 60 }
     }
   ],
@@ -479,6 +492,12 @@ jobs:
 // ── Hyperdrive ────────────────────────────────────────────────────────────────
 
 async function createHyperdrive() {
+  // If --hyperdrive-id was passed on the CLI, skip the interactive prompt
+  if (CLI_HYPERDRIVE_ID) {
+    console.log(`\n🗄️  Hyperdrive ID provided via CLI: ${CLI_HYPERDRIVE_ID}`);
+    return CLI_HYPERDRIVE_ID;
+  }
+
   console.log('\n🗄️  Neon / Hyperdrive setup');
   console.log('   (Press Enter to skip — update wrangler.jsonc manually later)');
   const neonUrl = await ask('   Neon connection string (postgres://...): ');
@@ -559,9 +578,15 @@ async function main() {
   // Hyperdrive (runs before file gen so ID is injected)
   const hyperdriveId = await createHyperdrive();
 
+  // Rate limiter namespace ID (CLI flag or placeholder)
+  const rateLimiterId = CLI_RATE_LIMITER_ID ?? 'REPLACE_WITH_RATE_LIMITER_NAMESPACE_ID';
+  if (CLI_RATE_LIMITER_ID) {
+    console.log(`\n⚡ Rate Limiter ID provided via CLI: ${rateLimiterId}`);
+  }
+
   // Create directory + all files
   mkdirSync(TARGET, { recursive: true });
-  generateFiles(hyperdriveId);
+  generateFiles(hyperdriveId, rateLimiterId);
 
   // git init
   console.log('\n🔧 Initialising git...');
