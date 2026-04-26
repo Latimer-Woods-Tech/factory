@@ -133,19 +133,21 @@ coverage/
       'test:watch': 'vitest',
     },
     dependencies: {
-      '@adrper79-dot/errors': '^0.1.0',
-      '@adrper79-dot/logger': '^0.1.0',
-      '@adrper79-dot/monitoring': '^0.1.0',
-      '@adrper79-dot/auth': '^0.1.0',
-      '@adrper79-dot/neon': '^0.1.0',
-      '@adrper79-dot/analytics': '^0.1.0',
-      '@adrper79-dot/deploy': '^0.1.0',
+      '@adrper79-dot/errors': '^0.2.0',
+      '@adrper79-dot/logger': '^0.2.0',
+      '@adrper79-dot/monitoring': '^0.2.0',
+      '@adrper79-dot/auth': '^0.2.0',
+      '@adrper79-dot/neon': '^0.2.0',
+      '@adrper79-dot/analytics': '^0.2.0',
+      '@adrper79-dot/deploy': '^0.2.0',
+      'drizzle-orm': '^0.43.0',
       hono: '^4.12.15',
     },
     devDependencies: {
-      '@adrper79-dot/testing': '^0.1.0',
+      '@adrper79-dot/testing': '^0.2.0',
       '@cloudflare/workers-types': '^4.20260426.1',
       '@cloudflare/vitest-pool-workers': '^0.8.0',
+      'drizzle-kit': '^0.31.0',
       typescript: '^5.4.0',
       wrangler: '^4.0.0',
       vitest: '^1.6.0',
@@ -190,6 +192,15 @@ coverage/
     "WORKER_NAME": "${APP_NAME}"
   },
 
+  // ── Rate Limiter (auth routes) ────────────────────────────────────────────
+  "rate_limiters": [
+    {
+      "binding": "AUTH_RATE_LIMITER",
+      "namespace_id": "REPLACE_WITH_RATE_LIMITER_NAMESPACE_ID",
+      "simple": { "limit": 60, "period": 60 }
+    }
+  ],
+
   // ── Staging environment ────────────────────────────────────────────────────
   "env": {
     "staging": {
@@ -211,6 +222,7 @@ coverage/
 export interface Env {
   // ── Cloudflare bindings ──────────────────────────────────────────────────
   DB: Hyperdrive;
+  AUTH_RATE_LIMITER: RateLimit;
 
   // ── Secrets (set via wrangler secret put or GitHub Actions env secrets) ──
   JWT_SECRET: string;
@@ -283,6 +295,65 @@ app.onError((err, c) => {
 
 export default app;
 `);
+
+  // drizzle.config.ts
+  write('drizzle.config.ts', `import { defineConfig } from 'drizzle-kit';
+
+export default defineConfig({
+  schema: './src/db/schema.ts',
+  out: './src/db/migrations',
+  dialect: 'postgresql',
+  dbCredentials: {
+    url: process.env['DATABASE_URL'] ?? '',
+  },
+});
+`);
+
+  // src/db/schema.ts — placeholder
+  write('src/db/schema.ts', `/**
+ * Drizzle ORM schema for ${APP_NAME}.
+ * Replace this placeholder with your app's table definitions.
+ * Run: npx drizzle-kit generate  (to create SQL migration files)
+ * Run: npx drizzle-kit migrate   (to apply migrations to Neon)
+ */
+import { pgTable, text, uuid, timestamptz } from 'drizzle-orm/pg-core';
+
+// Example table — delete this and add your own:
+export const example = pgTable('example', {
+  id:        uuid('id').primaryKey().defaultRandom(),
+  userId:    text('user_id').notNull(),
+  createdAt: timestamptz('created_at').notNull().defaultNow(),
+});
+`);
+
+  // src/db/migrations/.gitkeep
+  write('src/db/migrations/.gitkeep', '');
+
+  // renovate.json
+  write('renovate.json', JSON.stringify({
+    '$schema': 'https://docs.renovatebot.com/renovate-schema.json',
+    extends: ['config:base'],
+    registryUrls: ['https://npm.pkg.github.com'],
+    packageRules: [{
+      matchPackagePrefixes: ['@adrper79-dot/'],
+      pinVersions: true,
+      automerge: false,
+      labels: ['factory-core-update'],
+      commitMessagePrefix: 'chore(deps):',
+    }],
+  }, null, 2) + '\n');
+
+  // docs/runbooks/ skeleton
+  const runbooks = [
+    ['getting-started.md', `# ${APP_NAME} — Getting Started\n\n## Local Dev\n\n\`\`\`bash\ncp .dev.vars.example .dev.vars\n# Fill in .dev.vars values\nnpm install\nnpm run dev\n\`\`\`\n\n## First Deploy\n\nSee deployment.md\n`],
+    ['deployment.md', `# ${APP_NAME} — Deployment\n\n## Staging\n\n\`\`\`bash\nwrangler deploy --env staging\ncurl https://staging.${APP_NAME}.workers.dev/health\n\`\`\`\n\n## Production\n\n\`\`\`bash\nwrangler deploy\n\`\`\`\n\n## Rollback\n\n\`\`\`bash\nwrangler rollback\n\`\`\`\n`],
+    ['secret-rotation.md', `# ${APP_NAME} — Secret Rotation\n\n| Secret | Rotate Every | Command |\n|---|---|---|\n| JWT_SECRET | 90 days | \`wrangler secret put JWT_SECRET --name ${APP_NAME}\` |\n| SENTRY_DSN | Never (on compromise) | \`wrangler secret put SENTRY_DSN --name ${APP_NAME}\` |\n| POSTHOG_KEY | Never (on compromise) | \`wrangler secret put POSTHOG_KEY --name ${APP_NAME}\` |\n`],
+    ['database.md', `# ${APP_NAME} — Database\n\n## Generate Migration\n\n\`\`\`bash\nnpx drizzle-kit generate\n\`\`\`\n\n## Apply Migration\n\n\`\`\`bash\nexport DATABASE_URL=\"postgresql://...\"\nnpx drizzle-kit migrate\n\`\`\`\n\n## Preview Branch (CI)\n\nSet NEON_PREVIEW_URL in GitHub repo secrets to run migration dry-run in CI.\n`],
+    ['slo.md', `# ${APP_NAME} — SLO\n\n## Targets\n\n| Metric | Target |\n|---|---|\n| p99 latency | < 200ms |\n| Error rate | < 0.1% |\n| Availability | 99.9% |\n\n## Error Budget\n\n0.1% errors / 30 days = ~43 minutes downtime budget.\nSentry alert threshold: > 10 errors/hour triggers immediate response.\n`],
+  ];
+  for (const [name, content] of runbooks) {
+    write(`docs/runbooks/${name}`, content);
+  }
 
   // src/index.test.ts — starter test
   write('src/index.test.ts', `import { describe, it, expect } from 'vitest';
@@ -361,7 +432,9 @@ jobs:
           NODE_AUTH_TOKEN: \${{ secrets.PACKAGES_READ_TOKEN }}
       - run: npm run typecheck
       - run: npm test
-`);
+        env:
+          NEON_TEST_URL: \${{ secrets.NEON_PREVIEW_URL }}
+`);  
 
   // .github/workflows/deploy.yml
   write('.github/workflows/deploy.yml', `name: Deploy

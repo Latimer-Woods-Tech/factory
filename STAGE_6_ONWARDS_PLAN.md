@@ -1,6 +1,6 @@
 # Factory Core — Master Execution Plan: Stage 6+
 
-> **Status:** All 19 `@adrper79-dot/*` packages published at `v0.1.0`. `scaffold.mjs` live.
+> **Status:** All 19 `@adrper79-dot/*` packages published at `v0.2.0`. `scaffold.mjs` + `setup-all-apps.mjs` live. All 6 app repos + `factory-admin` created.
 > **Audience:** Agent teams and operators executing the Factory app build-out.
 > **Date:** April 2026
 
@@ -19,10 +19,10 @@
 │   adrper79-dot/Factory      │  ← you are here
 │   (Factory Core monorepo)   │
 │                             │
-│  packages/errors   v0.1.0   │──► GitHub Packages registry
-│  packages/auth     v0.1.0   │    npm.pkg.github.com/@adrper79-dot/*
-│  packages/neon     v0.1.0   │
-│  packages/...      v0.1.0   │
+│  packages/errors   v0.2.0   │──► GitHub Packages registry
+│  packages/auth     v0.2.0   │    npm.pkg.github.com/@adrper79-dot/*
+│  packages/neon     v0.2.0   │
+│  packages/...      v0.2.0   │
 │                             │
 │  scripts/scaffold.mjs       │──► creates + wires app repos
 │  scripts/setup-all-apps.mjs │──► sets all secrets from here
@@ -35,9 +35,9 @@
 │bond      │ │self      │     │                │
 │          │ │          │     │                │
 │@adrper   │ │@adrper   │     │@adrper79-dot/* │
-│79-dot/*  │ │79-dot/*  │     │pinned at 0.1.0 │
+│79-dot/*  │ │79-dot/*  │     │pinned at 0.2.0 │
 │pinned    │ │pinned    │     │                │
-│at 0.1.0  │ │at 0.1.0  │     │                │
+│at 0.2.0  │ │at 0.2.0  │     │                │
 └────┬─────┘ └────┬─────┘     └───────┬────────┘
      │            │                   │
      └────────────┼───────────────────┘
@@ -131,17 +131,17 @@ A fine-grained PAT can be used instead of `repo` scope — grant:
 
 | Item | Status |
 |---|---|
-| All 19 packages | ✅ Published to GitHub Packages (`@adrper79-dot/*`, `v0.1.0`) |
-| `scaffold.mjs` | ✅ `packages/deploy/scripts/scaffold.mjs` |
+| All 19 packages | ✅ Published to GitHub Packages (`@adrper79-dot/*`, `v0.2.0`) |
+| `scaffold.mjs` | ✅ `packages/deploy/scripts/scaffold.mjs` (all 8 gaps fixed) |
 | `setup-all-apps.mjs` | ✅ `packages/deploy/scripts/setup-all-apps.mjs` |
 | Neon databases | ❌ Not provisioned |
 | Cloudflare Hyperdrive per app | ❌ Not configured |
-| App repositories | ❌ Not scaffolded |
+| App repositories | ✅ All 6 created + `factory-admin` (adrper79-dot org) |
 | Factory Admin Dashboard | ❌ Not built (`admin.thefactory.dev`) |
 | Mintlify docs | ❌ Not deployed |
 | Renovate on app repos | ❌ Not configured |
 | Sentry / PostHog per app | ❌ Not configured |
-| Version strategy | ✅ Accept `v0.1.0` as canonical; bump only on real code changes |
+| Version strategy | ✅ All packages at `v0.2.0` (latest canonical) |
 
 ---
 
@@ -469,7 +469,7 @@ npm install @adrper79-dot/telephony@0.1.0 @adrper79-dot/llm@0.1.0 \
             @adrper79-dot/compliance@0.1.0 @adrper79-dot/crm@0.1.0
 ```
 
-Note: pin exact versions (`0.1.0` not `^0.1.0`) per ADR-002.
+Note: pin exact versions (`0.2.0` not `^0.2.0`) per ADR-002.
 
 #### Step 3 — Write the App Schema (`src/db/schema.ts`)
 
@@ -1010,21 +1010,21 @@ Enable Renovate GitHub App on `adrper79-dot` org.
 
 ## Phase 11: Scaffold.mjs Improvements
 
-**Owner: Infra Agent (can piggyback on Phase 6)**
-**Required before Phase 7 agent teams begin**
+**Owner: Infra Agent**
+**Status: ✅ COMPLETE — all 8 gaps fixed in `packages/deploy/scripts/scaffold.mjs`**
 
-These 8 gaps must be addressed in a single PR to `packages/deploy/scripts/scaffold.mjs`:
+All identified gaps have been resolved:
 
 | Gap | Priority | Change |
 |---|---|---|
-| `drizzle.config.ts` generation | High | Add to generated files |
-| `src/db/schema.ts` placeholder | High | Empty file with example comment |
-| `src/db/migrations/` directory | High | Create `.gitkeep` |
-| `drizzle-orm` + `drizzle-kit` in deps | High | Add to generated `package.json` |
-| `rate_limiters` block in `wrangler.jsonc` | High | Add with `AUTH_RATE_LIMITER` binding |
-| `renovate.json` generation | Medium | Add to generated files |
-| `NEON_TEST_URL` in CI env block | Medium | Add to `ci.yml` template |
-| `docs/runbooks/` skeleton | Medium | Create 5 empty runbook files |
+| `drizzle.config.ts` generation | High | ✅ Added to generated files |
+| `src/db/schema.ts` placeholder | High | ✅ Empty file with example comment |
+| `src/db/migrations/` directory | High | ✅ Created with `.gitkeep` |
+| `drizzle-orm` + `drizzle-kit` in deps | High | ✅ Added to generated `package.json` |
+| `rate_limiters` block in `wrangler.jsonc` | High | ✅ Added with `AUTH_RATE_LIMITER` binding |
+| `renovate.json` generation | Medium | ✅ Added to generated files |
+| `NEON_TEST_URL` in CI env block | Medium | ✅ Added to `ci.yml` template |
+| `docs/runbooks/` skeleton | Medium | ✅ 5 runbook files generated |
 
 ---
 
