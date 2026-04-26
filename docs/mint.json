@@ -14,14 +14,14 @@
   "topbarLinks": [
     {
       "name": "GitHub",
-      "url": "https://github.com/adrper79-dot/Factory"
+      "url": "https://github.com/adrper79-dot/factory"
     }
   ],
   "anchors": [
     {
       "name": "Changelog",
       "icon": "list",
-      "url": "https://github.com/adrper79-dot/Factory/releases"
+      "url": "https://github.com/adrper79-dot/factory/releases"
     }
   ],
   "navigation": [
@@ -79,6 +79,6 @@
     }
   ],
   "footerSocials": {
-    "github": "https://github.com/adrper79-dot/Factory"
+    "github": "https://github.com/adrper79-dot/factory"
   }
 }
