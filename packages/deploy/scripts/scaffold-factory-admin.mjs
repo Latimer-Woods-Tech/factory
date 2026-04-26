@@ -70,6 +70,7 @@ function write(relPath, content) {
 }
 
 // ---------- wrangler.jsonc ----------
+// Use proper JSON quoted keys (JSONC requires valid JSON syntax)
 write('wrangler.jsonc', JSON.stringify({
   name: 'factory-admin',
   main: 'src/index.ts',
@@ -84,7 +85,7 @@ write('wrangler.jsonc', JSON.stringify({
     { binding: 'THE_CALLING_DB',  id: HYPERDRIVE.THE_CALLING },
     { binding: 'NEIGHBOR_AID_DB', id: HYPERDRIVE.NEIGHBOR_AID },
   ],
-}, null, 2).replace(/"([^"]+)":/g, '$1:') + '\n');
+}, null, 2) + '\n');
 
 // ---------- package.json ----------
 write('package.json', JSON.stringify({
@@ -99,10 +100,10 @@ write('package.json', JSON.stringify({
     lint: 'eslint src --max-warnings 0',
   },
   dependencies: {
-    '@adrper79-dot/auth':    '0.2.0',
-    '@adrper79-dot/errors':  '0.2.0',
-    '@adrper79-dot/logger':  '0.2.0',
-    '@adrper79-dot/neon':    '0.2.0',
+    '@adrper79-dot/auth':    '0.1.0',
+    '@adrper79-dot/errors':  '0.1.0',
+    '@adrper79-dot/logger':  '0.1.0',
+    '@adrper79-dot/neon':    '0.1.0',
     hono: '^4.6.0',
   },
   devDependencies: {
@@ -125,6 +126,7 @@ write('tsconfig.json', JSON.stringify({
     module: 'ESNext',
     moduleResolution: 'Bundler',
     strict: true,
+    skipLibCheck: true,
     noUncheckedIndexedAccess: true,
     types: ['@cloudflare/workers-types'],
     lib: ['ES2022'],
@@ -161,7 +163,7 @@ export interface Env {
 
 // ---------- src/index.ts ----------
 write('src/index.ts', `import { Hono } from 'hono';
-import { verifyJwt } from '@adrper79-dot/auth';
+import { verifyToken } from '@adrper79-dot/auth';
 import { overviewRouter } from './routes/overview.js';
 import { appsRouter }    from './routes/apps.js';
 import { crmRouter }     from './routes/crm.js';
@@ -178,7 +180,7 @@ app.use('*', async (c, next) => {
     return c.json({ error: 'Unauthorized' }, 401);
   }
   const token = header.slice(7);
-  const payload = await verifyJwt(token, c.env.ADMIN_JWT_SECRET).catch(() => null);
+  const payload = await verifyToken(token, c.env.ADMIN_JWT_SECRET).catch(() => null);
   if (!payload) return c.json({ error: 'Unauthorized' }, 401);
   c.set('jwtPayload' as never, payload);
   return next();
@@ -304,7 +306,7 @@ crmRouter.get('/', async (c) => {
 
 // ---------- src/routes/events.ts ----------
 write('src/routes/events.ts', `import { Hono } from 'hono';
-import { createDb } from '@adrper79-dot/neon';
+import { createDb, sql } from '@adrper79-dot/neon';
 import type { Env } from '../env.js';
 
 export const eventsRouter = new Hono<{ Bindings: Env }>();
@@ -317,20 +319,21 @@ eventsRouter.get('/', async (c) => {
 
   const db = createDb(c.env.FACTORY_CORE_DB);
 
-  // Build safe parameterised query — no user input in SQL string
-  const conditions: string[] = [];
-  const params: unknown[]   = [];
+  // Build safe parameterised query using drizzle sql template literals
+  const conditions: ReturnType<typeof sql>[] = [];
+  if (appId) conditions.push(sql\`app_id = \${appId}\`);
+  if (event) conditions.push(sql\`event = \${event}\`);
 
-  if (appId) { conditions.push(\`app_id = $\${params.push(appId)}\`); }
-  if (event) { conditions.push(\`event  = $\${params.push(event)}\`);  }
+  const where = conditions.length > 0
+    ? sql\`WHERE \${sql.join(conditions, sql\` AND \`)}\`
+    : sql\`\`;
 
-  const where = conditions.length > 0 ? \`WHERE \${conditions.join(' AND ')}\` : '';
-  const sql   = \`SELECT id, app_id, user_id, event, properties, created_at
-                 FROM factory_events \${where}
-                 ORDER BY created_at DESC
-                 LIMIT $\${params.push(limit)}\`;
-
-  const result = await db.execute({ sql, params });
+  const result = await db.execute(
+    sql\`SELECT id, app_id, user_id, event, properties, created_at
+        FROM factory_events \${where}
+        ORDER BY created_at DESC
+        LIMIT \${limit}\`,
+  );
   return c.json({ events: result.rows, count: result.rows.length });
 });
 `);
@@ -355,7 +358,7 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@adrper79-dot'
       - name: Install
-        run: npm ci
+        run: npm install
         env:
           NODE_AUTH_TOKEN: \${{ secrets.PACKAGES_READ_TOKEN }}
       - run: npm run typecheck
@@ -380,7 +383,7 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@adrper79-dot'
       - name: Install
-        run: npm ci
+        run: npm install
         env:
           NODE_AUTH_TOKEN: \${{ secrets.PACKAGES_READ_TOKEN }}
       - name: Deploy to Cloudflare
