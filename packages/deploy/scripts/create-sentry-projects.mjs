@@ -112,8 +112,13 @@ async function createProject(teamSlug, project) {
     // Newly created: prefer DSN from create response, fall back to keys endpoint
     return data.dsn?.public ?? (await fetchDsn(project.slug));
   } catch (err) {
-    // Project already exists — fetch its DSN via keys endpoint
-    if (err.message.includes('already exists') || err.message.includes('400')) {
+    // Log the full error so we can diagnose — then check if it's a 409/already-exists
+    console.warn(`  Create error for ${project.slug}: ${err.message}`);
+    if (
+      err.message.includes('already exists') ||
+      err.message.includes('400') ||
+      err.message.includes('409')
+    ) {
       console.log(`  [exists] ${project.slug} — fetching existing DSN`);
       try {
         return await fetchDsn(project.slug);
