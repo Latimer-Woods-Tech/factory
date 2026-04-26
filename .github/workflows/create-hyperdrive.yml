@@ -31,41 +31,51 @@ jobs:
           NEIGHBOR_AID_CONN: ${{ secrets.NICHESTREAM_CONNECTION_STRING }}
         run: |
           set -e
-          create_or_get() {
+
+          # List existing Hyperdrive instances once
+          EXISTING_JSON=$(wrangler hyperdrive list --json 2>/dev/null || echo "[]")
+
+          get_existing_id() {
+            local name="$1"
+            echo "$EXISTING_JSON" | node -e "
+              const d=require('fs').readFileSync('/dev/stdin','utf8').trim();
+              const list = JSON.parse(d || '[]');
+              const found = list.find(h => h.name === '$name');
+              if (found) process.stdout.write(found.id);
+            " 2>/dev/null
+          }
+
+          create_hyperdrive() {
             local name="$1"
             local conn="$2"
-            local existing
-            existing=$(wrangler hyperdrive list --json 2>/dev/null | node -e "
-              const d=require('fs').readFileSync('/dev/stdin','utf8').trim();
-              if (!d) { process.exit(0); }
-              const list = JSON.parse(d);
-              const found = list.find(h => h.name === '$name');
-              if (found) console.log(found.id);
-            " 2>/dev/null || echo "")
-            if [ -n "$existing" ]; then
-              echo "[exists] $name → $existing"
-              echo "$existing"
+            local existing_id
+            existing_id=$(get_existing_id "$name")
+            if [ -n "$existing_id" ]; then
+              echo "[exists] $name → $existing_id" >&2
+              echo -n "$existing_id"
             else
-              local id
-              id=$(wrangler hyperdrive create "$name" \
+              local result
+              result=$(wrangler hyperdrive create "$name" \
                 --connection-string "$conn" \
-                --json 2>/dev/null | node -e "
-                  const d=require('fs').readFileSync('/dev/stdin','utf8');
-                  console.log(JSON.parse(d).id);
-                ")
-              echo "[created] $name → $id"
-              echo "$id"
+                --json 2>/dev/null)
+              local new_id
+              new_id=$(echo "$result" | node -e "
+                const d=require('fs').readFileSync('/dev/stdin','utf8');
+                process.stdout.write(JSON.parse(d).id);
+              ")
+              echo "[created] $name → $new_id" >&2
+              echo -n "$new_id"
             fi
           }
 
           echo "Creating Hyperdrive instances..."
-          FACTORY_CORE_ID=$(create_or_get "factory-core-db" "$FACTORY_CORE_CONN" | tail -1)
-          WORDIS_BOND_ID=$(create_or_get "wordis-bond-db" "$WORDIS_BOND_CONN" | tail -1)
-          CYPHER_HEALING_ID=$(create_or_get "cypher-healing-db" "$CYPHER_HEALING_CONN" | tail -1)
-          PRIME_SELF_ID=$(create_or_get "prime-self-db" "$PRIME_SELF_CONN" | tail -1)
-          IJUSTUS_ID=$(create_or_get "ijustus-db" "$IJUSTUS_CONN" | tail -1)
-          THE_CALLING_ID=$(create_or_get "the-calling-db" "$THE_CALLING_CONN" | tail -1)
-          NEIGHBOR_AID_ID=$(create_or_get "neighbor-aid-db" "$NEIGHBOR_AID_CONN" | tail -1)
+          FACTORY_CORE_ID=$(create_hyperdrive "factory-core-db" "$FACTORY_CORE_CONN")
+          WORDIS_BOND_ID=$(create_hyperdrive "wordis-bond-db" "$WORDIS_BOND_CONN")
+          CYPHER_HEALING_ID=$(create_hyperdrive "cypher-healing-db" "$CYPHER_HEALING_CONN")
+          PRIME_SELF_ID=$(create_hyperdrive "prime-self-db" "$PRIME_SELF_CONN")
+          IJUSTUS_ID=$(create_hyperdrive "ijustus-db" "$IJUSTUS_CONN")
+          THE_CALLING_ID=$(create_hyperdrive "the-calling-db" "$THE_CALLING_CONN")
+          NEIGHBOR_AID_ID=$(create_hyperdrive "neighbor-aid-db" "$NEIGHBOR_AID_CONN")
 
           echo ""
           echo "════ Hyperdrive IDs ════"
@@ -77,25 +87,16 @@ jobs:
           echo "HYPERDRIVE_THE_CALLING=$THE_CALLING_ID"
           echo "HYPERDRIVE_NEIGHBOR_AID=$NEIGHBOR_AID_ID"
 
-          # Write IDs to file for next steps
-          cat > hyperdrive-ids.env << EOF
-          HYPERDRIVE_FACTORY_CORE=$FACTORY_CORE_ID
-          HYPERDRIVE_WORDIS_BOND=$WORDIS_BOND_ID
-          HYPERDRIVE_CYPHER_HEALING=$CYPHER_HEALING_ID
-          HYPERDRIVE_PRIME_SELF=$PRIME_SELF_ID
-          HYPERDRIVE_IJUSTUS=$IJUSTUS_ID
-          HYPERDRIVE_THE_CALLING=$THE_CALLING_ID
-          HYPERDRIVE_NEIGHBOR_AID=$NEIGHBOR_AID_ID
-          EOF
-
           # Store as GitHub output vars
-          echo "FACTORY_CORE_ID=$FACTORY_CORE_ID" >> "$GITHUB_OUTPUT"
-          echo "WORDIS_BOND_ID=$WORDIS_BOND_ID" >> "$GITHUB_OUTPUT"
-          echo "CYPHER_HEALING_ID=$CYPHER_HEALING_ID" >> "$GITHUB_OUTPUT"
-          echo "PRIME_SELF_ID=$PRIME_SELF_ID" >> "$GITHUB_OUTPUT"
-          echo "IJUSTUS_ID=$IJUSTUS_ID" >> "$GITHUB_OUTPUT"
-          echo "THE_CALLING_ID=$THE_CALLING_ID" >> "$GITHUB_OUTPUT"
-          echo "NEIGHBOR_AID_ID=$NEIGHBOR_AID_ID" >> "$GITHUB_OUTPUT"
+          {
+            echo "FACTORY_CORE_ID=$FACTORY_CORE_ID"
+            echo "WORDIS_BOND_ID=$WORDIS_BOND_ID"
+            echo "CYPHER_HEALING_ID=$CYPHER_HEALING_ID"
+            echo "PRIME_SELF_ID=$PRIME_SELF_ID"
+            echo "IJUSTUS_ID=$IJUSTUS_ID"
+            echo "THE_CALLING_ID=$THE_CALLING_ID"
+            echo "NEIGHBOR_AID_ID=$NEIGHBOR_AID_ID"
+          } >> "$GITHUB_OUTPUT"
         id: hyperdrive
 
       - name: Store Hyperdrive IDs as GitHub secrets
