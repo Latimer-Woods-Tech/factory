@@ -73,11 +73,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           APP="${{ matrix.app }}"
-          STATUS=$(gh api repos/adrper79-dot/$APP/contents/src/index.ts --jq '.name' 2>/dev/null || echo "")
-          if [ -n "$STATUS" ]; then
+          # Use exit code only — gh api exits 0 on 200, non-zero on 404/409
+          if gh api repos/adrper79-dot/$APP/contents/src/index.ts > /dev/null 2>&1; then
             echo "⏭  $APP already has src/index.ts — skipping scaffold."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
+            echo "$APP is not scaffolded — proceeding."
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
