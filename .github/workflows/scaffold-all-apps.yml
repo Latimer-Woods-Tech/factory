@@ -47,7 +47,7 @@ jobs:
         if: ${{ github.event.inputs.app != '' && github.event.inputs.app != matrix.app }}
         run: echo "Skipping ${{ matrix.app }} — filter is '${{ github.event.inputs.app }}'"
 
-      - uses: actions/checkout@v4  # checks out Factory (this repo)
+      - uses: actions/checkout@v6  # checks out Factory (this repo)
         if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
 
       - uses: actions/setup-node@v4
