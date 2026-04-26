@@ -56,7 +56,7 @@ jobs:
       - name: Install
         run: npm install
         env:
-          NODE_AUTH_TOKEN: \${{ secrets.PACKAGES_READ_TOKEN }}
+          NODE_AUTH_TOKEN: \${{ secrets.GH_PAT }}
       - run: npm run typecheck
 `);
 
@@ -81,7 +81,7 @@ jobs:
       - name: Install
         run: npm install
         env:
-          NODE_AUTH_TOKEN: \${{ secrets.PACKAGES_READ_TOKEN }}
+          NODE_AUTH_TOKEN: \${{ secrets.GH_PAT }}
       - name: Deploy to Cloudflare
         run: npx wrangler deploy
         env:
