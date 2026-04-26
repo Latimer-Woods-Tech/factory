@@ -20,7 +20,7 @@ type MockDb = {
 };
 
 function makeMockDb(rows: Record<string, unknown>[]): MockDb {
-  return { execute: vi.fn<() => Promise<{ rows: Record<string, unknown>[] }>>().mockResolvedValue({ rows }) };
+  return { execute: vi.fn().mockResolvedValue({ rows }) };
 }
 
 const now = new Date().toISOString();

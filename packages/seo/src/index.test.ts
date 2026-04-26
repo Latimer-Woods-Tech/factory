@@ -116,7 +116,7 @@ describe('generateJsonLd', () => {
   it('merges data fields into the JSON-LD object', () => {
     const script = generateJsonLd('SoftwareApplication', { name: 'App', operatingSystem: 'All' });
     const match = /<script[^>]*>([\s\S]*?)<\/script>/.exec(script);
-    const parsed = JSON.parse(match![1]) as Record<string, unknown>;
+    const parsed = JSON.parse(match![1]!) as Record<string, unknown>;
     expect(parsed['@type']).toBe('SoftwareApplication');
     expect(parsed['operatingSystem']).toBe('All');
   });
