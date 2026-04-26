@@ -17,6 +17,18 @@ jobs:
           scope: '@adrper79-dot'
       - name: Detect package from tag
         run: echo "PACKAGE=$(echo $GITHUB_REF_NAME | cut -d'/' -f1)" >> $GITHUB_ENV
+      - name: Build local dependencies in order
+        run: |
+          DEPS=(errors monitoring logger auth neon stripe llm telephony analytics deploy testing email copy content social seo crm compliance admin)
+          for pkg in "${DEPS[@]}"; do
+            if [ "$pkg" = "$PACKAGE" ]; then
+              break
+            fi
+            echo "--- Building dependency: $pkg ---"
+            (cd packages/$pkg && npm ci && npm run build)
+          done
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: cd packages/${{ env.PACKAGE }} && npm ci
       - run: cd packages/${{ env.PACKAGE }} && npm run prepublish
       - run: cd packages/${{ env.PACKAGE }} && npm publish
