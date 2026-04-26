@@ -11,6 +11,9 @@
     "README.md",
     "CHANGELOG.md"
   ],
+  "bin": {
+    "factory-scaffold": "./scripts/scaffold.mjs"
+  },
   "scripts": {
     "build": "echo 'No build step for deploy package'",
     "test": "echo 'No tests for deploy package'",

@@ -1,0 +1,558 @@
+#!/usr/bin/env node
+/**
+ * scaffold.mjs — Factory app scaffolding CLI
+ *
+ * Usage:
+ *   node scaffold.mjs <app-name> [--github] [--no-deploy]
+ *
+ * Flags:
+ *   --github      Create a private GitHub repo and push (requires gh CLI + auth)
+ *   --no-deploy   Skip the optional first Cloudflare deploy prompt
+ *
+ * Creates ./<app-name>/ in the current working directory with a fully wired
+ * Cloudflare Worker that consumes @adrper79-dot/* packages.
+ */
+
+import { execSync } from 'node:child_process';
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { createInterface } from 'node:readline';
+
+// ── Args ─────────────────────────────────────────────────────────────────────
+
+const APP_NAME = process.argv[2];
+const CREATE_GITHUB = process.argv.includes('--github');
+const SKIP_DEPLOY = process.argv.includes('--no-deploy');
+
+if (!APP_NAME) {
+  console.error('Usage: node scaffold.mjs <app-name> [--github] [--no-deploy]');
+  process.exit(1);
+}
+
+if (!/^[a-z][a-z0-9-]*$/.test(APP_NAME)) {
+  console.error('Error: app name must be lowercase alphanumeric with hyphens, starting with a letter.');
+  process.exit(1);
+}
+
+const TARGET = join(process.cwd(), APP_NAME);
+
+if (existsSync(TARGET)) {
+  console.error(`Error: directory "${APP_NAME}" already exists in ${process.cwd()}`);
+  process.exit(1);
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+const rl = createInterface({ input: process.stdin, output: process.stdout });
+const ask = (q) => new Promise((res) => rl.question(q, res));
+
+function run(cmd, opts = {}) {
+  const cwd = opts.cwd ?? TARGET;
+  if (!opts.silent) console.log(`  $ ${cmd}`);
+  try {
+    return execSync(cmd, { stdio: opts.capture ? 'pipe' : 'inherit', cwd, encoding: 'utf8' });
+  } catch (err) {
+    console.error(`\n❌ Command failed: ${cmd}`);
+    if (err.stderr) console.error(err.stderr);
+    process.exit(1);
+  }
+}
+
+function write(relPath, content) {
+  const full = join(TARGET, relPath);
+  const dir = full.substring(0, Math.max(full.lastIndexOf('/'), full.lastIndexOf('\\')) );
+  if (dir) mkdirSync(dir, { recursive: true });
+  writeFileSync(full, content, 'utf8');
+  console.log(`  📄 ${relPath}`);
+}
+
+// ── Prerequisites ─────────────────────────────────────────────────────────────
+
+function checkPrerequisites() {
+  console.log('\n🔍 Checking prerequisites...');
+
+  for (const tool of ['node', 'npm', 'git', 'wrangler']) {
+    try {
+      execSync(`${tool} --version`, { stdio: 'pipe' });
+      console.log(`  ✅ ${tool}`);
+    } catch {
+      console.error(`  ❌ ${tool} is required but not found.`);
+      process.exit(1);
+    }
+  }
+
+  if (CREATE_GITHUB) {
+    try {
+      execSync('gh --version', { stdio: 'pipe' });
+      console.log('  ✅ gh');
+    } catch {
+      console.error('  ❌ gh CLI required for --github. Install: https://cli.github.com');
+      process.exit(1);
+    }
+  }
+
+  if (!process.env.NODE_AUTH_TOKEN) {
+    console.warn('\n⚠️  NODE_AUTH_TOKEN is not set.');
+    console.warn('   npm install will fail without a GitHub PAT with read:packages scope.');
+    console.warn('   Create one at: https://github.com/settings/tokens/new?scopes=read:packages');
+    console.warn('   Then run:  export NODE_AUTH_TOKEN=<your-token>');
+    console.warn('   Or set it in your shell profile and re-run.\n');
+  }
+}
+
+// ── File Generation ───────────────────────────────────────────────────────────
+
+function generateFiles(hyperdriveId) {
+  console.log('\n📁 Generating files...');
+
+  // .gitignore
+  write('.gitignore', `node_modules/
+.wrangler/
+coverage/
+.dev.vars
+*.local
+`);
+
+  // .npmrc — GitHub Packages auth for @adrper79-dot scope
+  write('.npmrc', `@adrper79-dot:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=\${NODE_AUTH_TOKEN}
+`);
+
+  // package.json
+  write('package.json', JSON.stringify({
+    name: APP_NAME,
+    version: '0.1.0',
+    private: true,
+    type: 'module',
+    scripts: {
+      dev: 'wrangler dev',
+      deploy: 'wrangler deploy',
+      'deploy:staging': 'wrangler deploy --env staging',
+      typecheck: 'tsc --noEmit',
+      test: 'vitest run',
+      'test:watch': 'vitest',
+    },
+    dependencies: {
+      '@adrper79-dot/errors': '^0.1.0',
+      '@adrper79-dot/logger': '^0.1.0',
+      '@adrper79-dot/monitoring': '^0.1.0',
+      '@adrper79-dot/auth': '^0.1.0',
+      '@adrper79-dot/neon': '^0.1.0',
+      '@adrper79-dot/analytics': '^0.1.0',
+      '@adrper79-dot/deploy': '^0.1.0',
+      hono: '^4.12.15',
+    },
+    devDependencies: {
+      '@adrper79-dot/testing': '^0.1.0',
+      '@cloudflare/workers-types': '^4.20260426.1',
+      '@cloudflare/vitest-pool-workers': '^0.8.0',
+      typescript: '^5.4.0',
+      wrangler: '^4.0.0',
+      vitest: '^1.6.0',
+      '@vitest/coverage-v8': '^1.6.0',
+    },
+  }, null, 2) + '\n');
+
+  // tsconfig.json
+  write('tsconfig.json', JSON.stringify({
+    compilerOptions: {
+      target: 'ES2022',
+      module: 'ESNext',
+      moduleResolution: 'bundler',
+      lib: ['ES2022', 'WebWorker'],
+      strict: true,
+      noUncheckedIndexedAccess: true,
+      types: ['@cloudflare/workers-types'],
+      noEmit: true,
+    },
+    include: ['src/**/*'],
+    exclude: ['node_modules'],
+  }, null, 2) + '\n');
+
+  // wrangler.jsonc
+  write('wrangler.jsonc', `{
+  "name": "${APP_NAME}",
+  "compatibility_date": "2024-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "src/index.ts",
+
+  // ── Hyperdrive (Neon Postgres via @adrper79-dot/neon) ──────────────────────
+  "hyperdrive": [
+    {
+      "binding": "DB",
+      "id": "${hyperdriveId}"
+    }
+  ],
+
+  // ── Non-secret vars (secrets go in wrangler secret put, never here) ────────
+  "vars": {
+    "ENVIRONMENT": "production",
+    "WORKER_NAME": "${APP_NAME}"
+  },
+
+  // ── Staging environment ────────────────────────────────────────────────────
+  "env": {
+    "staging": {
+      "name": "${APP_NAME}-staging",
+      "vars": {
+        "ENVIRONMENT": "staging",
+        "WORKER_NAME": "${APP_NAME}-staging"
+      }
+    }
+  }
+}
+`);
+
+  // src/env.ts — Cloudflare Worker bindings type
+  write('src/env.ts', `/**
+ * Cloudflare Worker environment bindings for ${APP_NAME}.
+ * Extend this interface as you add Hyperdrive, KV, R2, or other bindings.
+ */
+export interface Env {
+  // ── Cloudflare bindings ──────────────────────────────────────────────────
+  DB: Hyperdrive;
+
+  // ── Secrets (set via wrangler secret put or GitHub Actions env secrets) ──
+  JWT_SECRET: string;
+  SENTRY_DSN: string;
+  POSTHOG_KEY: string;
+  ANTHROPIC_API_KEY: string;
+  GROK_API_KEY: string;
+  GROQ_API_KEY: string;
+  RESEND_API_KEY: string;
+
+  // ── Non-secret vars (wrangler.jsonc [vars]) ──────────────────────────────
+  ENVIRONMENT: string;
+  WORKER_NAME: string;
+}
+`);
+
+  // src/index.ts — minimal working Hono app
+  write('src/index.ts', `import { Hono } from 'hono';
+import {
+  FactoryBaseError,
+  ErrorCodes,
+  withErrorBoundary,
+  toErrorResponse,
+} from '@adrper79-dot/errors';
+import { createDb } from '@adrper79-dot/neon';
+import { jwtMiddleware } from '@adrper79-dot/auth';
+import type { Env } from './env.js';
+
+const app = new Hono<{ Bindings: Env }>();
+
+// ── Middleware ───────────────────────────────────────────────────────────────
+app.use('*', withErrorBoundary());
+
+// ── Health check (public) ────────────────────────────────────────────────────
+app.get('/health', (c) =>
+  c.json({ status: 'ok', worker: c.env.WORKER_NAME, env: c.env.ENVIRONMENT }),
+);
+
+// ── Protected routes (require JWT) ──────────────────────────────────────────
+app.use('/api/*', (c, next) => jwtMiddleware(c.env.JWT_SECRET)(c, next));
+
+app.get('/api/me', (c) => {
+  // c.get('jwtPayload') is set by jwtMiddleware
+  return c.json({ data: c.get('jwtPayload'), error: null });
+});
+
+// ── Add your routes here ─────────────────────────────────────────────────────
+//
+// Example: mount the admin panel
+// import { createAdminRouter } from '@adrper79-dot/admin';
+// app.route('/admin', createAdminRouter({
+//   db: createDb(c.env.DB),
+//   appId: '${APP_NAME}',
+// }));
+
+// ── Global unhandled error handler ───────────────────────────────────────────
+app.onError((err, c) => {
+  if (err instanceof FactoryBaseError) {
+    return c.json(
+      { error: { code: err.code, message: err.message }, data: null },
+      err.status as 400 | 401 | 403 | 404 | 500,
+    );
+  }
+  console.error('[unhandled]', err);
+  return c.json(
+    toErrorResponse(err),
+    500,
+  );
+});
+
+export default app;
+`);
+
+  // src/index.test.ts — starter test
+  write('src/index.test.ts', `import { describe, it, expect } from 'vitest';
+import app from './index.js';
+
+describe('${APP_NAME}', () => {
+  it('GET /health returns ok', async () => {
+    const res = await app.request('/health', {}, {
+      ENVIRONMENT: 'test',
+      WORKER_NAME: '${APP_NAME}',
+      DB: {} as Hyperdrive,
+      JWT_SECRET: 'test-secret',
+      SENTRY_DSN: '',
+      POSTHOG_KEY: '',
+      ANTHROPIC_API_KEY: '',
+      GROK_API_KEY: '',
+      GROQ_API_KEY: '',
+      RESEND_API_KEY: '',
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({ status: 'ok' });
+  });
+});
+`);
+
+  // vitest.config.ts
+  write('vitest.config.ts', `import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    environment: 'node',
+    coverage: {
+      provider: 'v8',
+      thresholds: { lines: 80, functions: 80, branches: 75 },
+    },
+  },
+});
+`);
+
+  // .dev.vars.example — local dev secrets template
+  write('.dev.vars.example', `# Copy this file to .dev.vars and fill in values for local development.
+# .dev.vars is gitignored — never commit it.
+# Wrangler reads .dev.vars automatically during wrangler dev.
+
+JWT_SECRET=dev-secret-at-least-32-characters-long
+SENTRY_DSN=
+POSTHOG_KEY=
+ANTHROPIC_API_KEY=
+GROK_API_KEY=
+GROQ_API_KEY=
+RESEND_API_KEY=
+`);
+
+  // .github/workflows/ci.yml
+  write('.github/workflows/ci.yml', `name: CI
+
+on:
+  push:
+    branches: [main, 'feature/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@adrper79-dot'
+      - run: npm ci
+        env:
+          NODE_AUTH_TOKEN: \${{ secrets.PACKAGES_READ_TOKEN }}
+      - run: npm run typecheck
+      - run: npm test
+`);
+
+  // .github/workflows/deploy.yml
+  write('.github/workflows/deploy.yml', `name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: production
+        type: choice
+        options: [production, staging]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: \${{ github.event.inputs.environment || 'production' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@adrper79-dot'
+      - run: npm ci
+        env:
+          NODE_AUTH_TOKEN: \${{ secrets.PACKAGES_READ_TOKEN }}
+      - run: npm run typecheck
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: \${{ secrets.CF_API_TOKEN }}
+          accountId: \${{ secrets.CF_ACCOUNT_ID }}
+          command: deploy --env \${{ github.event.inputs.environment || 'production' }}
+`);
+
+  console.log('\n  ✅ All files generated.');
+}
+
+// ── Hyperdrive ────────────────────────────────────────────────────────────────
+
+async function createHyperdrive() {
+  console.log('\n🗄️  Neon / Hyperdrive setup');
+  console.log('   (Press Enter to skip — update wrangler.jsonc manually later)');
+  const neonUrl = await ask('   Neon connection string (postgres://...): ');
+
+  if (!neonUrl.trim()) {
+    console.log('   ⏭  Skipped. Set the "id" in wrangler.jsonc before deploying.');
+    return 'REPLACE_WITH_HYPERDRIVE_ID';
+  }
+
+  console.log('\n  Creating Hyperdrive binding...');
+  try {
+    const output = execSync(
+      `wrangler hyperdrive create ${APP_NAME}-db --connection-string "${neonUrl.trim()}"`,
+      { encoding: 'utf8', stdio: 'pipe', cwd: process.cwd() },
+    );
+    const match = /([0-9a-f]{32}|[0-9a-f-]{36})/i.exec(output);
+    if (match?.[1]) {
+      console.log(`  ✅ Hyperdrive ID: ${match[1]}`);
+      return match[1];
+    }
+    console.warn('  ⚠️  Could not parse Hyperdrive ID from output:');
+    console.warn('  ', output.trim());
+    console.warn('     Update wrangler.jsonc manually.');
+    return 'REPLACE_WITH_HYPERDRIVE_ID';
+  } catch (err) {
+    console.warn('  ⚠️  Hyperdrive creation failed. Create it manually:');
+    console.warn(`     wrangler hyperdrive create ${APP_NAME}-db --connection-string "..."`);
+    return 'REPLACE_WITH_HYPERDRIVE_ID';
+  }
+}
+
+// ── Secrets ───────────────────────────────────────────────────────────────────
+
+async function configureSecrets() {
+  const SECRETS = [
+    'JWT_SECRET',
+    'SENTRY_DSN',
+    'POSTHOG_KEY',
+    'ANTHROPIC_API_KEY',
+    'GROK_API_KEY',
+    'GROQ_API_KEY',
+    'RESEND_API_KEY',
+  ];
+
+  console.log(`\n  Configuring secrets for Worker: ${APP_NAME}`);
+  console.log('  (Leave blank to skip — set later with: wrangler secret put <NAME>)');
+
+  for (const secret of SECRETS) {
+    const value = await ask(`  ${secret}: `);
+    if (value.trim()) {
+      try {
+        execSync(`wrangler secret put ${secret} --name ${APP_NAME}`, {
+          input: value.trim(),
+          stdio: ['pipe', 'inherit', 'inherit'],
+          cwd: TARGET,
+          encoding: 'utf8',
+        });
+        console.log(`  ✅ ${secret} set.`);
+      } catch {
+        console.warn(`  ⚠️  Failed to set ${secret}. Set it manually later.`);
+      }
+    } else {
+      console.log(`  ⏭  ${secret} skipped.`);
+    }
+  }
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+async function main() {
+  console.log('\n🏭 Factory App Scaffold');
+  console.log(`   App:    ${APP_NAME}`);
+  console.log(`   Target: ${TARGET}`);
+  if (CREATE_GITHUB) console.log('   GitHub: yes (--github)');
+
+  checkPrerequisites();
+
+  // Hyperdrive (runs before file gen so ID is injected)
+  const hyperdriveId = await createHyperdrive();
+
+  // Create directory + all files
+  mkdirSync(TARGET, { recursive: true });
+  generateFiles(hyperdriveId);
+
+  // git init
+  console.log('\n🔧 Initialising git...');
+  run('git init');
+  run('git add -A');
+  run('git commit -m "chore: scaffold Factory app"');
+
+  // GitHub repo (optional)
+  if (CREATE_GITHUB) {
+    console.log('\n📡 Creating GitHub repo...');
+    run(`gh repo create ${APP_NAME} --private --source . --remote origin --push`);
+    console.log('  ✅ Repo created and pushed.');
+  }
+
+  // npm install
+  console.log('\n📦 Installing packages...');
+  run('npm install');
+
+  // Secrets
+  const doSecrets = await ask('\n🔐 Configure Wrangler secrets interactively now? (y/N): ');
+  if (doSecrets.trim().toLowerCase() === 'y') {
+    await configureSecrets();
+  } else {
+    console.log('  ⏭  Skipped. Run later:');
+    console.log(`     node node_modules/@adrper79-dot/deploy/scripts/setup-secrets.sh ${APP_NAME}`);
+  }
+
+  // First deploy
+  if (!SKIP_DEPLOY) {
+    const doDeploy = await ask('\n🚀 Deploy to Cloudflare now? (y/N): ');
+    if (doDeploy.trim().toLowerCase() === 'y') {
+      console.log('\n  Deploying...');
+      run('wrangler deploy');
+      console.log(`\n  ✅ Deployed! Health check: https://${APP_NAME}.<account>.workers.dev/health`);
+    }
+  }
+
+  rl.close();
+
+  console.log(`
+✅ ${APP_NAME} is ready.
+
+Next steps:
+  1. Copy .dev.vars.example → .dev.vars and fill in secrets for local dev
+  2. Add these secrets to your GitHub repo (Settings → Secrets → Actions):
+       PACKAGES_READ_TOKEN  — GitHub PAT with read:packages
+       CF_API_TOKEN         — Cloudflare API token (Edit Workers)
+       CF_ACCOUNT_ID        — Cloudflare account ID
+  3. cd ${APP_NAME} && npm run dev
+  4. Push to main to trigger CI/CD
+
+Optional extras (install as needed):
+  @adrper79-dot/stripe     — Stripe billing + webhooks
+  @adrper79-dot/llm        — Anthropic → Grok → Groq failover
+  @adrper79-dot/telephony  — Telnyx + Deepgram + ElevenLabs
+  @adrper79-dot/email      — Resend transactional + drip
+  @adrper79-dot/crm        — cross-app lead + conversion tracking
+  @adrper79-dot/compliance — TCPA / FDCPA consent logging
+  @adrper79-dot/admin      — Hono admin router (dashboard, users, events)
+`);
+}
+
+main().catch((err) => {
+  console.error('\n❌ Scaffold failed:', err.message);
+  rl.close();
+  process.exit(1);
+});
