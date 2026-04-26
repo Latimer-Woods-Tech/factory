@@ -15,12 +15,9 @@ import type { FactoryDb } from '@factory/neon';
 // Mock FactoryDb
 // ---------------------------------------------------------------------------
 
-type MockDb = {
-  execute: ReturnType<typeof vi.fn>;
-};
-
-function makeMockDb(rows: Record<string, unknown>[]): MockDb {
-  return { execute: vi.fn().mockResolvedValue({ rows }) };
+function makeMockDb(rows: Record<string, unknown>[]) {
+  const execute = vi.fn().mockResolvedValue({ rows });
+  return { execute };
 }
 
 const now = new Date().toISOString();
