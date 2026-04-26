@@ -1,0 +1,42 @@
+name: Create Sentry Projects
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-projects:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Discover Sentry org slug
+        id: org
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.KAIROSCOUNCIL_SENTRY_API }}
+        run: |
+          SLUG=$(curl -sf \
+            -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+            "https://sentry.io/api/0/organizations/" \
+            | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); console.log(JSON.parse(d)[0].slug)")
+          echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
+          echo "Org slug: $SLUG"
+
+      - name: Create Sentry projects and collect DSNs
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.KAIROSCOUNCIL_SENTRY_API }}
+          SENTRY_ORG: ${{ steps.org.outputs.slug }}
+        run: |
+          node packages/deploy/scripts/create-sentry-projects.mjs
+          echo "--- .env.sentry output ---"
+          cat .env.sentry
+
+      - name: Upload DSNs as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentry-dsns
+          path: .env.sentry
+          retention-days: 1
