@@ -36,6 +36,18 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.FACTORY_SENTRY_API }}
           SENTRY_ORG: ${{ steps.org.outputs.slug }}
         run: |
+          echo "=== All existing projects in org ==="
+          curl -s \
+            -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+            "https://sentry.io/api/0/organizations/$SENTRY_ORG/projects/" \
+            | node -e "
+              const d=require('fs').readFileSync('/dev/stdin','utf8');
+              const projects = JSON.parse(d);
+              if (!Array.isArray(projects)) { console.log('Response:', JSON.stringify(projects)); } else {
+                projects.forEach(p => console.log(p.slug, '|', p.name));
+              }
+            "
+          echo "==="
           node packages/deploy/scripts/create-sentry-projects.mjs
           echo "--- .env.sentry output ---"
           cat .env.sentry
