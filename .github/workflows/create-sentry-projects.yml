@@ -18,10 +18,16 @@ jobs:
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.KAIROSCOUNCIL_SENTRY_API }}
         run: |
-          SLUG=$(curl -sf \
+          RAW=$(curl -s \
             -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
-            "https://sentry.io/api/0/organizations/" \
-            | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); console.log(JSON.parse(d)[0].slug)")
+            "https://sentry.io/api/0/organizations/")
+          echo "Raw API response: $RAW"
+          SLUG=$(echo "$RAW" | node -e "
+            const d=require('fs').readFileSync('/dev/stdin','utf8');
+            const parsed = JSON.parse(d);
+            if (!Array.isArray(parsed) || parsed.length === 0) { console.error('No orgs found:', JSON.stringify(parsed)); process.exit(1); }
+            console.log(parsed[0].slug);
+          ")
           echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
           echo "Org slug: $SLUG"
 
