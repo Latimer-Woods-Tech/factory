@@ -13,7 +13,7 @@
 import { execSync } from 'child_process';
 import { appendFileSync } from 'fs';
 
-const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{32}/i;
 const DELAY_MS = 4000;
 
 const configs = [
