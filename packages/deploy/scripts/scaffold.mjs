@@ -9,6 +9,7 @@
  * Flags:
  *   --github             Create a private GitHub repo and push (requires gh CLI + auth)
  *   --no-deploy          Skip the optional first Cloudflare deploy prompt
+ *   --no-install         Skip npm install (use in CI when packages aren't yet published)
  *   --hyperdrive-id <id> Skip the Neon prompt and use this Hyperdrive ID directly
  *   --rate-limiter-id <id> Use this rate limiter namespace ID instead of placeholder
  *
@@ -26,6 +27,7 @@ import { createInterface } from 'node:readline';
 const APP_NAME = process.argv[2];
 const CREATE_GITHUB = process.argv.includes('--github');
 const SKIP_DEPLOY = process.argv.includes('--no-deploy');
+const SKIP_INSTALL = process.argv.includes('--no-install');
 
 const CLI_HYPERDRIVE_ID = (() => {
   const idx = process.argv.indexOf('--hyperdrive-id');
@@ -602,8 +604,12 @@ async function main() {
   }
 
   // npm install
-  console.log('\n📦 Installing packages...');
-  run('npm install');
+  if (SKIP_INSTALL) {
+    console.log('\n📦 Skipping npm install (--no-install).');
+  } else {
+    console.log('\n📦 Installing packages...');
+    run('npm install');
+  }
 
   // Secrets
   const doSecrets = await ask('\n🔐 Configure Wrangler secrets interactively now? (y/N): ');
