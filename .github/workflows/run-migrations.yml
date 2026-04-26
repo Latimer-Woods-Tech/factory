@@ -57,7 +57,7 @@ jobs:
           git config user.email "ci@factory.dev"
           git config user.name "Factory CI"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
         with:
           node-version: '22'
