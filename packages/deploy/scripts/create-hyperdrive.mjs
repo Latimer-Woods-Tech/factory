@@ -2,7 +2,7 @@
 /**
  * Creates or retrieves Cloudflare Hyperdrive configs for all Factory apps.
  * Uses wrangler CLI (which inherits CLOUDFLARE_API_TOKEN) and extracts UUIDs
- * from text output via regex -- avoids relying on --json which is unreliable.
+ * from text output via regex.
  *
  * Required env vars:
  *   CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN
@@ -14,16 +14,21 @@ import { execSync } from 'child_process';
 import { appendFileSync } from 'fs';
 
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+const DELAY_MS = 4000;
 
 const configs = [
-  { envKey: 'FACTORY_CORE_ID',    name: 'factory-core-db',    conn: process.env.FACTORY_CORE_CONN },
-  { envKey: 'WORDIS_BOND_ID',     name: 'wordis-bond-db',     conn: process.env.WORDIS_BOND_CONN },
-  { envKey: 'CYPHER_HEALING_ID',  name: 'cypher-healing-db',  conn: process.env.CYPHER_HEALING_CONN },
-  { envKey: 'PRIME_SELF_ID',      name: 'prime-self-db',      conn: process.env.PRIME_SELF_CONN },
-  { envKey: 'IJUSTUS_ID',         name: 'ijustus-db',         conn: process.env.IJUSTUS_CONN },
-  { envKey: 'THE_CALLING_ID',     name: 'the-calling-db',     conn: process.env.THE_CALLING_CONN },
-  { envKey: 'NEIGHBOR_AID_ID',    name: 'neighbor-aid-db',    conn: process.env.NEIGHBOR_AID_CONN },
+  { envKey: 'FACTORY_CORE_ID',   name: 'factory-core-db',   conn: process.env.FACTORY_CORE_CONN },
+  { envKey: 'WORDIS_BOND_ID',    name: 'wordis-bond-db',    conn: process.env.WORDIS_BOND_CONN },
+  { envKey: 'CYPHER_HEALING_ID', name: 'cypher-healing-db', conn: process.env.CYPHER_HEALING_CONN },
+  { envKey: 'PRIME_SELF_ID',     name: 'prime-self-db',     conn: process.env.PRIME_SELF_CONN },
+  { envKey: 'IJUSTUS_ID',        name: 'ijustus-db',        conn: process.env.IJUSTUS_CONN },
+  { envKey: 'THE_CALLING_ID',    name: 'the-calling-db',    conn: process.env.THE_CALLING_CONN },
+  { envKey: 'NEIGHBOR_AID_ID',   name: 'neighbor-aid-db',   conn: process.env.NEIGHBOR_AID_CONN },
 ];
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function wrangler(cmd) {
   try {
@@ -33,27 +38,37 @@ function wrangler(cmd) {
   }
 }
 
-function extractId(text, name) {
-  for (const line of text.split('\n')) {
-    if (line.includes(name)) {
-      const m = UUID_RE.exec(line);
-      if (m) return m[0];
-    }
-  }
-  return undefined;
+function extractFirstUuid(text) {
+  return UUID_RE.exec(text)?.[0];
 }
 
+function isAuthError(text) {
+  return /Authentication error|Invalid access token|code: 10000|code: 9109/i.test(text);
+}
+
+// ---- List existing configs ------------------------------------------------
 console.log('Listing existing Hyperdrive configs...');
 const listOutput = wrangler('hyperdrive list');
 console.log(listOutput);
 
+if (isAuthError(listOutput)) {
+  console.error('FATAL: Authentication failed on "hyperdrive list". Check CLOUDFLARE_API_TOKEN permissions.');
+  process.exit(1);
+}
+
 const existing = new Map();
 for (const { name } of configs) {
-  const id = extractId(listOutput, name);
-  if (id) existing.set(name, id);
+  // Match a line that contains the name AND a UUID
+  for (const line of listOutput.split('\n')) {
+    if (line.includes(name)) {
+      const id = extractFirstUuid(line);
+      if (id) { existing.set(name, id); break; }
+    }
+  }
 }
 console.log(`Found ${existing.size} existing config(s): ${[...existing.keys()].join(', ') || '(none)'}`);
 
+// ---- Create or collect each config ----------------------------------------
 const outputLines = [];
 let anyFailed = false;
 
@@ -70,13 +85,20 @@ for (const { envKey, name, conn } of configs) {
     continue;
   }
 
-  console.log(`Creating ${name}...`);
-  const createOutput = wrangler(`hyperdrive create "${name}" --connection-string "${conn}"`);
-  console.log(createOutput);
+  console.log(`[create]  ${name} ...`);
+  await sleep(DELAY_MS); // throttle to avoid CF rate limiting
 
-  const id = UUID_RE.exec(createOutput)?.[0];
+  const out = wrangler(`hyperdrive create "${name}" --connection-string "${conn}"`);
+  console.log(out);
+
+  if (isAuthError(out)) {
+    console.error(`FATAL: Authentication failed creating ${name}`);
+    process.exit(1);
+  }
+
+  const id = extractFirstUuid(out);
   if (!id) {
-    console.error(`ERROR: Could not extract UUID for ${name} from create output above`);
+    console.error(`ERROR: Could not extract UUID for ${name}`);
     anyFailed = true;
     continue;
   }
@@ -85,14 +107,12 @@ for (const { envKey, name, conn } of configs) {
   outputLines.push(`${envKey}=${id}`);
 }
 
-if (anyFailed) {
-  process.exit(1);
-}
+if (anyFailed) process.exit(1);
 
+// ---- Emit results ---------------------------------------------------------
 if (outputLines.length > 0) {
-  const ghOutput = process.env.GITHUB_OUTPUT;
-  if (ghOutput) {
-    appendFileSync(ghOutput, outputLines.join('\n') + '\n');
+  if (process.env.GITHUB_OUTPUT) {
+    appendFileSync(process.env.GITHUB_OUTPUT, outputLines.join('\n') + '\n');
   }
   console.log('\n==== IDs written to GITHUB_OUTPUT ====');
   for (const line of outputLines) console.log(`  ${line}`);
