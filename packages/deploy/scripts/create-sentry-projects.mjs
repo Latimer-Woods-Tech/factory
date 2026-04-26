@@ -94,7 +94,14 @@ async function ensureTeam() {
   return team.slug;
 }
 
-/** Create a Sentry project. Returns the DSN or null if already exists. */
+/** Fetch DSN from the client keys endpoint (works for all existing projects). */
+async function fetchDsn(projectSlug) {
+  const keys = await sentryRequest(`/projects/${SENTRY_ORG}/${projectSlug}/keys/`);
+  if (!Array.isArray(keys) || keys.length === 0) return null;
+  return keys[0].dsn?.public ?? null;
+}
+
+/** Create a Sentry project. Returns the DSN or null on failure. */
 async function createProject(teamSlug, project) {
   try {
     const data = await sentryRequest(
@@ -102,18 +109,16 @@ async function createProject(teamSlug, project) {
       'POST',
       { name: project.name, slug: project.slug, platform: PLATFORM },
     );
-    return data.dsn?.public ?? null;
+    // Newly created: prefer DSN from create response, fall back to keys endpoint
+    return data.dsn?.public ?? (await fetchDsn(project.slug));
   } catch (err) {
-    // Project already exists — fetch its DSN
+    // Project already exists — fetch its DSN via keys endpoint
     if (err.message.includes('already exists') || err.message.includes('400')) {
       console.log(`  [exists] ${project.slug} — fetching existing DSN`);
       try {
-        const existing = await sentryRequest(
-          `/projects/${SENTRY_ORG}/${project.slug}/`,
-        );
-        return existing.dsn?.public ?? null;
-      } catch {
-        console.warn(`  WARNING: Could not fetch existing DSN for ${project.slug}`);
+        return await fetchDsn(project.slug);
+      } catch (fetchErr) {
+        console.warn(`  WARNING: Could not fetch existing DSN for ${project.slug}: ${fetchErr.message}`);
         return null;
       }
     }
