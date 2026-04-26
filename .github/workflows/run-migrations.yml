@@ -62,24 +62,25 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install drizzle-kit
-        if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
-        run: npm install -g drizzle-kit@latest
-
-      - name: Install drizzle-orm (local to app)
+      - name: Install drizzle deps (isolated)
         if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
         run: |
-          cd app
-          # drizzle-kit needs drizzle-orm available; install just that + postgres driver
-          npm install --no-save drizzle-orm postgres
+          mkdir -p migration-runner
+          cd migration-runner
+          echo '{"type":"module"}' > package.json
+          npm install --no-save drizzle-kit drizzle-orm postgres
 
       - name: Generate migration SQL
         if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
         env:
           DATABASE_URL: ${{ secrets[matrix.conn_secret] }}
         run: |
-          cd app
-          drizzle-kit generate
+          # Run drizzle-kit from the isolated runner but point to the app schema
+          cp app/drizzle.config.ts migration-runner/drizzle.config.ts
+          cp -r app/src migration-runner/src
+          mkdir -p migration-runner/src/db/migrations
+          cd migration-runner
+          node_modules/.bin/drizzle-kit generate
           echo "✅ Migration SQL generated for ${{ matrix.app }}"
 
       - name: Apply migration to Neon
@@ -87,9 +88,14 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets[matrix.conn_secret] }}
         run: |
-          cd app
-          drizzle-kit migrate
+          cd migration-runner
+          node_modules/.bin/drizzle-kit migrate
           echo "✅ Migration applied to Neon for ${{ matrix.app }}"
+
+      - name: Copy migration files back to app
+        if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
+        run: |
+          cp -r migration-runner/src/db/migrations/. app/src/db/migrations/
 
       - name: Commit migration files back to app repo
         if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
