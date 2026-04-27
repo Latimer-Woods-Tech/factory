@@ -14,9 +14,11 @@ Secrets are managed per-environment via Wrangler secrets and are **never stored 
 
 ## Prerequisites
 
-- `CLOUDFLARE_API_TOKEN` with Workers Deploy permission
+- `CF_API_TOKEN` with Workers Deploy permission (this is the canonical name used by all Factory workflows)
 - `CLOUDFLARE_ACCOUNT_ID` for the target account
 - GitHub Actions: both secrets must be set at the repo level
+
+> **⚠️ Token naming note**: Factory workflows use `CF_API_TOKEN` (not `CLOUDFLARE_API_TOKEN`). Both are set as GitHub secrets on every app repo so tools that look for either name will work. When writing new workflows, always reference `secrets.CF_API_TOKEN`. See [GitHub Secrets Runbook](./github-secrets-and-tokens.md) for full details.
 
 ## 1. Deploy to staging
 

@@ -129,18 +129,21 @@ A fine-grained PAT can be used instead of `repo` scope — grant:
 
 ## Current State Snapshot
 
+> **Last updated**: April 27, 2026
+
 | Item | Status |
 |---|---|
 | All 19 packages | ✅ Published to GitHub Packages (`@adrper79-dot/*`, `v0.2.0`) |
-| `scaffold.mjs` | ✅ `packages/deploy/scripts/scaffold.mjs` (all 8 gaps fixed) |
+| `scaffold.mjs` | ✅ `packages/deploy/scripts/scaffold.mjs` |
 | `setup-all-apps.mjs` | ✅ `packages/deploy/scripts/setup-all-apps.mjs` |
-| Neon databases | ❌ Not provisioned |
-| Cloudflare Hyperdrive per app | ❌ Not configured |
-| App repositories | ✅ All 6 created + `factory-admin` (adrper79-dot org) |
+| Neon databases | ✅ Provisioned for all 6 original apps + xpelevator + xico-city |
+| Cloudflare Hyperdrive per app | ✅ All apps have Hyperdrive bindings configured |
+| App repositories (original 6) | ✅ wordis-bond, prime-self, cypher-healing, the-calling, ijustus, neighbor-aid — scaffolded and deployed |
+| App repositories (standalone) | ✅ xpelevator (Hyperdrive: `5b62381d`), xico-city (Hyperdrive: `0c15bc97`) — scaffolded and secrets wired |
 | Factory Admin Dashboard | ❌ Not built (`admin.thefactory.dev`) |
 | Mintlify docs | ❌ Not deployed |
 | Renovate on app repos | ❌ Not configured |
-| Sentry / PostHog per app | ❌ Not configured |
+| Sentry / PostHog per app | ⚠️ DSNs wired via secrets; projects must be created per app in Sentry/PostHog dashboards |
 | Version strategy | ✅ All packages at `v0.2.0` (latest canonical) |
 
 ---

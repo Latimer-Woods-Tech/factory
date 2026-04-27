@@ -80,6 +80,109 @@ Before writing any code:
 5. Check `git log --oneline -10` to understand recent changes.
 6. Confirm the phase being built by checking `/prompts/`.
 
+## Documentation Reference
+
+**Before troubleshooting, check these docs first:**
+
+- **Secrets & Tokens**: See [docs/runbooks/github-secrets-and-tokens.md](./docs/runbooks/github-secrets-and-tokens.md)
+  - Explains CloudFlare token naming (`CF_API_TOKEN` vs. `CLOUDFLARE_API_TOKEN`)
+  - Complete GitHub Secrets inventory
+  - Rotation schedules
+  - Troubleshooting common auth failures
+
+- **Lessons Learned**: See [docs/runbooks/lessons-learned.md](./docs/runbooks/lessons-learned.md)
+  - Common errors with resolutions
+  - Hard constraints enforcement
+  - Patterns that work (middleware, env setup, error handling)
+  - Version & publishing strategy
+  - Quality gate checklist
+
+- **Environment Isolation & Verification**: See [docs/runbooks/environment-isolation-and-verification.md](./docs/runbooks/environment-isolation-and-verification.md)
+  - How layered config prevents environment mixups (wrangler.jsonc, GitHub Actions, runtime checks)
+  - Verification workflow: `/health` endpoint patterns
+  - Anti-patterns to avoid (optional fields, wrong secret locations)
+  - Pre-deploy verification checklist
+
+- **Deployment**: See [docs/runbooks/deployment.md](./docs/runbooks/deployment.md)
+  - Staging vs. production environments
+  - Smoke-test procedures
+  - Health checks
+
+- **Secret Rotation**: See [docs/runbooks/secret-rotation.md](./docs/runbooks/secret-rotation.md)
+  - How to rotate JWT_SECRET, DATABASE_URL, etc.
+  - Downtime-free rotation procedures
+
+- **App README Template**: See [docs/APP_README_TEMPLATE.md](./docs/APP_README_TEMPLATE.md)
+  - Setup instructions for new developers
+  - Local development (.dev.vars) vs. staging vs. production
+  - Troubleshooting common issues
+  - Use as basis for each app's README.md
+
+- **Getting Started**: See [docs/runbooks/getting-started.md](./docs/runbooks/getting-started.md)
+  - First-time local dev setup (clone, `.npmrc`, `.dev.vars`, `wrangler dev`)
+  - Running tests and typechecks locally
+  - Verifying the health endpoint
+
+- **Add a New Standalone App**: See [docs/runbooks/add-new-app.md](./docs/runbooks/add-new-app.md)
+  - Rate limiter ID registry (1001–1008 currently allocated; next is 1009)
+  - Step-by-step: scripts, workflows, Hyperdrive UUID extraction, secrets
+  - Checklist for the full onboarding flow
+
+- **Database & Migrations**: See [docs/runbooks/database.md](./docs/runbooks/database.md)
+  - Neon branch strategy (main / staging / ephemeral PR branches)
+  - Running Drizzle migrations
+  - Row-level security patterns
+
+- **SLO & Observability**: See [docs/runbooks/slo.md](./docs/runbooks/slo.md)
+  - Availability target (99.9%), error budget, alert thresholds
+  - Sentry alert rules and PostHog funnel monitoring
+  - Incident response tiers (P1–P4)
+
+- **App Transfer**: See [docs/runbooks/transfer.md](./docs/runbooks/transfer.md)
+  - Pre-transfer checklist (archive factory_events, confirm no coupling)
+  - GitHub repo, Neon database, Cloudflare Worker transfer steps
+  - Secret handoff procedure
+
+- **Environment Verification Setup**: See [docs/ENVIRONMENT_VERIFICATION_SETUP.md](./docs/ENVIRONMENT_VERIFICATION_SETUP.md)
+  - How to add verification script to each app
+  - Automated environment checks before `npm run dev`
+  - Catches configuration errors early
+  - Ready-to-use `.dev.vars.example` template
+
+- **Phase 6 Execution Checklist**: See [PHASE_6_CHECKLIST.md](./PHASE_6_CHECKLIST.md)
+  - Step-by-step infrastructure provisioning (Neon, Hyperdrive, Sentry, PostHog)
+  - Database schema setup
+  - Rate limiter configuration
+  - Centralized secret management
+  - Verification checklist before Phase 7
+  - Rollback procedures
+
+## Automation Scripts
+
+**Phase 6 Infrastructure:**
+- `scripts/phase-6-orchestrator.mjs` — Orchestrates all Phase 6 infrastructure provisioning
+  - Validates credentials (GitHub, CloudFlare, Neon)
+  - Provisions Neon databases
+  - Creates Hyperdrive instances
+  - Creates GitHub repositories
+  - Wires GitHub + Wrangler secrets
+  - Run: `node scripts/phase-6-orchestrator.mjs --dry-run` to test first
+
+- `scripts/phase-6-setup.js` — Legacy: supports manual Phase 6 credential management
+
+**Phase 7 App Scaffolding:**
+- `scripts/phase-7-scaffold-template.mjs` — Template for Phase 7 agents to scaffold apps
+  - Calls scaffold.mjs to generate app structure
+  - Installs app-specific packages
+  - Generates Drizzle schemas (canonical per app)
+  - Runs migrations
+  - Applies RLS policies
+  - Commits and pushes scaffolding
+  - Run: `npm run phase-7:scaffold -- {app-name} --hyperdrive-id {id} --rate-limiter-id {id}`
+
+- `scripts/phase-7-validate.js` — Validates that app repos are properly scaffolded before Phase 7 agents begin
+  - Run: `node scripts/phase-7-validate.js --all`
+
 ## Stage Discipline
 - Stage 0 stops at scaffolding and repository policy setup only.
 - Do not start package implementations until the matching prompt exists in `/prompts/`.
