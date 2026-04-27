@@ -29,6 +29,27 @@ Stage 0 produces scaffolding only; later stages implement package behavior witho
 - No raw `fetch` without explicit error handling
 - No secrets in source code or in `wrangler.jsonc` `vars`
 
+## Worker Rename Protocol (STOP — read this before changing any wrangler.jsonc `name`)
+Never rename a worker without completing this checklist in order:
+1. Open `docs/service-registry.yml` and find the worker's `consumers` list
+2. Search every listed file for the old `workers.dev` URL (e.g. `grep -r "prime-self.adrper79.workers.dev"`)
+3. Update ALL consumer files to use the new URL
+4. Commit, push, and deploy consumers — verify via `curl` before continuing
+5. Update `name` in `wrangler.jsonc` — remove any stale `migrations` blocks that don't apply to the new name
+6. Deploy the worker — verify `/health` returns `200` via `curl`
+7. Update `docs/service-registry.yml` with the new name and URL
+
+Cloudflare workers.dev URLs are account-scoped: `{name}.{account-subdomain}.workers.dev`.
+For this account: `{name}.adrper79.workers.dev`. Never use the short form `{name}.workers.dev`.
+
+## Verification Requirement (STOP — read this before declaring anything "working")
+Never declare a fix "done" or "working" based on CI green alone.
+A fix is done when you have run `curl` and observed the expected HTTP status code with your own eyes.
+- After deploying a Worker: `curl https://{name}.adrper79.workers.dev/health` must return `200`
+- After deploying Pages: `curl https://{custom-domain}/` must return `200`
+- After fixing a login flow: `curl -X POST .../auth/login` with bad creds must return `401` (not `000` or `5xx`)
+CI green = code compiled. `curl` 200 = it actually works. These are not the same thing.
+
 ## Package Dependency Order
 1. `@adrper79-dot/errors` (no deps)
 2. `@adrper79-dot/monitoring` (deps: errors)

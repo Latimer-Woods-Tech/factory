@@ -1,0 +1,71 @@
+# Service Registry
+#
+# PURPOSE:
+#   This file is the authoritative map of every Cloudflare Worker in the system:
+#   - What its canonical name is (the value of `name` in wrangler.jsonc)
+#   - What its public URL is (used in logs, docs, and consumer configs)
+#   - Which repos or files hardcode that URL
+#
+# RULE:
+#   Before changing the `name` field in ANY wrangler.jsonc, you MUST:
+#   1. Find this worker in the registry below
+#   2. Search every `consumers` file listed for the old URL
+#   3. Update all consumers FIRST
+#   4. Commit and deploy consumers
+#   5. THEN change the worker name and deploy
+#
+#   Skipping this order = ERR_NAME_NOT_RESOLVED in production.
+#
+# HOW TO KEEP THIS UPDATED:
+#   When you add a new worker: add an entry here.
+#   When you add a new hardcoded URL in a frontend: add it to the consumers list.
+#   When you rename a worker: update both the name and the url here after the migration.
+
+workers:
+  - id: prime-self
+    name: prime-self                                       # matches wrangler.jsonc `name`
+    repo: adrper79-dot/prime-self
+    url: https://prime-self.adrper79.workers.dev           # canonical workers.dev URL
+    custom_domain: null                                    # custom domain if any
+    health_endpoint: /health
+    critical_endpoints:
+      - /auth/login
+      - /api/practitioners
+    consumers:
+      # Files that hardcode this worker's URL — must be updated before any rename
+      - repo: adrper79-dot/prime-self-ui
+        file: public/landing.html
+        line: ~537
+        pattern: "fetch('https://prime-self.adrper79.workers.dev/auth/login'"
+      - repo: adrper79-dot/prime-self-ui
+        file: public/index.html
+        line: ~537
+        pattern: "fetch('https://prime-self.adrper79.workers.dev/auth/login'"
+
+pages:
+  - id: prime-self-ui
+    repo: adrper79-dot/prime-self-ui
+    project_name: prime-self-ui                            # Cloudflare Pages project name
+    custom_domain: selfprime.net
+    root_file: public/index.html                          # must exist for root URL to serve
+    deploy_dir: public
+    worker_dependencies:
+      - prime-self                                        # must be deployed and healthy first
+    required_secrets:
+      - CF_API_TOKEN
+      - CF_ACCOUNT_ID
+
+# ─── RENAME PROCEDURE ──────────────────────────────────────────────────────────
+#
+# To rename a worker (e.g. prime-self → prime-self-v2):
+#
+#   Step 1: Update all consumer URLs in this registry
+#   Step 2: Update each consumer file (replace old URL with new URL)
+#   Step 3: git add + commit + push consumers → wait for CI green
+#   Step 4: Verify consumers deploy successfully (curl the page, check network tab)
+#   Step 5: Update `name` in wrangler.jsonc
+#   Step 6: Remove any stale `migrations` blocks unless they apply to the new name
+#   Step 7: Deploy the worker → verify /health returns 200
+#   Step 8: Update this registry (name + url fields)
+#
+# ─── DO NOT SKIP STEPS ─────────────────────────────────────────────────────────

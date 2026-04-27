@@ -508,9 +508,53 @@ Update this doc if any of the following occur:
 - [ ] Deployment failed for new reason → add to troubleshooting
 - [ ] Security issue discovered → update runbooks
 
+## Incident Post-Mortems
+
+### 2026-04-27 — selfprime.net Outage + Login Broken (prime-self rename)
+
+**What Happened (root causes, in order):**
+
+1. **Pages secrets wiped** — `prime-self-ui` had `CF_API_TOKEN` and `CF_ACCOUNT_ID` removed. Every deploy since April 27 silently failed. `selfprime.net/` became stale and eventually returned 404 when a route expired.
+
+2. **No index.html** — `prime-self-ui/public/` had `landing.html` but no `index.html`. Once the Pages cache expired, `selfprime.net/` returned 404 because Pages needs `index.html` as the root document.
+
+3. **Worker rename broke hardcoded URL** — `prime-self/wrangler.jsonc` was changed from `name: "prime-self"` to `name: "prime-self-api"`. The frontend (`landing.html` line ~537) hardcoded `https://prime-self.workers.dev/auth/login`. After the rename, that URL stopped resolving → ERR_NAME_NOT_RESOLVED.
+
+4. **Wrong URL format** — The hardcoded URL `prime-self.workers.dev` was never the correct format. Cloudflare Workers URLs are always `{name}.{account-subdomain}.workers.dev` → `prime-self.adrper79.workers.dev`. The short form only resolves when you have a custom workers.dev route explicitly enabling it.
+
+5. **Stale migration block** — After reverting the rename, the `wrangler.jsonc` still had a migrations block `{ "tag": "v1", "deleted_classes": ["LiveSession"] }`. Cloudflare returned `[code: 10074]` because that migration was already applied to the `prime-self` worker in a previous session; it can't be applied again.
+
+6. **False "done" declarations** — Twice declared a fix "working" based only on CI green (✓), without running `curl`. CI green means code compiled. It does NOT mean the endpoint returns 200.
+
+**Fixes Applied:**
+
+- Created `prime-self-ui/public/index.html` (copy of landing.html) — fixes root 404
+- Restored secrets to `prime-self-ui` GitHub repo (`CF_API_TOKEN`, `CF_ACCOUNT_ID`)
+- Reverted `prime-self/wrangler.jsonc` name from `prime-self-api` back to `prime-self`
+- Removed stale `migrations` block from `wrangler.jsonc`
+- Updated `landing.html` and `index.html` URL: `prime-self.workers.dev` → `prime-self.adrper79.workers.dev`
+- Added smoke test jobs to both deploy workflows
+- Created `docs/service-registry.yml` — authoritative map of worker names → URLs → consumers
+- Added Worker Rename Protocol and Verification Requirement to `CLAUDE.md`
+
+**Rules Added as a Result:**
+
+> **Before renaming any worker**: Check `docs/service-registry.yml`, find all consumers, update them first, deploy consumers, THEN rename the worker.
+
+> **Before declaring a fix done**: `curl` the endpoint and observe the HTTP status with your own eyes. CI green is not sufficient.
+
+> **Cloudflare workers.dev URLs**: Always use the account-scoped form `{name}.adrper79.workers.dev`. The short form `{name}.workers.dev` does not resolve without an explicit workers.dev route.
+
+> **Pages root document**: `public/index.html` must exist. `landing.html` will NOT serve as the root.
+
+> **Secrets are per-repo**: Each app repo needs its own `CF_API_TOKEN` and `CF_ACCOUNT_ID`. They are NOT inherited from Factory Core.
+
+---
+
 ## See Also
 
 - [CLAUDE.md](../../CLAUDE.md) — Standing orders & hard constraints
+- [Service Registry](../service-registry.yml) — Worker name → URL → consumer map
 - [GitHub Secrets & Tokens Runbook](./github-secrets-and-tokens.md) — Secrets management
 - [Secret Rotation Runbook](./secret-rotation.md) — How to rotate specific secrets
 - [Deployment Runbook](./deployment.md) — How to deploy apps
