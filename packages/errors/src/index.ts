@@ -225,20 +225,41 @@ export function toErrorResponse(err: unknown, requestId?: string): FactoryRespon
 
 /**
  * Hono middleware that normalizes uncaught errors to Factory responses.
+ *
+ * In Hono 4.x, errors thrown in route handlers are caught internally by
+ * Hono's compose function and stored on `c.error` rather than propagating
+ * through middleware `try/catch`. This implementation handles both:
+ * 1. Errors that do propagate via try/catch (e.g. non-Error throws, direct
+ *    middleware errors).
+ * 2. Errors caught by compose and stored on `c.error` after `next()` resolves.
  */
 export function withErrorBoundary(): MiddlewareHandler {
   return async (c, next) => {
     try {
       await next();
     } catch (err) {
+      // Handles errors that propagate directly (e.g. non-Error throws).
       const requestId = c.get('requestId');
       const response = toErrorResponse(
         err,
         typeof requestId === 'string' ? requestId : undefined,
       );
       const status = (response.error?.status ?? 500) as ContentfulStatusCode;
-
       return c.json(response, status);
+    }
+    // Hono 4.x compose catches route handler errors before they propagate
+    // through next(). Check c.error to handle those cases.
+    if (c.error) {
+      const requestId = c.get('requestId');
+      const response = toErrorResponse(
+        c.error,
+        typeof requestId === 'string' ? requestId : undefined,
+      );
+      const status = (response.error?.status ?? 500) as ContentfulStatusCode;
+      c.res = new Response(JSON.stringify(response), {
+        status,
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+      });
     }
   };
 }
