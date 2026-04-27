@@ -2,13 +2,6 @@ name: Run App Migrations
 
 on:
   workflow_dispatch:
-    inputs:
-      app:
-        description: 'App to migrate (or "all")'
-        required: true
-        default: all
-        type: choice
-        options: [all, wordis-bond, cypher-healing, prime-self, ijustus, the-calling, neighbor-aid]
 
 jobs:
   migrate:
@@ -17,7 +10,6 @@ jobs:
       fail-fast: false
       matrix:
         app: [wordis-bond, cypher-healing, prime-self, ijustus, the-calling, neighbor-aid]
-    if: ${{ github.event.inputs.app == 'all' || github.event.inputs.app == matrix.app }}
 
     steps:
       - name: Checkout app repo
