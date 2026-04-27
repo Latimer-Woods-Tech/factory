@@ -1,0 +1,73 @@
+name: Fix App Source Issues
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [wordis-bond, cypher-healing, prime-self, ijustus, the-calling, neighbor-aid]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: adrper79-dot/${{ matrix.app }}
+          token: ${{ secrets.GH_PAT }}
+          path: app
+
+      - name: Apply source fixes
+        working-directory: app
+        run: |
+          node -e "
+            const fs = require('fs');
+
+            // 1. Fix tsconfig.json — add skipLibCheck
+            const tsc = JSON.parse(fs.readFileSync('tsconfig.json', 'utf8'));
+            if (!tsc.compilerOptions.skipLibCheck) {
+              tsc.compilerOptions.skipLibCheck = true;
+              fs.writeFileSync('tsconfig.json', JSON.stringify(tsc, null, 2) + '\n');
+              console.log('tsconfig.json: added skipLibCheck');
+            }
+
+            // 2. Fix src/db/schema.ts — timestamptz → timestamp with timezone
+            if (fs.existsSync('src/db/schema.ts')) {
+              let schema = fs.readFileSync('src/db/schema.ts', 'utf8');
+              if (schema.includes('timestamptz')) {
+                // Remove timestamptz from import, add timestamp if not already there
+                if (!schema.match(/\btimestamp\b(?!z)/)) {
+                  schema = schema.replace(/\btimestamptz\b/, 'timestamp');
+                } else {
+                  schema = schema.replace(/,\s*timestamptz\s*,/, ',');
+                  schema = schema.replace(/,\s*timestamptz\s*\n/, '\n');
+                  schema = schema.replace(/timestamptz,\s*\n/, '');
+                }
+                // Replace column calls: timestamptz('col') → timestamp('col', { withTimezone: true })
+                schema = schema.replace(/timestamptz\('([^']+)'\)/g, \"timestamp('\$1', { withTimezone: true })\");
+                fs.writeFileSync('src/db/schema.ts', schema);
+                console.log('src/db/schema.ts: fixed timestamptz');
+              }
+            }
+
+            // 3. Fix src/index.ts — jwtPayload → user
+            if (fs.existsSync('src/index.ts')) {
+              let idx = fs.readFileSync('src/index.ts', 'utf8');
+              if (idx.includes('jwtPayload')) {
+                idx = idx.replace(/c\.get\('jwtPayload'\)/g, \"c.get('user')\");
+                idx = idx.replace(/jwtPayload/g, 'user');
+                fs.writeFileSync('src/index.ts', idx);
+                console.log('src/index.ts: fixed jwtPayload → user');
+              }
+            }
+          "
+
+      - name: Commit and push fixes
+        working-directory: app
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tsconfig.json src/db/schema.ts src/index.ts
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "fix: add skipLibCheck, fix timestamptz, fix jwtPayload key"
+          git push
