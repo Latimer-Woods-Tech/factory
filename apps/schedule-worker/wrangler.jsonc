@@ -1,0 +1,24 @@
+{
+  "name": "schedule-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "hyperdrive": [
+    {
+      "binding": "DB",
+      "id": "REPLACE_WITH_HYPERDRIVE_ID"
+    }
+  ],
+  "vars": {},
+  "env": {
+    "production": {
+      "name": "schedule-worker",
+      "routes": [
+        {
+          "pattern": "schedule.adrper79.workers.dev/*",
+          "zone_name": "adrper79.workers.dev"
+        }
+      ]
+    }
+  }
+}

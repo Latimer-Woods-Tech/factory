@@ -1,0 +1,26 @@
+{
+  "name": "@factory/video-cron",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --max-warnings 0"
+  },
+  "dependencies": {
+    "@adrper79-dot/errors": "0.2.0",
+    "@adrper79-dot/schedule": "0.2.0",
+    "@adrper79-dot/video": "0.2.0",
+    "hono": "^4.12.14"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260423.1",
+    "@types/node": "^25.6.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0",
+    "wrangler": "^3.0.0"
+  }
+}
