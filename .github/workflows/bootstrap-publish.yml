@@ -47,6 +47,7 @@ jobs:
               fix(p.dependencies);
               fix(p.devDependencies);
               if (p.version !== '0.2.1') p.version = ver;
+              delete p.scripts.prepublish;
               fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
               console.log('package.json updated to v' + p.version);
             " TARGET_VERSION="${TARGET_VERSION}"
