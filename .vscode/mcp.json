@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "factory-docs": {
+      "type": "http",
+      "url": "https://latimerwoodstechllc.mintlify.app/mcp"
+    }
+  }
+}

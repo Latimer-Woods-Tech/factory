@@ -1,0 +1,61 @@
+# .dev.vars.example
+
+# This file shows which environment variables are needed for local development.
+# Copy this to .dev.vars and fill in your actual values.
+# NEVER commit .dev.vars to git (it's in .gitignore)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DATABASE CONNECTION (Required)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Get this from Neon console: https://console.neon.tech
+# Format: postgres://[user]:[password]@[host]/[database]
+# Example: postgres://neondb_owner:abc123@ep-cool-db-123.us-east-1.neon.tech/neondb
+NEON_URL=postgres://
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AUTHENTICATION (Required)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Generate a random 32-byte secret for local development (just for local testing):
+# macOS/Linux:   openssl rand -base64 32
+# Windows PowerShell: [Convert]::ToBase64String([byte[]]$(1..32|%{Get-Random -Maximum 256}))
+# Minimum 32 characters, recommend base64url
+JWT_SECRET=your-random-32-byte-secret-here
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ERROR TRACKING (Required for local testing, but optional field)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Get from Sentry: https://sentry.io/organizations/your-org/projects/
+# Format: https://[key]@[host]/[project-id]
+# Example: https://abc123def456@o123.ingest.sentry.io/4567890
+SENTRY_DSN=https://
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ANALYTICS (Required for local testing, but optional field)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Get from PostHog: https://app.posthog.com/settings/project/keys
+# Format: phc_[hex chars]
+# Example: phc_abc123def456abc123def456
+POSTHOG_KEY=phc_
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NOTES
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# In production, these come from:
+#   - Bindings (DB, AUTH_RATE_LIMITER): wrangler.jsonc
+#   - Secrets (JWT_SECRET, SENTRY_DSN, POSTHOG_KEY): GitHub Actions environment secrets
+#   - Non-secret vars (ENVIRONMENT, WORKER_NAME): wrangler.jsonc [vars] section
+#
+# For local development, use this .dev.vars file.
+# Wrangler reads .dev.vars automatically when running `npm run dev`.
+#
+# If you see TypeScript errors about missing env vars, check:
+#   1. Is .dev.vars file present?
+#   2. Does .dev.vars have all required fields from src/env.ts?
+#   3. Are the values valid (not empty strings)?
+#
+# For help, see: docs/runbooks/environment-isolation-and-verification.md

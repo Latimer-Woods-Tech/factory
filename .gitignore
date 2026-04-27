@@ -3,4 +3,5 @@ packages/*/dist/
 packages/*/node_modules/
 .env.sentry
 .env.*.local
+_external_reviews/
 
