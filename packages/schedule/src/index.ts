@@ -1,0 +1,421 @@
+import { sql } from '@adrper79-dot/neon';
+import type { FactoryDb } from '@adrper79-dot/neon';
+import { ValidationError, InternalError, NotFoundError } from '@adrper79-dot/errors';
+import type { RenderJob, RenderJobType, RenderJobStatus } from '@adrper79-dot/video';
+
+// Re-export the job types so consumers only need one import
+export type { RenderJob, RenderJobType, RenderJobStatus } from '@adrper79-dot/video';
+
+// ---------------------------------------------------------------------------
+// Domain types
+// ---------------------------------------------------------------------------
+
+/**
+ * What triggered the creation of a scheduled video.
+ *
+ * - `cron`               — Fired by a Cloudflare Worker cron schedule
+ * - `git_tag`            — Triggered by a git release tag (e.g. a new feature deploy)
+ * - `feedback_threshold` — Triggered when PostHog engagement drops below SLO
+ * - `manual`             — Created directly by an operator or API call
+ */
+export type TriggerSource = 'cron' | 'git_tag' | 'feedback_threshold' | 'manual';
+
+/**
+ * A row in the `video_calendar` database table.
+ */
+export interface VideoCalendarRow {
+  /** UUID primary key. */
+  id: string;
+  /** Factory application identifier (e.g. `'prime_self'`). */
+  appId: string;
+  /** Type of video to produce. */
+  type: RenderJobType;
+  /** Short descriptive topic for the script generator. */
+  topic: string;
+  /** Full narration script (populated after LLM generation). */
+  script: string | null;
+  /** URL or R2 key of the generated narration audio file. */
+  narrationUrl: string | null;
+  /** URL or R2 key of the rendered MP4. */
+  videoUrl: string | null;
+  /** Cloudflare Stream UID after registration. */
+  streamUid: string | null;
+  /** When this video is scheduled to go live. */
+  scheduledAt: Date;
+  /** Current pipeline status. */
+  status: RenderJobStatus;
+  /**
+   * Normalised engagement score from PostHog (0–100).
+   * Higher = more urgent to rebuild or replace.
+   */
+  performanceScore: number;
+  /** What triggered this calendar entry. */
+  triggerSource: TriggerSource;
+  /** ISO 8601 error message when status is 'failed'. */
+  error: string | null;
+  /** Row creation timestamp. */
+  createdAt: Date;
+  /** Row last-updated timestamp. */
+  updatedAt: Date;
+}
+
+/**
+ * Input required to schedule a new video production job.
+ */
+export interface ProductionBrief {
+  /** Factory application identifier. */
+  appId: string;
+  /** Category of video to produce. */
+  type: RenderJobType;
+  /** Short descriptive topic for the script generator. */
+  topic: string;
+  /** When this video should go live (defaults to now). */
+  scheduledAt?: Date;
+  /** What caused this job to be created. */
+  triggerSource: TriggerSource;
+}
+
+// ---------------------------------------------------------------------------
+// DDL helper
+// ---------------------------------------------------------------------------
+
+/**
+ * SQL DDL that creates the `video_calendar` table if it does not exist.
+ * Run this during your database migration step or app bootstrap.
+ *
+ * @example
+ * ```ts
+ * await db.execute(VIDEO_CALENDAR_DDL);
+ * ```
+ */
+export const VIDEO_CALENDAR_DDL = `
+CREATE TABLE IF NOT EXISTS video_calendar (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  app_id           TEXT NOT NULL,
+  type             TEXT NOT NULL CHECK (type IN ('marketing', 'training', 'walkthrough')),
+  topic            TEXT NOT NULL,
+  script           TEXT,
+  narration_url    TEXT,
+  video_url        TEXT,
+  stream_uid       TEXT,
+  scheduled_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  status           TEXT NOT NULL DEFAULT 'pending'
+                     CHECK (status IN ('pending', 'rendering', 'uploading', 'done', 'failed')),
+  performance_score INTEGER NOT NULL DEFAULT 0 CHECK (performance_score BETWEEN 0 AND 100),
+  trigger_source   TEXT NOT NULL CHECK (trigger_source IN ('cron', 'git_tag', 'feedback_threshold', 'manual')),
+  error            TEXT,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS video_calendar_status_idx      ON video_calendar (status);
+CREATE INDEX IF NOT EXISTS video_calendar_app_id_idx      ON video_calendar (app_id);
+CREATE INDEX IF NOT EXISTS video_calendar_scheduled_at_idx ON video_calendar (scheduled_at);
+`.trim();
+
+// ---------------------------------------------------------------------------
+// Row mapper
+// ---------------------------------------------------------------------------
+
+/** @internal Map a raw DB row to a typed VideoCalendarRow. */
+function toRow(raw: Record<string, unknown>): VideoCalendarRow {
+  return {
+    id: raw['id'] as string,
+    appId: raw['app_id'] as string,
+    type: raw['type'] as RenderJobType,
+    topic: raw['topic'] as string,
+    script: (raw['script'] as string | null) ?? null,
+    narrationUrl: (raw['narration_url'] as string | null) ?? null,
+    videoUrl: (raw['video_url'] as string | null) ?? null,
+    streamUid: (raw['stream_uid'] as string | null) ?? null,
+    scheduledAt: new Date(raw['scheduled_at'] as string),
+    status: raw['status'] as RenderJobStatus,
+    performanceScore: raw['performance_score'] as number,
+    triggerSource: raw['trigger_source'] as TriggerSource,
+    error: (raw['error'] as string | null) ?? null,
+    createdAt: new Date(raw['created_at'] as string),
+    updatedAt: new Date(raw['updated_at'] as string),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// CRUD
+// ---------------------------------------------------------------------------
+
+/**
+ * Inserts a new video production job into the `video_calendar` table.
+ * The job starts with `status = 'pending'` and is picked up by the next
+ * `processQueue` invocation.
+ *
+ * @example
+ * ```ts
+ * const job = await scheduleVideo(db, {
+ *   appId: 'prime_self',
+ *   type: 'marketing',
+ *   topic: 'Q4 launch — peak performance challenge',
+ *   triggerSource: 'cron',
+ * });
+ * console.log(job.id); // UUID
+ * ```
+ */
+export async function scheduleVideo(
+  db: FactoryDb,
+  brief: ProductionBrief,
+): Promise<VideoCalendarRow> {
+  if (!brief.appId.trim()) throw new ValidationError('appId is required');
+  if (!brief.topic.trim()) throw new ValidationError('topic is required');
+
+  const scheduledAt = brief.scheduledAt ?? new Date();
+
+  const rows = await db.execute(
+    sql`
+      INSERT INTO video_calendar (app_id, type, topic, scheduled_at, trigger_source)
+      VALUES (
+        ${brief.appId},
+        ${brief.type},
+        ${brief.topic},
+        ${scheduledAt.toISOString()},
+        ${brief.triggerSource}
+      )
+      RETURNING
+        id, app_id, type, topic, script, narration_url, video_url, stream_uid,
+        scheduled_at, status, performance_score, trigger_source, error,
+        created_at, updated_at
+    `,
+  );
+
+  const row = rows.rows[0];
+  if (!row) throw new InternalError('scheduleVideo: INSERT returned no row', { brief });
+  return toRow(row as Record<string, unknown>);
+}
+
+/**
+ * Retrieves a single `video_calendar` row by its UUID.
+ * Throws `NotFoundError` if no matching row exists.
+ *
+ * @example
+ * ```ts
+ * const job = await getVideoJob(db, 'a1b2c3d4-...');
+ * ```
+ */
+export async function getVideoJob(
+  db: FactoryDb,
+  id: string,
+): Promise<VideoCalendarRow> {
+  const rows = await db.execute(
+    sql`
+      SELECT
+        id, app_id, type, topic, script, narration_url, video_url, stream_uid,
+        scheduled_at, status, performance_score, trigger_source, error,
+        created_at, updated_at
+      FROM video_calendar
+      WHERE id = ${id}
+      LIMIT 1
+    `,
+  );
+
+  const row = rows.rows[0];
+  if (!row) throw new NotFoundError(`Video job not found: ${id}`, { id });
+  return toRow(row as Record<string, unknown>);
+}
+
+/**
+ * Returns up to `limit` pending jobs ordered by priority score descending,
+ * then by `scheduled_at` ascending (oldest first within equal scores).
+ *
+ * @example
+ * ```ts
+ * const queue = await getPendingJobs(db, 5);
+ * for (const job of queue) {
+ *   await dispatchRender(job);
+ * }
+ * ```
+ */
+export async function getPendingJobs(
+  db: FactoryDb,
+  limit = 10,
+): Promise<VideoCalendarRow[]> {
+  if (limit < 1 || limit > 100) {
+    throw new ValidationError('limit must be between 1 and 100', { limit });
+  }
+
+  const rows = await db.execute(
+    sql`
+      SELECT
+        id, app_id, type, topic, script, narration_url, video_url, stream_uid,
+        scheduled_at, status, performance_score, trigger_source, error,
+        created_at, updated_at
+      FROM video_calendar
+      WHERE status = 'pending'
+        AND scheduled_at <= NOW()
+      ORDER BY performance_score DESC, scheduled_at ASC
+      LIMIT ${limit}
+    `,
+  );
+
+  return rows.rows.map((r) => toRow(r as Record<string, unknown>));
+}
+
+/**
+ * Updates the status and optional fields of a `video_calendar` row.
+ * Automatically sets `updated_at = NOW()`.
+ *
+ * @example
+ * ```ts
+ * await updateJobStatus(db, job.id, 'done', {
+ *   streamUid: video.uid,
+ *   videoUrl: 'https://r2.example.com/renders/job_01.mp4',
+ * });
+ * ```
+ */
+export async function updateJobStatus(
+  db: FactoryDb,
+  id: string,
+  status: RenderJobStatus,
+  updates: {
+    script?: string;
+    narrationUrl?: string;
+    videoUrl?: string;
+    streamUid?: string;
+    error?: string;
+  } = {},
+): Promise<VideoCalendarRow> {
+  const rows = await db.execute(
+    sql`
+      UPDATE video_calendar
+      SET
+        status        = ${status},
+        script        = COALESCE(${updates.script ?? null}, script),
+        narration_url = COALESCE(${updates.narrationUrl ?? null}, narration_url),
+        video_url     = COALESCE(${updates.videoUrl ?? null}, video_url),
+        stream_uid    = COALESCE(${updates.streamUid ?? null}, stream_uid),
+        error         = ${updates.error ?? null},
+        updated_at    = NOW()
+      WHERE id = ${id}
+      RETURNING
+        id, app_id, type, topic, script, narration_url, video_url, stream_uid,
+        scheduled_at, status, performance_score, trigger_source, error,
+        created_at, updated_at
+    `,
+  );
+
+  const row = rows.rows[0];
+  if (!row) throw new NotFoundError(`Video job not found for update: ${id}`, { id, status });
+  return toRow(row as Record<string, unknown>);
+}
+
+// ---------------------------------------------------------------------------
+// Scoring
+// ---------------------------------------------------------------------------
+
+/**
+ * PostHog engagement metrics used to score a video's production priority.
+ */
+export interface EngagementMetrics {
+  /** 0–100 watch-completion rate (percentage of viewers who watched to the end). */
+  completionRate: number;
+  /** 0–100 click-through rate on the primary call-to-action. */
+  ctaClickRate: number;
+  /** Number of unique viewers in the scoring window. */
+  uniqueViewers: number;
+  /**
+   * Age of the video in days.
+   * Older videos are deprioritised to encourage freshness.
+   */
+  ageInDays: number;
+}
+
+/**
+ * Calculates a normalised priority score (0–100) for producing a new or
+ * replacement video. Higher scores bubble to the top of the render queue.
+ *
+ * Scoring formula:
+ * - Base score = `(100 − completionRate) × 0.5 + (100 − ctaClickRate) × 0.3`
+ *   (poor engagement → higher urgency)
+ * - Viewer bonus = `min(uniqueViewers / 1000, 10)` (more viewers → higher impact)
+ * - Age bonus = `min(ageInDays / 30, 10)` (older → higher urgency, capped at 10)
+ * - Final = clamped to [0, 100]
+ *
+ * @example
+ * ```ts
+ * const score = scorePriority({
+ *   completionRate: 40,  // only 40% finish the video
+ *   ctaClickRate: 10,
+ *   uniqueViewers: 5000,
+ *   ageInDays: 90,
+ * });
+ * // score ≈ 87
+ * ```
+ */
+export function scorePriority(metrics: EngagementMetrics): number {
+  const base =
+    (100 - metrics.completionRate) * 0.5 + (100 - metrics.ctaClickRate) * 0.3;
+  const viewerBonus = Math.min(metrics.uniqueViewers / 1000, 10);
+  const ageBonus = Math.min(metrics.ageInDays / 30, 10);
+  const raw = base + viewerBonus + ageBonus;
+  return Math.round(Math.min(100, Math.max(0, raw)));
+}
+
+/**
+ * Updates the `performance_score` field on a `video_calendar` row.
+ * Call this after computing a fresh score from PostHog metrics.
+ *
+ * @example
+ * ```ts
+ * const score = scorePriority(metrics);
+ * await setPerformanceScore(db, jobId, score);
+ * ```
+ */
+export async function setPerformanceScore(
+  db: FactoryDb,
+  id: string,
+  score: number,
+): Promise<void> {
+  if (score < 0 || score > 100) {
+    throw new ValidationError('score must be between 0 and 100', { id, score });
+  }
+
+  const rows = await db.execute(
+    sql`
+      UPDATE video_calendar
+      SET performance_score = ${score}, updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING id
+    `,
+  );
+
+  if (!rows.rows[0]) {
+    throw new NotFoundError(`Video job not found for score update: ${id}`, { id });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// RenderJob conversion
+// ---------------------------------------------------------------------------
+
+/**
+ * Converts a `VideoCalendarRow` into a `RenderJob` for dispatch to the
+ * GitHub Actions render workflow.
+ *
+ * @example
+ * ```ts
+ * const job = toRenderJob(row);
+ * await triggerRenderWorkflow(job);
+ * ```
+ */
+export function toRenderJob(row: VideoCalendarRow): RenderJob {
+  return {
+    id: row.id,
+    appId: row.appId,
+    type: row.type,
+    topic: row.topic,
+    script: row.script ?? '',
+    narrationUrl: row.narrationUrl ?? undefined,
+    videoUrl: row.videoUrl ?? undefined,
+    streamUid: row.streamUid ?? undefined,
+    status: row.status,
+    error: row.error ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}

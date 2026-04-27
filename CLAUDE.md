@@ -70,6 +70,40 @@ CI green = code compiled. `curl` 200 = it actually works. These are not the same
 17. `@adrper79-dot/crm` (deps: neon, analytics)
 18. `@adrper79-dot/compliance` (deps: neon)
 19. `@adrper79-dot/admin` (deps: auth, analytics)
+20. `@adrper79-dot/video` (deps: errors) — Cloudflare Stream + R2 wrappers
+21. `@adrper79-dot/schedule` (deps: errors, neon, video) — video production calendar + priority scoring
+
+## Video Production Pipeline
+The automated video engine runs **outside Workers** (needs real Chromium + ffmpeg):
+
+```
+PostHog engagement signals
+  → scorePriority() → video_calendar row
+  → Cloudflare cron Worker: getPendingJobs() → dispatch workflow_dispatch
+  → GitHub Actions render-video.yml:
+      1. LLM script (Anthropic)
+      2. ElevenLabs narration (MP3 → R2)
+      3. Remotion render (MP4)
+      4. ffmpeg encode (H.264 baseline + AAC)
+      5. R2 upload
+      6. Cloudflare Stream registration
+      7. updateJobStatus('done', { streamUid })
+  → getStreamEmbedUrl(uid) → landing page iframe
+```
+
+**Required GitHub Secrets for render-video.yml:**
+- `ANTHROPIC_API_KEY` — LLM script generation
+- `ELEVENLABS_API_KEY` — narration audio generation
+- `ELEVENLABS_VOICE_PRIME_SELF`, `ELEVENLABS_VOICE_CYPHER`, `ELEVENLABS_VOICE_DEFAULT` — voice IDs
+- `CF_STREAM_TOKEN` — Cloudflare Stream API token (Stream:Edit + Stream:Read)
+- `CF_ACCOUNT_ID` — Cloudflare account ID
+- `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` — R2 S3-compatible credentials
+- `R2_BUCKET_NAME` — R2 bucket for video storage
+- `R2_PUBLIC_DOMAIN` — R2 public URL domain
+- `SCHEDULE_WORKER_URL` — cron Worker HTTPS endpoint
+- `WORKER_API_TOKEN` — secret for cron Worker PATCH /jobs/:id
+
+**Never** run Remotion or ffmpeg in a Cloudflare Worker — they require Node.js + real compute.
 
 ## Quality Gates
 - TypeScript strict: zero errors

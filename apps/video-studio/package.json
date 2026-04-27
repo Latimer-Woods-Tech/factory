@@ -1,0 +1,27 @@
+{
+  "name": "@factory/video-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Automated video render engine — Remotion compositions for Factory applications",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "render": "ts-node --esm src/render.ts",
+    "studio": "remotion studio src/Root.tsx",
+    "lint": "eslint src --max-warnings 0",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/bundler": "^4.0.0",
+    "@remotion/cli": "^4.0.0",
+    "@remotion/renderer": "^4.0.0",
+    "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.4.0"
+  }
+}
