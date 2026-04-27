@@ -30,8 +30,8 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@adrper79-dot'
 
-      - name: Update lockfile
-        run: npm install
+      - name: Update neon to latest
+        run: npm install @adrper79-dot/neon@0.2.1
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GH_PAT }}
 
