@@ -1,0 +1,71 @@
+name: Run App Migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: 'App to migrate (or "all")'
+        required: true
+        default: all
+        type: choice
+        options: [all, wordis-bond, cypher-healing, prime-self, ijustus, the-calling, neighbor-aid]
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [wordis-bond, cypher-healing, prime-self, ijustus, the-calling, neighbor-aid]
+    if: ${{ github.event.inputs.app == 'all' || github.event.inputs.app == matrix.app }}
+
+    steps:
+      - name: Checkout app repo
+        uses: actions/checkout@v4
+        with:
+          repository: adrper79-dot/${{ matrix.app }}
+          token: ${{ secrets.GH_PAT }}
+          path: app
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@adrper79-dot'
+
+      - name: Configure npm auth for GitHub Packages
+        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PAT }}" >> app/.npmrc
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: app
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: Generate Drizzle migration
+        run: npx drizzle-kit generate
+        working-directory: app
+
+      - name: Apply migration to Neon
+        run: |
+          case "${{ matrix.app }}" in
+            wordis-bond)    export DATABASE_URL="${{ secrets.WORDISBOND_CONNECTION_STRING }}" ;;
+            cypher-healing) export DATABASE_URL="${{ secrets.CYPHEROFHEALING_CONNECTION_STRING }}" ;;
+            prime-self)     export DATABASE_URL="${{ secrets.SELFPRIME_CONNECTION_STRING }}" ;;
+            ijustus)        export DATABASE_URL="${{ secrets.KAIROSCOUNCIL_CONNECTION_STRING }}" ;;
+            the-calling)    export DATABASE_URL="${{ secrets.THECALLING_CONNECTION_STRING }}" ;;
+            neighbor-aid)   export DATABASE_URL="${{ secrets.NICHESTREAM_CONNECTION_STRING }}" ;;
+          esac
+          npx drizzle-kit migrate
+        working-directory: app
+
+      - name: Commit generated migration files
+        run: |
+          cd app
+          git config user.email "ci@factory.dev"
+          git config user.name "Factory CI"
+          git add src/db/migrations/
+          git diff --staged --quiet && echo "No migration changes" || \
+            git commit -m "chore(db): generate initial drizzle migration [skip ci]"
+          git push
