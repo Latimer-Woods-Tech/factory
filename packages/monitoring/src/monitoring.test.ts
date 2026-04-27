@@ -201,3 +201,33 @@ describe('monitoring', () => {
     expect(sentryMocks.captureException).toHaveBeenCalledWith(boom);
   });
 });
+
+import { createSentryCloudflareConfig } from './index';
+
+describe('createSentryCloudflareConfig', () => {
+  it('maps dsn and opts into a flat config object', () => {
+    const config = createSentryCloudflareConfig('https://sentry.example/1', {
+      tracesSampleRate: 0.5,
+      sendDefaultPii: true,
+      release: 'abc123',
+    });
+
+    expect(config).toEqual({
+      dsn: 'https://sentry.example/1',
+      tracesSampleRate: 0.5,
+      sendDefaultPii: true,
+      release: 'abc123',
+    });
+  });
+
+  it('omits optional fields when not provided', () => {
+    const config = createSentryCloudflareConfig('https://sentry.example/2', {
+      tracesSampleRate: 1.0,
+    });
+
+    expect(config.dsn).toBe('https://sentry.example/2');
+    expect(config.tracesSampleRate).toBe(1.0);
+    expect(config.sendDefaultPii).toBeUndefined();
+    expect(config.release).toBeUndefined();
+  });
+});
