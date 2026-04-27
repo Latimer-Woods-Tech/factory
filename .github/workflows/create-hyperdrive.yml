@@ -31,6 +31,7 @@ jobs:
           THE_CALLING_CONN: ${{ secrets.THECALLING_CONNECTION_STRING }}
           NEIGHBOR_AID_CONN: ${{ secrets.NICHESTREAM_CONNECTION_STRING }}
           XPELEVATOR_CONN: ${{ secrets.MEXXICO_CITY_CONNECTION_STRING }}
+          XICO_CITY_CONN: ${{ secrets.MEXXICO_CITY_CONNECTION_STRING }}
         run: node packages/deploy/scripts/create-hyperdrive.mjs
 
       - name: Store Hyperdrive IDs as GitHub secrets
@@ -54,4 +55,5 @@ jobs:
           store HYPERDRIVE_THE_CALLING "${{ steps.hyperdrive.outputs.THE_CALLING_ID }}"
           store HYPERDRIVE_NEIGHBOR_AID "${{ steps.hyperdrive.outputs.NEIGHBOR_AID_ID }}"
           store HYPERDRIVE_XPELEVATOR "${{ steps.hyperdrive.outputs.XPELEVATOR_ID }}"
+          store HYPERDRIVE_XICO_CITY "${{ steps.hyperdrive.outputs.XICO_CITY_ID }}"
           echo "All Hyperdrive IDs stored."

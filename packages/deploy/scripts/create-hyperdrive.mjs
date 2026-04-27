@@ -25,6 +25,7 @@ const configs = [
   { envKey: 'THE_CALLING_ID',    name: 'the-calling-db',    conn: process.env.THE_CALLING_CONN },
   { envKey: 'NEIGHBOR_AID_ID',   name: 'neighbor-aid-db',   conn: process.env.NEIGHBOR_AID_CONN },
   { envKey: 'XPELEVATOR_ID',      name: 'xpelevator-db',     conn: process.env.XPELEVATOR_CONN },
+  { envKey: 'XICO_CITY_ID',       name: 'xico-city-db',      conn: process.env.XICO_CITY_CONN },
 ];
 
 function sleep(ms) {

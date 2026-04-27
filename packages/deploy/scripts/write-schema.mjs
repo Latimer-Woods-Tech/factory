@@ -447,6 +447,76 @@ export const subscriptions = pgTable('subscriptions', {
   updatedAt:            timestamptz('updated_at').notNull().defaultNow(),
 });
 `,
+
+  'xico-city': `/**
+ * Drizzle ORM schema for xico-city.
+ * City experience platform — users, experiences, bookings, subscriptions.
+ */
+import {
+  pgTable,
+  text,
+  uuid,
+  integer,
+  boolean,
+  doublePrecision,
+  timestamptz,
+  jsonb,
+} from 'drizzle-orm/pg-core';
+
+/** Registered users on the platform. */
+export const users = pgTable('users', {
+  id:               uuid('id').primaryKey().defaultRandom(),
+  userId:           text('user_id').notNull().unique(),  // JWT sub
+  email:            text('email').notNull().unique(),
+  displayName:      text('display_name').notNull(),
+  avatarUrl:        text('avatar_url'),
+  plan:             text('plan').notNull().default('free'),  // free | explorer | local
+  stripeCustomerId: text('stripe_customer_id'),
+  createdAt:        timestamptz('created_at').notNull().defaultNow(),
+  updatedAt:        timestamptz('updated_at').notNull().defaultNow(),
+});
+
+/** City experiences available on the platform. */
+export const experiences = pgTable('experiences', {
+  id:          uuid('id').primaryKey().defaultRandom(),
+  title:       text('title').notNull(),
+  description: text('description'),
+  category:    text('category').notNull(),  // food | culture | adventure | nightlife | wellness
+  location:    text('location').notNull(),
+  priceUsd:    doublePrecision('price_usd').notNull().default(0),
+  capacity:    integer('capacity'),
+  status:      text('status').notNull().default('draft'),  // draft | published | archived
+  metadata:    jsonb('metadata'),
+  createdAt:   timestamptz('created_at').notNull().defaultNow(),
+  updatedAt:   timestamptz('updated_at').notNull().defaultNow(),
+});
+
+/** User bookings for city experiences. */
+export const bookings = pgTable('bookings', {
+  id:            uuid('id').primaryKey().defaultRandom(),
+  userId:        uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  experienceId:  uuid('experience_id').notNull().references(() => experiences.id),
+  status:        text('status').notNull().default('pending'),  // pending | confirmed | cancelled | completed
+  attendees:     integer('attendees').notNull().default(1),
+  totalUsd:      doublePrecision('total_usd').notNull(),
+  bookedAt:      timestamptz('booked_at').notNull().defaultNow(),
+  cancelledAt:   timestamptz('cancelled_at'),
+  createdAt:     timestamptz('created_at').notNull().defaultNow(),
+  updatedAt:     timestamptz('updated_at').notNull().defaultNow(),
+});
+
+/** Stripe subscription records per user. */
+export const subscriptions = pgTable('subscriptions', {
+  id:                   uuid('id').primaryKey().defaultRandom(),
+  userId:               uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  stripeSubscriptionId: text('stripe_subscription_id').notNull().unique(),
+  stripePriceId:        text('stripe_price_id').notNull(),
+  status:               text('status').notNull(),  // active | past_due | canceled | trialing
+  currentPeriodEnd:     timestamptz('current_period_end').notNull(),
+  createdAt:            timestamptz('created_at').notNull().defaultNow(),
+  updatedAt:            timestamptz('updated_at').notNull().defaultNow(),
+});
+`,
 };
 
 const schema = SCHEMAS[APP];

@@ -27,6 +27,7 @@ const EXTRA_DEPS = {
   'the-calling':    [],
   'neighbor-aid':   [],
   'xpelevator':     ['@adrper79-dot/stripe'],
+  'xico-city':      ['@adrper79-dot/stripe'],
 };
 
 const extras = EXTRA_DEPS[APP];
