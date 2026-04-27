@@ -21,7 +21,7 @@ jobs:
           node-version: '20'
 
       - name: Configure npm auth for GitHub Packages
-        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.PACKAGES_READ_TOKEN }}" >> app/.npmrc
+        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PAT }}" >> app/.npmrc
 
       - name: Update vitest to v2 (required by @cloudflare/vitest-pool-workers ^0.8)
         working-directory: app
