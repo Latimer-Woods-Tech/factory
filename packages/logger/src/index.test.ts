@@ -6,6 +6,7 @@ vi.mock('@adrper79-dot/monitoring', () => ({
   captureError: vi.fn().mockReturnValue('mock-sentry-event-id'),
 }));
 
+import { captureError } from '@adrper79-dot/monitoring';
 import { createLogger, withRequestId } from './index.js';
 
 // ---------------------------------------------------------------------------
@@ -37,14 +38,13 @@ describe('createLogger', () => {
     expect(emitted.msg).toBe('Watch out');
   });
 
-  it('emits error with errorMessage and calls captureError', async () => {
-    const { captureError } = await import('@adrper79-dot/monitoring');
+  it('emits error with errorMessage and calls captureError', () => {
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const logger = createLogger({ workerId: 'w1', requestId: 'r1', userId: 'u1', tenantId: 't1' });
     const err = new Error('boom');
     logger.error('Something broke', err, { attempt: 2 });
 
-    expect(captureError).toHaveBeenCalledWith(err, {
+    expect(vi.mocked(captureError)).toHaveBeenCalledWith(err, {
       requestId: 'r1',
       userId: 'u1',
       tenantId: 't1',
@@ -57,13 +57,12 @@ describe('createLogger', () => {
     expect(emitted.errorName).toBe('Error');
   });
 
-  it('emits error without calling captureError when err is undefined', async () => {
-    const { captureError } = await import('@adrper79-dot/monitoring');
+  it('emits error without calling captureError when err is undefined', () => {
     vi.mocked(captureError).mockClear();
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const logger = createLogger({ workerId: 'w1', requestId: 'r1' });
     logger.error('Something broke');
-    expect(captureError).not.toHaveBeenCalled();
+    expect(vi.mocked(captureError)).not.toHaveBeenCalled();
   });
 
   it('includes non-Error error value in the emitted log', () => {
@@ -139,7 +138,7 @@ describe('withRequestId', () => {
     const app = new Hono();
     app.use('*', withRequestId());
     app.get('/id', (c) => {
-      ids.push(c.get('requestId') as string);
+      ids.push(c.get('requestId'));
       return c.json({ ok: true });
     });
 
@@ -150,7 +149,7 @@ describe('withRequestId', () => {
     expect(ids[0]).not.toBe(ids[1]);
   });
 
-  it('uses unknown-worker when x-worker-id header is absent', () => {
+  it('uses unknown-worker when x-worker-id header is absent', async () => {
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const app = new Hono();
     app.use('*', withRequestId());
@@ -159,12 +158,11 @@ describe('withRequestId', () => {
       return c.json({ ok: true });
     });
 
-    void app.request('/log').then(() => {
-      if (consoleSpy.mock.calls.length > 0) {
-        const emitted = JSON.parse(consoleSpy.mock.calls[0]![0] as string) as Record<string, unknown>;
-        expect(emitted.workerId).toBe('unknown-worker');
-      }
-    });
+    await app.request('/log');
+    if (consoleSpy.mock.calls.length > 0) {
+      const emitted = JSON.parse(consoleSpy.mock.calls[0]![0] as string) as Record<string, unknown>;
+      expect(emitted.workerId).toBe('unknown-worker');
+    }
   });
 
   it('uses x-worker-id header when provided', async () => {
