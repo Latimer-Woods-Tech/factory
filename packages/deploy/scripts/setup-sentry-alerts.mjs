@@ -102,7 +102,6 @@ function buildAlertRules(projectSlug) {
         {
           id: 'sentry.rules.conditions.event_frequency.EventFrequencyPercentCondition',
           value: 1.0,
-          comparisonType: 'percent',
           interval: '5m',
         },
       ],
