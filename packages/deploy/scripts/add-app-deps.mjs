@@ -26,6 +26,7 @@ const EXTRA_DEPS = {
   'ijustus':        ['@adrper79-dot/telephony', '@adrper79-dot/llm', '@adrper79-dot/compliance', '@adrper79-dot/crm'],
   'the-calling':    [],
   'neighbor-aid':   [],
+  'xpelevator':     ['@adrper79-dot/stripe'],
 };
 
 const extras = EXTRA_DEPS[APP];
