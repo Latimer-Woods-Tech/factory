@@ -1,6 +1,6 @@
 {
   "name": "@adrper79-dot/neon",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": false,
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
@@ -28,19 +28,23 @@
   },
   "dependencies": {
     "@adrper79-dot/errors": "file:../errors",
-    "@adrper79-dot/logger": "file:../logger",
-    "@neondatabase/serverless": "^0.10.4",
-    "drizzle-orm": "^0.36.4"
+    "@adrper79-dot/logger": "file:../logger"
+  },
+  "peerDependencies": {
+    "@neondatabase/serverless": ">=0.10.0",
+    "drizzle-orm": ">=0.36.0"
   },
   "devDependencies": {
+    "@neondatabase/serverless": "^0.10.4",
     "@types/node": "^25.6.0",
+    "drizzle-kit": "^0.31.0",
+    "drizzle-orm": "^0.43.0",
     "typescript": "^5.4.0",
     "tsup": "^8.1.0",
     "vitest": "^1.6.0",
     "@vitest/coverage-v8": "^1.6.0",
     "eslint": "^8.57.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "@typescript-eslint/parser": "^7.0.0",
-    "drizzle-kit": "^0.31.0"
+    "@typescript-eslint/parser": "^7.0.0"
   }
 }
