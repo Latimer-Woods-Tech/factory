@@ -1,0 +1,49 @@
+name: Update App Lockfiles
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update-lockfiles:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        repo:
+          - the-calling
+          - wordis-bond
+          - prime-self
+          - neighbor-aid
+          - cypher-healing
+          - ijustus
+      fail-fast: false
+    steps:
+      - name: Checkout ${{ matrix.repo }}
+        uses: actions/checkout@v4
+        with:
+          repository: adrper79-dot/${{ matrix.repo }}
+          token: ${{ secrets.GH_PAT }}
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@adrper79-dot'
+
+      - name: Update lockfile
+        run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: Commit and push lockfile if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet package-lock.json; then
+            echo "No changes to lockfile"
+          else
+            git add package-lock.json
+            git commit -m "chore: update lockfile [skip ci]"
+            git push
+          fi
+
