@@ -46,7 +46,7 @@ jobs:
         if: steps.check.outputs.skip == 'false'
         run: |
           printf '\n\n\n\n\n\n\n\n' | node packages/deploy/scripts/scaffold.mjs xpelevator \
-            --hyperdrive-id "${{ secrets.HYPERDRIVE_XPELEVATOR }}" \
+            --hyperdrive-id "5b62381d252c4c0abb0a24b2d7a27d87" \
             --rate-limiter-id "1007" \
             --no-deploy \
             --no-install
