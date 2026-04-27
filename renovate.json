@@ -1,14 +1,15 @@
 {
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:base"],
+  "registryUrls": ["https://npm.pkg.github.com"],
   "packageRules": [
     {
-      "matchPackagePatterns": ["@adrper79-dot/*"],
+      "matchPackagePrefixes": ["@adrper79-dot/"],
       "pinVersions": true,
       "automerge": false,
-      "labels": ["factory-core-upgrade"],
-      "reviewers": ["adrper79-dot"]
+      "labels": ["factory-core-update"],
+      "commitMessagePrefix": "chore(deps):"
     }
   ],
-  "prConcurrentLimit": 3,
-  "commitMessagePrefix": "chore(deps):"
+  "prConcurrentLimit": 3
 }

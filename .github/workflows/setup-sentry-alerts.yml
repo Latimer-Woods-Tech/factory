@@ -1,0 +1,48 @@
+name: Setup Sentry Alert Rules
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (no alerts created)'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+
+jobs:
+  setup-alerts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Discover Sentry org slug
+        id: org
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.FACTORY_SENTRY_API }}
+        run: |
+          SLUG=$(curl -s \
+            -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+            "https://sentry.io/api/0/organizations/" \
+            | node -e "
+              const d=require('fs').readFileSync('/dev/stdin','utf8');
+              console.log(JSON.parse(d)[0].slug);
+            ")
+          echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
+          echo "Sentry org: $SLUG"
+
+      - name: Create Sentry alert rules for all projects
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.FACTORY_SENTRY_API }}
+          SENTRY_ORG: ${{ steps.org.outputs.slug }}
+        run: |
+          DRY=${{ github.event.inputs.dry_run }}
+          if [ "$DRY" = "true" ]; then
+            node packages/deploy/scripts/setup-sentry-alerts.mjs --dry-run
+          else
+            node packages/deploy/scripts/setup-sentry-alerts.mjs
+          fi
