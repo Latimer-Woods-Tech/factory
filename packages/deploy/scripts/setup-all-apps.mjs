@@ -48,7 +48,7 @@ const APPS = [
   },
   {
     name: 'prime-self',
-    workerName: 'prime-self',
+    workerName: 'prime-self-api',
     envKey: 'PRIME_SELF',
     extraSecrets: ['STRIPE_SECRET_KEY', 'ANTHROPIC_API_KEY', 'ELEVENLABS_API_KEY', 'DEEPGRAM_API_KEY', 'RESEND_API_KEY'],
   },
