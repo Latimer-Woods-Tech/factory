@@ -50,10 +50,10 @@ function makeRow(overrides: Partial<Record<string, unknown>> = {}): Record<strin
 function makeDb(rows: Record<string, unknown>[][] = [[]]) {
   let callIndex = 0;
   return {
-    execute: vi.fn(async () => {
+    execute: vi.fn(() => {
       const result = rows[callIndex % rows.length] ?? [];
       callIndex++;
-      return { rows: result };
+      return Promise.resolve({ rows: result });
     }),
   };
 }

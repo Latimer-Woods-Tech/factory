@@ -45,8 +45,8 @@ function makeResponse(body: unknown, ok: boolean, status: number): Response {
   return {
     ok,
     status,
-    json: async () => body,
-    text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
+    json: () => Promise.resolve(body),
+    text: () => Promise.resolve(typeof body === 'string' ? body : JSON.stringify(body)),
   } as unknown as Response;
 }
 
@@ -65,7 +65,7 @@ afterEach(() => {
 
 describe('uploadFromUrl', () => {
   it('posts to /stream/copy and returns a StreamVideo', async () => {
-    const mockFetch = vi.fn<FetchFn>().mockResolvedValueOnce(
+    const mockFetch = vi.fn<Parameters<FetchFn>, ReturnType<FetchFn>>().mockResolvedValueOnce(
       makeResponse(streamOk(MOCK_VIDEO), true, 200),
     );
 
@@ -88,7 +88,7 @@ describe('uploadFromUrl', () => {
   });
 
   it('throws InternalError on non-OK HTTP status', async () => {
-    const mockFetch = vi.fn<FetchFn>().mockResolvedValueOnce(
+    const mockFetch = vi.fn<Parameters<FetchFn>, ReturnType<FetchFn>>().mockResolvedValueOnce(
       makeResponse('Internal Server Error', false, 500),
     );
     await expect(
@@ -97,7 +97,7 @@ describe('uploadFromUrl', () => {
   });
 
   it('throws InternalError when success is false', async () => {
-    const mockFetch = vi.fn<FetchFn>().mockResolvedValueOnce(
+    const mockFetch = vi.fn<Parameters<FetchFn>, ReturnType<FetchFn>>().mockResolvedValueOnce(
       makeResponse(
         { success: false, result: null, errors: [{ message: 'invalid URL' }] },
         true,
@@ -108,6 +108,12 @@ describe('uploadFromUrl', () => {
       uploadFromUrl('bad-url', {}, MOCK_ENV, { fetch: mockFetch }),
     ).rejects.toBeInstanceOf(InternalError);
   });
+
+  it('uses global fetch when no deps provided', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeResponse(streamOk(MOCK_VIDEO), true, 200)));
+    const result = await uploadFromUrl('https://example.com/video.mp4', {}, MOCK_ENV);
+    expect(result.uid).toBe('abc123def456');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -116,7 +122,7 @@ describe('uploadFromUrl', () => {
 
 describe('getStreamVideo', () => {
   it('returns a video by UID', async () => {
-    const mockFetch = vi.fn<FetchFn>().mockResolvedValueOnce(
+    const mockFetch = vi.fn<Parameters<FetchFn>, ReturnType<FetchFn>>().mockResolvedValueOnce(
       makeResponse(streamOk(MOCK_VIDEO), true, 200),
     );
     const result = await getStreamVideo('abc123def456', MOCK_ENV, { fetch: mockFetch });
@@ -125,7 +131,7 @@ describe('getStreamVideo', () => {
   });
 
   it('includes the UID in the request URL', async () => {
-    const mockFetch = vi.fn<FetchFn>().mockResolvedValueOnce(
+    const mockFetch = vi.fn<Parameters<FetchFn>, ReturnType<FetchFn>>().mockResolvedValueOnce(
       makeResponse(streamOk(MOCK_VIDEO), true, 200),
     );
     await getStreamVideo('uid-xyz', MOCK_ENV, { fetch: mockFetch });
@@ -134,12 +140,18 @@ describe('getStreamVideo', () => {
   });
 
   it('throws InternalError on HTTP 404', async () => {
-    const mockFetch = vi.fn<FetchFn>().mockResolvedValueOnce(
+    const mockFetch = vi.fn<Parameters<FetchFn>, ReturnType<FetchFn>>().mockResolvedValueOnce(
       makeResponse('not found', false, 404),
     );
     await expect(
       getStreamVideo('missing', MOCK_ENV, { fetch: mockFetch }),
     ).rejects.toBeInstanceOf(InternalError);
+  });
+
+  it('uses global fetch when no deps provided', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeResponse(streamOk(MOCK_VIDEO), true, 200)));
+    const result = await getStreamVideo('abc123', MOCK_ENV);
+    expect(result.uid).toBe('abc123def456');
   });
 });
 
@@ -149,7 +161,7 @@ describe('getStreamVideo', () => {
 
 describe('listStreamVideos', () => {
   it('returns an array of videos', async () => {
-    const mockFetch = vi.fn<FetchFn>().mockResolvedValueOnce(
+    const mockFetch = vi.fn<Parameters<FetchFn>, ReturnType<FetchFn>>().mockResolvedValueOnce(
       makeResponse(streamOk([MOCK_VIDEO, { ...MOCK_VIDEO, uid: 'second' }]), true, 200),
     );
     const result = await listStreamVideos(MOCK_ENV, { fetch: mockFetch });
@@ -159,12 +171,18 @@ describe('listStreamVideos', () => {
   });
 
   it('throws InternalError on HTTP 403', async () => {
-    const mockFetch = vi.fn<FetchFn>().mockResolvedValueOnce(
+    const mockFetch = vi.fn<Parameters<FetchFn>, ReturnType<FetchFn>>().mockResolvedValueOnce(
       makeResponse('Forbidden', false, 403),
     );
     await expect(
       listStreamVideos(MOCK_ENV, { fetch: mockFetch }),
     ).rejects.toBeInstanceOf(InternalError);
+  });
+
+  it('uses global fetch when no deps provided', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(makeResponse(streamOk([MOCK_VIDEO]), true, 200)));
+    const result = await listStreamVideos(MOCK_ENV);
+    expect(result).toHaveLength(1);
   });
 });
 
@@ -174,10 +192,10 @@ describe('listStreamVideos', () => {
 
 describe('deleteStreamVideo', () => {
   it('resolves when deletion succeeds (204)', async () => {
-    const mockFetch = vi.fn<FetchFn>().mockResolvedValueOnce({
+    const mockFetch = vi.fn<Parameters<FetchFn>, ReturnType<FetchFn>>().mockResolvedValueOnce({
       ok: true,
       status: 204,
-      text: async () => '',
+      text: () => Promise.resolve(''),
     } as unknown as Response);
 
     await expect(
@@ -190,15 +208,20 @@ describe('deleteStreamVideo', () => {
   });
 
   it('throws InternalError when deletion fails', async () => {
-    const mockFetch = vi.fn<FetchFn>().mockResolvedValueOnce({
+    const mockFetch = vi.fn<Parameters<FetchFn>, ReturnType<FetchFn>>().mockResolvedValueOnce({
       ok: false,
       status: 404,
-      text: async () => 'not found',
+      text: () => Promise.resolve('not found'),
     } as unknown as Response);
 
     await expect(
       deleteStreamVideo('missing', MOCK_ENV, { fetch: mockFetch }),
     ).rejects.toBeInstanceOf(InternalError);
+  });
+
+  it('uses global fetch when no deps provided', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, status: 204, text: () => Promise.resolve('') } as unknown as Response));
+    await expect(deleteStreamVideo('abc123', MOCK_ENV)).resolves.toBeUndefined();
   });
 });
 
@@ -242,8 +265,9 @@ describe('getStreamThumbnailUrl', () => {
 
 describe('putR2Object', () => {
   it('calls bucket.put and returns the key', async () => {
+    const mockPut = vi.fn().mockResolvedValue(undefined);
     const mockBucket: R2BucketLike = {
-      put: vi.fn().mockResolvedValue(undefined),
+      put: mockPut,
       get: vi.fn(),
       delete: vi.fn(),
     };
@@ -251,7 +275,7 @@ describe('putR2Object', () => {
     const key = await putR2Object(mockBucket, 'videos/test.mp4', data);
 
     expect(key).toBe('videos/test.mp4');
-    expect(mockBucket.put).toHaveBeenCalledWith('videos/test.mp4', data);
+    expect(mockPut).toHaveBeenCalledWith('videos/test.mp4', data);
   });
 });
 
@@ -262,15 +286,16 @@ describe('putR2Object', () => {
 describe('getR2Object', () => {
   it('returns ArrayBuffer when object exists', async () => {
     const mockBuffer = new ArrayBuffer(16);
+    const mockGet = vi.fn().mockResolvedValue({ arrayBuffer: () => Promise.resolve(mockBuffer), body: new ReadableStream(), text: vi.fn() });
     const mockBucket: R2BucketLike = {
       put: vi.fn(),
-      get: vi.fn().mockResolvedValue({ arrayBuffer: async () => mockBuffer, body: new ReadableStream(), text: vi.fn() }),
+      get: mockGet,
       delete: vi.fn(),
     };
 
     const result = await getR2Object(mockBucket, 'videos/test.mp4');
     expect(result).toBe(mockBuffer);
-    expect(mockBucket.get).toHaveBeenCalledWith('videos/test.mp4');
+    expect(mockGet).toHaveBeenCalledWith('videos/test.mp4');
   });
 
   it('throws InternalError when object does not exist', async () => {
@@ -290,13 +315,14 @@ describe('getR2Object', () => {
 
 describe('deleteR2Object', () => {
   it('calls bucket.delete with the key', async () => {
+    const mockDelete = vi.fn().mockResolvedValue(undefined);
     const mockBucket: R2BucketLike = {
       put: vi.fn(),
       get: vi.fn(),
-      delete: vi.fn().mockResolvedValue(undefined),
+      delete: mockDelete,
     };
 
     await deleteR2Object(mockBucket, 'videos/old.mp4');
-    expect(mockBucket.delete).toHaveBeenCalledWith('videos/old.mp4');
+    expect(mockDelete).toHaveBeenCalledWith('videos/old.mp4');
   });
 });

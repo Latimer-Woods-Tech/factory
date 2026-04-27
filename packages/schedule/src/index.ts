@@ -186,7 +186,7 @@ export async function scheduleVideo(
 
   const row = rows.rows[0];
   if (!row) throw new InternalError('scheduleVideo: INSERT returned no row', { brief });
-  return toRow(row as Record<string, unknown>);
+  return toRow(row);
 }
 
 /**
@@ -216,7 +216,7 @@ export async function getVideoJob(
 
   const row = rows.rows[0];
   if (!row) throw new NotFoundError(`Video job not found: ${id}`, { id });
-  return toRow(row as Record<string, unknown>);
+  return toRow(row);
 }
 
 /**
@@ -253,7 +253,7 @@ export async function getPendingJobs(
     `,
   );
 
-  return rows.rows.map((r) => toRow(r as Record<string, unknown>));
+  return rows.rows.map((r) => toRow(r));
 }
 
 /**
@@ -301,7 +301,7 @@ export async function updateJobStatus(
 
   const row = rows.rows[0];
   if (!row) throw new NotFoundError(`Video job not found for update: ${id}`, { id, status });
-  return toRow(row as Record<string, unknown>);
+  return toRow(row);
 }
 
 // ---------------------------------------------------------------------------

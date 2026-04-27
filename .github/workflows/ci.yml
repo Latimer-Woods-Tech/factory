@@ -33,6 +33,8 @@ jobs:
             crm
             compliance
             admin
+            video
+            schedule
           )
 
           for package in "${packages[@]}"; do

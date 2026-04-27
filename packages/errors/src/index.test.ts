@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   AuthError,
   ErrorCodes,
@@ -214,7 +214,7 @@ describe('withErrorBoundary', () => {
     app.get('/ok', (c) => c.json({ hello: 'world' }));
     const res = await app.request('/ok');
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await res.json() as Record<string, unknown>;
     expect(body).toEqual({ hello: 'world' });
   });
 
