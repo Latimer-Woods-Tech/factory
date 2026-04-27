@@ -239,5 +239,11 @@ export function sentryMiddleware(config: MonitoringConfig): MiddlewareHandler {
         throw err;
       }
     });
+
+    // In Hono 4.x, route handler errors are caught by compose and stored on
+    // c.error instead of propagating through next(). Capture them here.
+    if (c.error) {
+      captureError(c.error, { requestId });
+    }
   };
 }

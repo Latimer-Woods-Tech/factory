@@ -1,19 +1,32 @@
 import { Hono } from 'hono';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Mock @sentry/cloudflare before importing our module
+// vi.hoisted() ensures these run before vi.mock() hoisting, avoiding TDZ errors
 // ---------------------------------------------------------------------------
 
-const mockCaptureException = vi.fn().mockReturnValue('sentry-event-id-1');
-const mockCaptureMessage = vi.fn().mockReturnValue('sentry-event-id-2');
-const mockSetTag = vi.fn();
-const mockSetUser = vi.fn();
-const mockSetContext = vi.fn();
-const mockStartSpan = vi.fn().mockImplementation(async (_opts: unknown, fn: () => Promise<unknown>) => fn());
-const mockWithScope = vi.fn().mockImplementation((cb: (scope: { setUser: typeof mockSetUser; setTag: typeof mockSetTag; setContext: typeof mockSetContext }) => string) =>
-  cb({ setUser: mockSetUser, setTag: mockSetTag, setContext: mockSetContext }),
-);
+const {
+  mockCaptureException,
+  mockCaptureMessage,
+  mockSetTag,
+  mockSetUser,
+  mockSetContext,
+  mockStartSpan,
+  mockWithScope,
+} = vi.hoisted(() => {
+  const mockSetTag = vi.fn();
+  const mockSetUser = vi.fn();
+  const mockSetContext = vi.fn();
+  const mockCaptureException = vi.fn().mockReturnValue('sentry-event-id-1');
+  const mockCaptureMessage = vi.fn().mockReturnValue('sentry-event-id-2');
+  const mockStartSpan = vi.fn().mockImplementation((_opts: unknown, fn: () => Promise<unknown>) => fn());
+  const mockWithScope = vi.fn().mockImplementation(
+    (cb: (scope: { setUser: typeof mockSetUser; setTag: typeof mockSetTag; setContext: typeof mockSetContext }) => string) =>
+      cb({ setUser: mockSetUser, setTag: mockSetTag, setContext: mockSetContext }),
+  );
+  return { mockCaptureException, mockCaptureMessage, mockSetTag, mockSetUser, mockSetContext, mockStartSpan, mockWithScope };
+});
 
 vi.mock('@sentry/cloudflare', () => ({
   captureException: mockCaptureException,
@@ -36,6 +49,18 @@ import {
   setUserContext,
   withPerformance,
 } from './index.js';
+
+// Restore default mock implementations before each test.
+// restoreMocks:true calls vi.restoreAllMocks() which resets vi.fn() impls.
+beforeEach(() => {
+  mockStartSpan.mockImplementation((_opts: unknown, fn: () => Promise<unknown>) => fn());
+  mockWithScope.mockImplementation(
+    (cb: (scope: { setUser: typeof mockSetUser; setTag: typeof mockSetTag; setContext: typeof mockSetContext }) => string) =>
+      cb({ setUser: mockSetUser, setTag: mockSetTag, setContext: mockSetContext }),
+  );
+  mockCaptureException.mockReturnValue('sentry-event-id-1');
+  mockCaptureMessage.mockReturnValue('sentry-event-id-2');
+});
 
 // ---------------------------------------------------------------------------
 // initMonitoring
@@ -86,7 +111,7 @@ describe('captureError', () => {
     // withScope is mocked to call the callback synchronously
     mockWithScope.mockImplementationOnce((cb: (scope: { setUser: typeof mockSetUser; setTag: typeof mockSetTag; setContext: typeof mockSetContext }) => unknown) => {
       cb({ setUser: mockSetUser, setTag: mockSetTag, setContext: mockSetContext });
-      return mockCaptureException(new Error('test'));
+      return mockCaptureException(new Error('test')) as unknown;
     });
     captureError(new Error('inner test'));
     expect(mockCaptureException).toHaveBeenCalled();
@@ -111,7 +136,7 @@ describe('captureMessage', () => {
   it('defaults level to info', () => {
     mockWithScope.mockImplementationOnce((cb: (scope: { setUser: typeof mockSetUser; setTag: typeof mockSetTag; setContext: typeof mockSetContext }) => unknown) => {
       cb({ setUser: mockSetUser, setTag: mockSetTag, setContext: mockSetContext });
-      return mockCaptureMessage('Hello Sentry', 'info');
+      return mockCaptureMessage('Hello Sentry', 'info') as unknown;
     });
     captureMessage('Hello Sentry');
     expect(mockCaptureMessage).toHaveBeenCalledWith('Hello Sentry', 'info');
@@ -120,7 +145,7 @@ describe('captureMessage', () => {
   it('accepts custom level', () => {
     mockWithScope.mockImplementationOnce((cb: (scope: { setUser: typeof mockSetUser; setTag: typeof mockSetTag; setContext: typeof mockSetContext }) => unknown) => {
       cb({ setUser: mockSetUser, setTag: mockSetTag, setContext: mockSetContext });
-      return mockCaptureMessage('Warn message', 'warning');
+      return mockCaptureMessage('Warn message', 'warning') as unknown;
     });
     captureMessage('Warn message', 'warning');
     expect(mockCaptureMessage).toHaveBeenCalledWith('Warn message', 'warning');
@@ -133,7 +158,7 @@ describe('captureMessage', () => {
 
 describe('withPerformance', () => {
   it('runs the function inside a Sentry span and returns result', async () => {
-    const result = await withPerformance('my-span', async () => 42);
+    const result = await withPerformance('my-span', () => Promise.resolve(42));
     expect(result).toBe(42);
     expect(mockStartSpan).toHaveBeenCalledWith(
       { name: 'my-span', op: 'function' },
@@ -144,9 +169,7 @@ describe('withPerformance', () => {
   it('propagates errors from the wrapped function', async () => {
     mockStartSpan.mockImplementationOnce(async (_opts: unknown, fn: () => Promise<unknown>) => fn());
     await expect(
-      withPerformance('span', async () => {
-        throw new Error('span error');
-      }),
+      withPerformance('span', () => Promise.reject(new Error('span error'))),
     ).rejects.toThrow('span error');
   });
 });
