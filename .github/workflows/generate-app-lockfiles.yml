@@ -22,6 +22,18 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@adrper79-dot'
 
+      - name: Update vitest to v2 (required by @cloudflare/vitest-pool-workers ^0.8)
+        working-directory: app
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.devDependencies['vitest'] = '^2.0.0';
+            pkg.devDependencies['@vitest/coverage-v8'] = '^2.0.0';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+            console.log('Updated vitest to ^2.0.0');
+          "
+
       - name: Install dependencies and generate lockfile
         run: npm install --package-lock-only
         working-directory: app
@@ -33,7 +45,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package-lock.json
+          git add package.json package-lock.json
           git diff --cached --quiet && echo "No changes" && exit 0
-          git commit -m "chore: generate package-lock.json for npm ci"
+          git commit -m "chore: upgrade vitest to v2 and generate package-lock.json"
           git push
