@@ -195,12 +195,12 @@ Props: {
 | `ELEVENLABS_VOICE_PRIME_SELF` | Eric (cjVigY5qzO86Huf0OWal) | ✅ Configured |
 | `ELEVENLABS_VOICE_CYPHER` | George (JBFqnCBsd6RMkjVDRZzb) | ✅ Configured |
 | `ELEVENLABS_VOICE_DEFAULT` | Alice (Xb7hH8MSUJpSbSDYk0k2) | ✅ Configured |
-| `CF_API_TOKEN` | Cloudflare Dashboard → API Tokens | ✅ Configured (used for Stream) |
+| `CF_API_TOKEN` | Cloudflare Dashboard → API Tokens | ✅ Configured (used for Stream + R2) |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare Dashboard → Account ID | ✅ Configured |
-| `R2_ACCESS_KEY_ID` | ⚠️ Placeholder - needs real R2 token | ⚠️ To be replaced |
-| `R2_SECRET_ACCESS_KEY` | ⚠️ Placeholder - needs real R2 secret | ⚠️ To be replaced |
+| `R2_ACCESS_KEY_ID` | Set to `cloudflare` for S3 auth | ✅ Configured |
+| `R2_SECRET_ACCESS_KEY` | Uses `CF_API_TOKEN` for S3 auth | ✅ Configured |
 | `R2_BUCKET_NAME` | `factory-videos` | ✅ Configured |
-| `R2_PUBLIC_DOMAIN` | `pub-factory.r2.dev` (placeholder) | ⚠️ To be updated |
+| `R2_PUBLIC_DOMAIN` | `{account-id}.r2.cloudflarestorage.com` | ✅ Configured |
 | `SCHEDULE_WORKER_URL` | `https://schedule.adrper79.workers.dev` | ✅ Configured |
 | `WORKER_API_TOKEN` | Generated random token | ✅ Configured |
 | `GH_PAT` | GitHub Personal Access Token | ✅ Configured (used for npm auth) |
@@ -210,22 +210,20 @@ Props: {
 - **Cypher of Healing**: George - Warm, Captivating Storyteller
 - **Default/Fallback**: Alice - Clear, Engaging Educator
 
-**Next Steps:**
-1. Create R2 bucket via Cloudflare Dashboard: https://dash.cloudflare.com/r2
-   - Bucket name: `factory-videos`
-   - Enable public access for `narration/*` and `renders/*` paths
-2. Generate R2 API tokens and update secrets:
-   ```powershell
-   # Via Cloudflare Dashboard: R2 → Manage R2 API Tokens
-   echo "REAL_ACCESS_KEY" | gh secret set R2_ACCESS_KEY_ID --repo adrper79-dot/Factory
-   echo "REAL_SECRET_KEY" | gh secret set R2_SECRET_ACCESS_KEY --repo adrper79-dot/Factory
-   echo "REAL_PUBLIC_DOMAIN" | gh secret set R2_PUBLIC_DOMAIN --repo adrper79-dot/Factory
-   ```
+**R2 Bucket Created**:
+- **Bucket**: `factory-videos` (created 2026-04-27 via automated workflow)
+- **Location**: WNAM (Western North America)
+- **Storage Class**: Standard
+- **Authentication**: Uses CF_API_TOKEN for S3-compatible access
+- **Public Domain**: `a1c8a33cbe8a3c9e260480433a0dbb06.r2.cloudflarestorage.com`
 
 **Verification**:
 ```bash
 # List all secrets
 gh secret list --repo adrper79-dot/Factory | Select-String -Pattern "ELEVENLABS|R2_|WORKER"
+
+# Verify R2 bucket exists
+gh run list --workflow="provision-r2.yml" --limit 1
 ```
 
 ---
