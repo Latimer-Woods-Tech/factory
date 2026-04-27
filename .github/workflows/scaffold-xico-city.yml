@@ -46,7 +46,7 @@ jobs:
         if: steps.check.outputs.skip == 'false'
         run: |
           printf '\n\n\n\n\n\n\n\n' | node packages/deploy/scripts/scaffold.mjs xico-city \
-            --hyperdrive-id "${{ secrets.HYPERDRIVE_XICO_CITY }}" \
+            --hyperdrive-id "0c15bc97978841f88a78da8253ea3d32" \
             --rate-limiter-id "1008" \
             --no-deploy \
             --no-install
