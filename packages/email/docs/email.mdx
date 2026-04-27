@@ -1,0 +1,81 @@
+---
+title: "@adrper79-dot/email"
+description: Transactional email via Resend with typed templates.
+---
+
+# @adrper79-dot/email
+
+Typed transactional email using Resend. Depends on `@adrper79-dot/errors` and `@adrper79-dot/logger`.
+
+## Installation
+
+```bash
+npm install @adrper79-dot/email
+```
+
+## Secrets required
+
+```bash
+wrangler secret put RESEND_API_KEY
+```
+
+## API
+
+### `sendEmail(opts)`
+
+Sends a transactional email via Resend.
+
+```typescript
+function sendEmail(opts: {
+  apiKey: string;
+  from: string;
+  to: string | string[];
+  subject: string;
+  html: string;
+  text?: string;
+  replyTo?: string;
+  tags?: Record<string, string>;
+}): Promise<{ id: string }>;
+```
+
+### `renderTemplate(template, data)`
+
+Renders a named template with data interpolation.
+
+```typescript
+function renderTemplate(
+  template: EmailTemplate,
+  data: Record<string, unknown>,
+): { subject: string; html: string; text: string };
+```
+
+### Built-in templates
+
+| Template | Use case |
+|---|---|
+| `welcome` | New user sign-up confirmation |
+| `subscription-created` | Payment successful, plan started |
+| `subscription-canceled` | Subscription ended |
+| `trial-ending` | Trial expires in N days |
+| `password-reset` | Password reset link |
+
+## Example
+
+```typescript
+import { sendEmail, renderTemplate } from '@adrper79-dot/email';
+
+const { subject, html, text } = renderTemplate('welcome', {
+  firstName: 'Jane',
+  appName: 'FocusBro',
+  loginUrl: 'https://focusbro.app/login',
+});
+
+await sendEmail({
+  apiKey: env.RESEND_API_KEY,
+  from: 'hello@focusbro.app',
+  to: user.email,
+  subject,
+  html,
+  text,
+});
+```

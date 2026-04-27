@@ -1,0 +1,87 @@
+---
+title: "@adrper79-dot/testing"
+description: Zero-dependency mock factories for all Factory Core packages.
+---
+
+# @adrper79-dot/testing
+
+Mock factories and test fixtures for every Factory Core package. Zero runtime dependencies — install only in `devDependencies`.
+
+## Installation
+
+```bash
+npm install --save-dev @adrper79-dot/testing
+```
+
+## Mock factories
+
+### `makeMockDb(overrides?)`
+
+Returns an object matching the `Db` interface with `vi.fn()` stubs.
+
+```typescript
+function makeMockDb(overrides?: Partial<Db>): Db;
+```
+
+### `makeMockLogger()`
+
+Returns a `Logger` with all methods as `vi.fn()` stubs.
+
+```typescript
+function makeMockLogger(): Logger;
+```
+
+### `makeMockTokenPayload(overrides?)`
+
+Returns a valid `TokenPayload` fixture.
+
+```typescript
+function makeMockTokenPayload(overrides?: Partial<TokenPayload>): TokenPayload;
+// Defaults: sub='user-1', tenantId='tenant-1', role='member', not expired
+```
+
+### `makeMockLLMResult(overrides?)`
+
+Returns a valid `LLMResult` fixture.
+
+```typescript
+function makeMockLLMResult(overrides?: Partial<LLMResult>): LLMResult;
+// Defaults: content='Mock response', provider='anthropic', tokens={input:10,output:20}
+```
+
+### `makeMockStripeEvent(type, overrides?)`
+
+Returns a Stripe webhook event fixture.
+
+```typescript
+function makeMockStripeEvent(
+  type: 'customer.subscription.created' | 'customer.subscription.deleted' | string,
+  overrides?: Record<string, unknown>,
+): StripeEvent;
+```
+
+### `makeMockVoiceSession(overrides?)`
+
+Returns a `VoiceSession`-compatible mock.
+
+```typescript
+function makeMockVoiceSession(): MockVoiceSession;
+```
+
+## Example
+
+```typescript
+import { makeMockDb, makeMockLogger } from '@adrper79-dot/testing';
+import { describe, it, expect } from 'vitest';
+import { getCustomerView } from '@adrper79-dot/crm';
+
+describe('getCustomerView', () => {
+  it('returns customer data', async () => {
+    const db = makeMockDb();
+    db.execute.mockResolvedValueOnce({ rows: [{ id: 'user-1', email: 'a@b.com' }] });
+
+    const result = await getCustomerView(db, 'user-1');
+    expect(result.id).toBe('user-1');
+  });
+});
+```

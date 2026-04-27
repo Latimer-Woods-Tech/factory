@@ -1,0 +1,107 @@
+---
+title: "@adrper79-dot/compliance"
+description: TCPA suppression, FDCPA contact windows, and immutable consent logging.
+---
+
+# @adrper79-dot/compliance
+
+TCPA suppression list management, FDCPA 24-hour contact window enforcement, and immutable consent records. Depends on `@adrper79-dot/neon`.
+
+## Installation
+
+```bash
+npm install @adrper79-dot/compliance
+```
+
+## Database
+
+```typescript
+import {
+  CREATE_COMPLIANCE_CONSENTS_TABLE,
+  CREATE_COMPLIANCE_CONTACTS_TABLE,
+  CREATE_TCPA_SUPPRESSION_TABLE,
+} from '@adrper79-dot/compliance';
+
+await db.execute(CREATE_COMPLIANCE_CONSENTS_TABLE);
+await db.execute(CREATE_COMPLIANCE_CONTACTS_TABLE);
+await db.execute(CREATE_TCPA_SUPPRESSION_TABLE);
+```
+
+## API
+
+### `checkTCPA(opts)`
+
+Checks whether a phone number is on the TCPA suppression list.
+
+```typescript
+function checkTCPA(opts: {
+  db: Db;
+  phone: string;
+}): Promise<{ safe: boolean; reason?: string }>;
+```
+
+### `suppressPhone(db, phone, reason?)`
+
+Adds a phone number to the TCPA suppression list. Idempotent (`ON CONFLICT DO NOTHING`).
+
+```typescript
+function suppressPhone(db: Db, phone: string, reason?: string): Promise<void>;
+```
+
+### `logConsent(db, opts)`
+
+Appends an immutable consent record. Records are never updated or deleted.
+
+```typescript
+function logConsent(db: Db, opts: {
+  userId: string;
+  appId: string;
+  consentType: 'marketing' | 'sms' | 'call' | 'terms';
+  granted: boolean;
+  ipAddress?: string;
+  userAgent?: string;
+}): Promise<ConsentRecord>;
+```
+
+### `checkFDCPA(db, opts)`
+
+Returns whether a contact attempt is permitted under FDCPA's 24-hour rule.
+
+```typescript
+function checkFDCPA(db: Db, opts: {
+  userId: string;
+  appId: string;
+}): Promise<{ allowed: boolean; nextAllowedAt?: Date }>;
+```
+
+### `recordContact(db, opts)`
+
+Inserts a contact record used by `checkFDCPA`.
+
+```typescript
+function recordContact(db: Db, opts: {
+  userId: string;
+  appId: string;
+  channel: 'sms' | 'call' | 'email';
+  outcome?: string;
+}): Promise<ContactRecord>;
+```
+
+## Example
+
+```typescript
+import { checkTCPA, logConsent, checkFDCPA, recordContact } from '@adrper79-dot/compliance';
+
+// Before placing a call
+const tcpa = await checkTCPA({ db, phone: '+15551234567' });
+if (!tcpa.safe) {
+  return c.json({ error: 'Phone suppressed' }, 403);
+}
+
+const fdcpa = await checkFDCPA(db, { userId: user.id, appId: 'my-app' });
+if (!fdcpa.allowed) {
+  return c.json({ error: 'FDCPA window not open', nextAllowedAt: fdcpa.nextAllowedAt }, 429);
+}
+
+await recordContact(db, { userId: user.id, appId: 'my-app', channel: 'call' });
+```

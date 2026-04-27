@@ -1,0 +1,111 @@
+---
+title: "@adrper79-dot/llm"
+description: Anthropic → Grok → Groq automatic failover chain with streaming.
+---
+
+# @adrper79-dot/llm
+
+LLM completions with a three-provider failover chain (Anthropic → Grok → Groq). Includes streaming and system-prompt binding. Depends on `@adrper79-dot/errors` and `@adrper79-dot/logger`.
+
+## Installation
+
+```bash
+npm install @adrper79-dot/llm
+```
+
+## Secrets required
+
+```bash
+wrangler secret put ANTHROPIC_API_KEY
+wrangler secret put GROK_API_KEY
+wrangler secret put GROQ_API_KEY
+```
+
+## Failover chain
+
+1. Try **Anthropic** (`claude-sonnet-4-20250514`)
+2. On `429` or `5xx` → try **Grok** (`grok-3-fast`)
+3. On Grok failure → try **Groq** (`llama-3.3-70b-versatile`)
+4. All fail → return `FactoryError` with code `LLM_ALL_PROVIDERS_FAILED`
+
+Each failover is logged via `@adrper79-dot/logger`.
+
+## API
+
+### `complete(messages, env, opts?)`
+
+```typescript
+function complete(
+  messages: LLMMessage[],
+  env: {
+    ANTHROPIC_API_KEY: string;
+    GROK_API_KEY: string;
+    GROQ_API_KEY: string;
+  },
+  opts?: LLMOptions,
+): Promise<FactoryResponse<LLMResult>>;
+
+interface LLMResult {
+  content: string;
+  provider: 'anthropic' | 'grok' | 'groq';
+  tokens: { input: number; output: number };
+  latency: number; // ms
+}
+```
+
+### `stream(messages, env, opts?)`
+
+Returns a `ReadableStream` from Anthropic. No failover on streams.
+
+```typescript
+function stream(
+  messages: LLMMessage[],
+  env: { ANTHROPIC_API_KEY: string },
+  opts?: LLMOptions,
+): Promise<ReadableStream>;
+```
+
+### `withSystem(system)`
+
+Returns a `complete` variant with the system prompt pre-bound.
+
+```typescript
+function withSystem(
+  system: string,
+): (messages: LLMMessage[], env: LLMEnv, opts?: LLMOptions) => Promise<FactoryResponse<LLMResult>>;
+```
+
+### Types
+
+```typescript
+interface LLMMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
+interface LLMOptions {
+  model?: string;
+  maxTokens?: number;    // default 1024
+  temperature?: number;  // default 0.7
+  system?: string;
+}
+```
+
+## Example
+
+```typescript
+import { complete, withSystem } from '@adrper79-dot/llm';
+
+// Direct completion
+const result = await complete(
+  [{ role: 'user', content: 'What is the capital of France?' }],
+  { ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY, GROK_API_KEY: env.GROK_API_KEY, GROQ_API_KEY: env.GROQ_API_KEY },
+);
+
+// With system prompt pre-bound
+const assist = withSystem('You are a helpful customer support agent for Acme Corp.');
+const response = await assist(
+  [{ role: 'user', content: 'How do I reset my password?' }],
+  env,
+);
+```

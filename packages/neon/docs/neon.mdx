@@ -1,0 +1,78 @@
+---
+title: "@adrper79-dot/neon"
+description: Neon Postgres client via Cloudflare Hyperdrive with connection retry.
+---
+
+# @adrper79-dot/neon
+
+Thin wrapper around `@neondatabase/serverless` scoped to Cloudflare's Hyperdrive binding. Depends on `@adrper79-dot/errors` and `@adrper79-dot/logger`.
+
+## Installation
+
+```bash
+npm install @adrper79-dot/neon
+```
+
+## Bindings required
+
+```jsonc
+// wrangler.jsonc
+{
+  "hyperdrive": [{ "binding": "DB", "id": "<hyperdrive-id>" }]
+}
+```
+
+## API
+
+### `createDb(binding)`
+
+Creates a database client from the Hyperdrive binding.
+
+```typescript
+function createDb(binding: Hyperdrive): Db;
+
+interface Db {
+  execute<T = Record<string, unknown>>(
+    sql: string,
+    params?: unknown[],
+  ): Promise<{ rows: T[] }>;
+}
+```
+
+### `withDbRetry(fn, opts?)`
+
+Wraps a database operation and retries on transient failures (connection reset, pool exhaustion).
+
+```typescript
+function withDbRetry<T>(
+  fn: () => Promise<T>,
+  opts?: { retries?: number; delayMs?: number },
+): Promise<T>;
+```
+
+### `DbError`
+
+Thrown when a database operation fails after all retries.
+
+```typescript
+class DbError extends FactoryError {
+  readonly query?: string;
+}
+```
+
+## Example
+
+```typescript
+import { createDb, withDbRetry } from '@adrper79-dot/neon';
+
+const db = createDb(env.DB);
+
+const result = await withDbRetry(() =>
+  db.execute<{ id: string; email: string }>(
+    'SELECT id, email FROM users WHERE id = $1',
+    [userId],
+  )
+);
+
+const user = result.rows[0];
+```

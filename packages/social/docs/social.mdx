@@ -1,0 +1,78 @@
+---
+title: "@adrper79-dot/social"
+description: Social media post scheduling and multi-platform publishing.
+---
+
+# @adrper79-dot/social
+
+Schedule and publish social posts across Twitter/X, LinkedIn, and Instagram. Depends on `@adrper79-dot/content`.
+
+## Installation
+
+```bash
+npm install @adrper79-dot/social
+```
+
+## Secrets required
+
+```bash
+wrangler secret put TWITTER_API_KEY
+wrangler secret put LINKEDIN_ACCESS_TOKEN
+```
+
+## API
+
+### `schedulePost(db, opts)`
+
+Persists a post to the `social_posts` table for later publishing.
+
+```typescript
+function schedulePost(db: Db, opts: {
+  appId: string;
+  platform: 'twitter' | 'linkedin' | 'instagram';
+  content: string;
+  mediaUrls?: string[];
+  scheduledAt: Date;
+  authorId?: string;
+}): Promise<SocialPost>;
+```
+
+### `publishPost(post, credentials)`
+
+Immediately publishes a `SocialPost` to the target platform.
+
+```typescript
+function publishPost(
+  post: SocialPost,
+  credentials: PlatformCredentials,
+): Promise<{ platformPostId: string }>;
+```
+
+### `getScheduledPosts(db, opts)`
+
+Returns posts pending publication within a time window.
+
+```typescript
+function getScheduledPosts(db: Db, opts: {
+  appId: string;
+  before?: Date;
+  platform?: string;
+}): Promise<SocialPost[]>;
+```
+
+### `CREATE_SOCIAL_POSTS_TABLE`
+
+DDL constant to create the backing table.
+
+## Example
+
+```typescript
+import { schedulePost } from '@adrper79-dot/social';
+
+await schedulePost(db, {
+  appId: 'focusbro',
+  platform: 'twitter',
+  content: '🎯 New blog post: Getting Started with Deep Focus. Link in bio.',
+  scheduledAt: new Date('2026-04-26T09:00:00Z'),
+});
+```

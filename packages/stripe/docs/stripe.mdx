@@ -1,0 +1,104 @@
+---
+title: "@adrper79-dot/stripe"
+description: Stripe webhook handling and subscription lifecycle management.
+---
+
+# @adrper79-dot/stripe
+
+Stripe webhook verification and subscription event routing for Cloudflare Workers. Depends on `@adrper79-dot/errors` and `@adrper79-dot/logger`.
+
+## Installation
+
+```bash
+npm install @adrper79-dot/stripe
+```
+
+## Secrets required
+
+```bash
+wrangler secret put STRIPE_SECRET_KEY
+wrangler secret put STRIPE_WEBHOOK_SECRET
+```
+
+## API
+
+### `verifyWebhook(request, secret)`
+
+Verifies a Stripe webhook signature. Returns the parsed event or throws `ValidationError`.
+
+```typescript
+function verifyWebhook(
+  request: Request,
+  secret: string,
+): Promise<StripeEvent>;
+```
+
+### `handleSubscriptionEvent(event, handlers)`
+
+Routes a `customer.subscription.*` event to the appropriate handler.
+
+```typescript
+function handleSubscriptionEvent(
+  event: StripeEvent,
+  handlers: {
+    onCreated?: (sub: StripeSubscription) => Promise<void>;
+    onUpdated?: (sub: StripeSubscription) => Promise<void>;
+    onDeleted?: (sub: StripeSubscription) => Promise<void>;
+    onTrialEnding?: (sub: StripeSubscription) => Promise<void>;
+  },
+): Promise<void>;
+```
+
+### `createCheckoutSession(opts)`
+
+Creates a Stripe Checkout session.
+
+```typescript
+function createCheckoutSession(opts: {
+  secretKey: string;
+  priceId: string;
+  customerId?: string;
+  successUrl: string;
+  cancelUrl: string;
+  metadata?: Record<string, string>;
+}): Promise<{ url: string; sessionId: string }>;
+```
+
+### `createPortalSession(opts)`
+
+Creates a Stripe Customer Portal session for self-service subscription management.
+
+```typescript
+function createPortalSession(opts: {
+  secretKey: string;
+  customerId: string;
+  returnUrl: string;
+}): Promise<{ url: string }>;
+```
+
+## Webhook example
+
+```typescript
+import { verifyWebhook, handleSubscriptionEvent } from '@adrper79-dot/stripe';
+
+app.post('/webhook/stripe', async (c) => {
+  const event = await verifyWebhook(c.req.raw, c.env.STRIPE_WEBHOOK_SECRET);
+
+  await handleSubscriptionEvent(event, {
+    onCreated: async (sub) => {
+      await db.execute(
+        'UPDATE users SET stripe_subscription_id = $1 WHERE stripe_customer_id = $2',
+        [sub.id, sub.customer],
+      );
+    },
+    onDeleted: async (sub) => {
+      await db.execute(
+        'UPDATE users SET subscription_status = $1 WHERE stripe_customer_id = $2',
+        ['canceled', sub.customer],
+      );
+    },
+  });
+
+  return c.json({ received: true });
+});
+```

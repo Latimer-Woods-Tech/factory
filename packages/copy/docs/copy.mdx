@@ -1,0 +1,91 @@
+---
+title: "@adrper79-dot/copy"
+description: LLM-powered copywriting with structured output schemas.
+---
+
+# @adrper79-dot/copy
+
+Generates structured marketing copy using `@adrper79-dot/llm`. System prompts are tuned for conversion-focused output. Depends on `@adrper79-dot/llm`.
+
+## Installation
+
+```bash
+npm install @adrper79-dot/copy
+```
+
+## API
+
+### `generateHeadline(opts)`
+
+Generates a conversion-focused headline.
+
+```typescript
+function generateHeadline(opts: {
+  product: string;
+  audience: string;
+  benefit: string;
+  tone?: 'professional' | 'casual' | 'urgent';
+  env: LLMEnv;
+}): Promise<string>;
+```
+
+### `generateEmail(opts)`
+
+Generates a complete email (subject + body) for a given purpose.
+
+```typescript
+function generateEmail(opts: {
+  purpose: 'welcome' | 'nurture' | 'sales' | 'reactivation';
+  product: string;
+  audience: string;
+  env: LLMEnv;
+}): Promise<{ subject: string; body: string }>;
+```
+
+### `generateSocialPost(opts)`
+
+Generates a platform-appropriate social post.
+
+```typescript
+function generateSocialPost(opts: {
+  platform: 'twitter' | 'linkedin' | 'instagram';
+  topic: string;
+  tone?: string;
+  env: LLMEnv;
+}): Promise<string>;
+```
+
+### `generateAdCopy(opts)`
+
+Generates ad headline + description pairs.
+
+```typescript
+function generateAdCopy(opts: {
+  product: string;
+  audience: string;
+  platform: 'google' | 'meta' | 'linkedin';
+  count?: number; // default 3 variants
+  env: LLMEnv;
+}): Promise<Array<{ headline: string; description: string }>>;
+```
+
+## Example
+
+```typescript
+import { generateHeadline, generateEmail } from '@adrper79-dot/copy';
+
+const headline = await generateHeadline({
+  product: 'FocusBro',
+  audience: 'ADHD professionals',
+  benefit: 'Stay in deep work for 2x longer',
+  tone: 'casual',
+  env,
+});
+
+const email = await generateEmail({
+  purpose: 'welcome',
+  product: 'FocusBro',
+  audience: 'new ADHD professionals',
+  env,
+});
+```

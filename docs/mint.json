@@ -76,6 +76,17 @@
         "packages/compliance",
         "packages/admin"
       ]
+    },
+    {
+      "group": "Runbooks",
+      "pages": [
+        "runbooks/getting-started",
+        "runbooks/deployment",
+        "runbooks/secret-rotation",
+        "runbooks/database",
+        "runbooks/slo",
+        "runbooks/transfer"
+      ]
     }
   ],
   "footerSocials": {

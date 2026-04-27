@@ -1,0 +1,76 @@
+---
+title: "@adrper79-dot/errors"
+description: Typed error hierarchy and HTTP error response serialization.
+---
+
+# @adrper79-dot/errors
+
+Typed error classes and utilities used across all Factory packages. No dependencies.
+
+## Installation
+
+```bash
+npm install @adrper79-dot/errors
+```
+
+## API
+
+### `FactoryError`
+
+Base class for all Factory errors. Extends `Error` with a machine-readable `code` and optional `context` bag.
+
+```typescript
+class FactoryError extends Error {
+  readonly code: string;
+  readonly context: Record<string, unknown>;
+  readonly statusCode: number;
+}
+```
+
+### Error subclasses
+
+| Class | `statusCode` | Default `code` |
+|---|---|---|
+| `ValidationError` | 400 | `VALIDATION_ERROR` |
+| `AuthError` | 401 | `AUTH_ERROR` |
+| `ForbiddenError` | 403 | `FORBIDDEN` |
+| `NotFoundError` | 404 | `NOT_FOUND` |
+| `ConflictError` | 409 | `CONFLICT` |
+| `RateLimitError` | 429 | `RATE_LIMIT` |
+| `InternalError` | 500 | `INTERNAL_ERROR` |
+
+### `toErrorResponse(error)`
+
+Serializes any `FactoryError` into a JSON-safe response envelope:
+
+```typescript
+function toErrorResponse(error: FactoryError): ErrorResponse;
+
+type ErrorResponse = {
+  error: {
+    code: string;
+    message: string;
+    context?: Record<string, unknown>;
+  };
+};
+```
+
+### `ErrorCodes`
+
+Constant map of all well-known error code strings:
+
+```typescript
+import { ErrorCodes } from '@adrper79-dot/errors';
+// ErrorCodes.AUTH_TOKEN_INVALID, ErrorCodes.AUTH_TOKEN_EXPIRED, etc.
+```
+
+## Example
+
+```typescript
+import { ValidationError, toErrorResponse } from '@adrper79-dot/errors';
+
+throw new ValidationError('Email is required', {
+  code: 'VALIDATION_EMAIL_REQUIRED',
+  context: { field: 'email' },
+});
+```
