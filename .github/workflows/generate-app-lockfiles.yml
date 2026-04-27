@@ -1,0 +1,39 @@
+name: Generate App Lockfiles
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [wordis-bond, cypher-healing, prime-self, ijustus, the-calling, neighbor-aid]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: adrper79-dot/${{ matrix.app }}
+          token: ${{ secrets.GH_PAT }}
+          path: app
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@adrper79-dot'
+
+      - name: Install dependencies and generate lockfile
+        run: npm install --package-lock-only
+        working-directory: app
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN }}
+
+      - name: Commit and push package-lock.json
+        working-directory: app
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "chore: generate package-lock.json for npm ci"
+          git push
