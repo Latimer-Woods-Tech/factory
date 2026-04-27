@@ -175,20 +175,21 @@ jobs:
           NARRATION_KEY="narration/${{ github.event.inputs.job_id }}.mp3"
           NARRATION_PATH="${{ steps.generate_narration.outputs.narration_path }}"
 
+          # R2 uses Cloudflare API token for S3-compatible access
           aws s3 cp "$NARRATION_PATH" "s3://${R2_BUCKET_NAME}/${NARRATION_KEY}" \
             --endpoint-url "https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com" \
             --region "auto"
 
-          # R2 public URL (requires bucket to have public access enabled)
-          NARRATION_URL="https://pub-${R2_PUBLIC_DOMAIN}/${NARRATION_KEY}"
+          # R2 public URL (using account-based domain)
+          NARRATION_URL="https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com/${R2_BUCKET_NAME}/${NARRATION_KEY}"
           echo "narration_url=$NARRATION_URL" >> "$GITHUB_OUTPUT"
           echo "narration_key=$NARRATION_KEY" >> "$GITHUB_OUTPUT"
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_ACCESS_KEY_ID: cloudflare
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CF_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
-          R2_PUBLIC_DOMAIN: ${{ secrets.R2_PUBLIC_DOMAIN }}
+          R2_PUBLIC_DOMAIN: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
 
       # -----------------------------------------------------------------------
       # 7. Render MP4 via Remotion
@@ -287,15 +288,15 @@ jobs:
             --region "auto" \
             --content-type "video/mp4"
 
-          VIDEO_URL="https://pub-${R2_PUBLIC_DOMAIN}/${VIDEO_KEY}"
+          VIDEO_URL="https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com/${R2_BUCKET_NAME}/${VIDEO_KEY}"
           echo "video_url=$VIDEO_URL" >> "$GITHUB_OUTPUT"
           echo "video_key=$VIDEO_KEY" >> "$GITHUB_OUTPUT"
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_ACCESS_KEY_ID: cloudflare
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CF_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
-          R2_PUBLIC_DOMAIN: ${{ secrets.R2_PUBLIC_DOMAIN }}
+          R2_PUBLIC_DOMAIN: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
 
       # -----------------------------------------------------------------------
       # 10. Register with Cloudflare Stream
