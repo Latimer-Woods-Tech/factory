@@ -19,8 +19,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@adrper79-dot'
+
+      - name: Configure npm auth for GitHub Packages
+        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.PACKAGES_READ_TOKEN }}" >> app/.npmrc
 
       - name: Update vitest to v2 (required by @cloudflare/vitest-pool-workers ^0.8)
         working-directory: app
@@ -37,8 +38,6 @@ jobs:
       - name: Install dependencies and generate lockfile
         run: npm install --package-lock-only
         working-directory: app
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN }}
 
       - name: Commit and push package-lock.json
         working-directory: app
