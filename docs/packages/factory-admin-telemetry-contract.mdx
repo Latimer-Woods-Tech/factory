@@ -1,0 +1,480 @@
+---
+title: Factory Admin Telemetry Contract
+description: Standardized telemetry endpoints that every Factory app exposes so Factory Admin can aggregate health, revenue, and user metrics.
+---
+
+# Factory Admin Telemetry Contract
+
+**Last Updated:** April 28, 2026  
+**Phase:** Phase D (T4.4)  
+**Owner:** Platform team (Factory Admin lead)
+
+## Overview
+
+Factory Admin is a portfolio-level management dashboard that visualizes all app health, revenue, and user metrics in one place. This requires every app to expose three standardized telemetry endpoints.
+
+**Goal:** Operators can open Factory Admin and see:
+- Which apps are healthy (green) vs. degraded (yellow) vs. down (red)
+- Revenue last week/month by app
+- User counts, key KPIs, trending issues
+- Incident log and alert history
+
+Standardizing the API contract ensures:
+1. Factory Admin doesn't need app-specific integration logic
+2. New apps onboard in minutes, not weeks
+3. Dashboards are consistent and predictable
+
+---
+
+## Telemetry Endpoints
+
+Every Factory app **MUST** expose these three endpoints at the exact paths specified. All responses are JSON.
+
+### 1. GET `/api/admin/health`
+
+**Purpose:** App operational status and SLO compliance.
+
+**Response Schema:**
+
+```json
+{
+  "status": "green|yellow|red",
+  "slo_status": "green|yellow|red",
+  "error_budget_used_pct": 0.0,
+  "p99_latency_ms": 250,
+  "error_rate_pct": 0.1,
+  "uptime_pct": 99.95,
+  "last_incident_at": "2026-04-28T12:00:00Z",
+  "metric_details": {
+    "requests_1h": 50000,
+    "errors_1h": 50,
+    "latency": {
+      "p50": 100,
+      "p95": 400,
+      "p99": 1200
+    },
+    "external_dependencies": {
+      "database": "green",
+      "stripe": "yellow",
+      "neon": "green"
+    }
+  },
+  "timestamp": "2026-04-28T14:22:00Z"
+}
+```
+
+**Field Definitions:**
+
+| Field | Type | Definition | Example |
+|-------|------|-----------|---------|
+| `status` | enum | Overall app status (synthesized from SLO and error budget) | `green` |
+| `slo_status` | enum | SLO compliance: achieving target (`green`), at risk (`yellow`), violated (`red`) | `green` |
+| `error_budget_used_pct` | float | % of monthly error budget consumed (0–100) | `45.2` |
+| `p99_latency_ms` | int | 99th percentile API latency, milliseconds | `250` |
+| `error_rate_pct` | float | % of requests returning 5xx or timeout in last hour | `0.1` |
+| `uptime_pct` | float | % uptime this month (starting value: 100; decrements on incidents) | `99.95` |
+| `last_incident_at` | ISO 8601 | Timestamp of most recent P1 or P2 incident | `2026-04-28T12:00:00Z` |
+| `metric_details.requests_1h` | int | Total requests in last hour | `50000` |
+| `metric_details.errors_1h` | int | 5xx + timeout errors in last hour | `50` |
+| `metric_details.latency` | object | Percentile latencies (p50, p95, p99) | `{ p50: 100, p95: 400, p99: 1200 }` |
+| `metric_details.external_dependencies` | object | Status of critical integrations (database, cache, payment provider, etc.) | `{ database: "green", stripe: "yellow", neon: "green" }` |
+| `timestamp` | ISO 8601 | When this data was generated | `2026-04-28T14:22:00Z` |
+
+**Status Determination Rules:**
+
+1. **Green:** SLO on track AND error budget >10% remaining AND no degraded dependencies
+2. **Yellow:** SLO at risk (error budget 10% or less) OR one dependency degraded
+3. **Red:** SLO violated OR error budget exhausted OR critical dependency down
+
+**Implementation:**
+
+```tsx
+// In your app's admin router:
+// GET /api/admin/health
+
+const response = {
+  status: determineSLOStatus(), // from SLO dashboard
+  slo_status: getSLOComplianceStatus(),
+  error_budget_used_pct: getErrorBudgetUsed(),
+  p99_latency_ms: getP99Latency(),
+  error_rate_pct: getErrorRate(),
+  uptime_pct: getUptimePct(),
+  last_incident_at: getLastIncident(),
+  metric_details: {
+    requests_1h: await db.query("SELECT COUNT(*) FROM logs WHERE logged_at > now() - interval '1 hour'"),
+    errors_1h: await db.query("SELECT COUNT(*) FROM logs WHERE status >= 500 AND logged_at > now() - interval '1 hour'"),
+    latency: await getLatencyPercentiles(),
+    external_dependencies: {
+      database: await checkDatabase(),
+      stripe: await checkStripe(), // ping Stripe API
+      neon: await checkNeon(), // ping Neon Hyperdrive
+    }
+  },
+  timestamp: new Date().toISOString(),
+};
+return c.json(response);
+```
+
+---
+
+### 2. GET `/api/admin/metrics`
+
+**Purpose:** Financial and user growth metrics for the current period (this week, this month).
+
+**Response Schema:**
+
+```json
+{
+  "period": {
+    "start": "2026-04-21T00:00:00Z",
+    "end": "2026-04-28T23:59:59Z",
+    "label": "This week (Apr 21–28)"
+  },
+  "revenue": {
+    "total_usd": 125400.50,
+    "new_subscriptions_usd": 45000.00,
+    "recurring_revenue_usd": 80400.50,
+    "chargebacks_usd": 0.00,
+    "refunds_usd": 2300.00
+  },
+  "users": {
+    "total_count": 8923,
+    "new_this_period": 245,
+    "active_this_period": 5600,
+    "churn_rate_pct": 2.1,
+    "ltv_usd": 450.25
+  },
+  "engagement": {
+    "key_kpi_1_label": "Videos watched",
+    "key_kpi_1_value": 150230,
+    "key_kpi_2_label": "Avg watch time (min)",
+    "key_kpi_2_value": 8.5,
+    "key_kpi_3_label": "Creator payouts issued",
+    "key_kpi_3_value": 89
+  },
+  "top_issues": [
+    {
+      "category": "payout_failures",
+      "count": 3,
+      "impact": "12 creators, ~$2400 blocked",
+      "status": "investigating"
+    }
+  ],
+  "timestamp": "2026-04-28T14:22:00Z"
+}
+```
+
+**Field Definitions:**
+
+| Field | Type | Definition | Example |
+|-------|------|-----------|---------|
+| `period.start` | ISO 8601 | Period start (usually Monday 00:00 UTC) | `2026-04-21T00:00:00Z` |
+| `period.end` | ISO 8601 | Period end | `2026-04-28T23:59:59Z` |
+| `period.label` | string | Human-readable label for this period | `This week (Apr 21–28)` |
+| `revenue.total_usd` | float | Sum of new subscriptions + recurring revenue - chargebacks - refunds | `125400.50` |
+| `revenue.new_subscriptions_usd` | float | New subscription revenue this period | `45000.00` |
+| `revenue.recurring_revenue_usd` | float | Recurring subscription revenue (MRR × weeks elapsed) | `80400.50` |
+| `revenue.chargebacks_usd` | float | Disputed/reversed charges | `0.00` |
+| `revenue.refunds_usd` | float | Voluntary refunds | `2300.00` |
+| `users.total_count` | int | Total user count at end of period | `8923` |
+| `users.new_this_period` | int | New users (sign-ups) this period | `245` |
+| `users.active_this_period` | int | Users who took an action this period | `5600` |
+| `users.churn_rate_pct` | float | % of users who stopped activity | `2.1` |
+| `users.ltv_usd` | float | Lifetime value (avg revenue per user, cumulative) | `450.25` |
+| `engagement.key_kpi_X_label` | string | Custom KPI name (app-specific) | `Videos watched` |
+| `engagement.key_kpi_X_value` | float | Custom KPI value | `150230` |
+| `top_issues[]` | array | Top 1–3 issues impacting users/revenue this period | See below |
+
+**Top Issues Schema:**
+
+```json
+{
+  "category": "payout_failures|chargeback_spike|high_error_rate|video_queue_stuck",
+  "count": 3,
+  "impact": "12 creators affected, ~$2400 at risk",
+  "status": "investigating|mitigating|resolved|monitoring",
+  "action_url": "/admin/payouts?filter=failed" // Link to investigate in Factory Admin
+}
+```
+
+**Implementation:**
+
+```tsx
+// In your app's admin router:
+// GET /api/admin/metrics
+
+const now = new Date();
+const weekStart = new Date(now);
+weekStart.setDate(weekStart.getDate() - 7);
+
+const response = {
+  period: {
+    start: weekStart.toISOString(),
+    end: now.toISOString(),
+    label: `This week (${weekStart.toLocaleDateString()} – ${now.toLocaleDateString()})`
+  },
+  revenue: {
+    total_usd: await db.query("SELECT SUM(amount) FROM transactions WHERE created_at > $1", [weekStart]),
+    new_subscriptions_usd: await db.query("SELECT SUM(amount) FROM subscriptions WHERE created_at > $1 AND type='new'", [weekStart]),
+    recurring_revenue_usd: await db.query("SELECT SUM(mrr * (7/30)) FROM subscriptions WHERE status='active' AND created_at <= $1", [weekStart]),
+    chargebacks_usd: await db.query("SELECT SUM(amount) FROM disputes WHERE created_at > $1", [weekStart]),
+    refunds_usd: await db.query("SELECT SUM(amount) FROM refunds WHERE created_at > $1", [weekStart]),
+  },
+  users: {
+    total_count: await db.query("SELECT COUNT(*) FROM users"),
+    new_this_period: await db.query("SELECT COUNT(*) FROM users WHERE created_at > $1", [weekStart]),
+    active_this_period: await db.query("SELECT COUNT(DISTINCT user_id) FROM events WHERE created_at > $1", [weekStart]),
+    churn_rate_pct: calculateChurnRate(),
+    ltv_usd: calculateLTV(),
+  },
+  engagement: {
+    key_kpi_1_label: "Videos watched",
+    key_kpi_1_value: await db.query("SELECT COUNT(*) FROM analytics_events WHERE event='video_watched' AND created_at > $1", [weekStart]),
+    key_kpi_2_label: "Avg watch time (min)",
+    key_kpi_2_value: await db.query("SELECT AVG(duration_sec)/60 FROM analytics_events WHERE event='video_watched' AND created_at > $1", [weekStart]),
+    key_kpi_3_label: "Creator payouts issued",
+    key_kpi_3_value: await db.query("SELECT COUNT(*) FROM payouts WHERE status='completed' AND created_at > $1", [weekStart]),
+  },
+  top_issues: await getTopIssues(weekStart),
+  timestamp: now.toISOString(),
+};
+return c.json(response);
+```
+
+---
+
+### 3. GET `/api/admin/events`
+
+**Purpose:** Recent significant events so Factory Admin can surface trends and anomalies.
+
+**Response Schema:**
+
+```json
+{
+  "events": [
+    {
+      "type": "new_user",
+      "label": "New users (last hour)",
+      "count": 23,
+      "timestamp": "2026-04-28T14:00:00Z",
+      "severity": "info",
+      "trend": "up 15% vs avg"
+    },
+    {
+      "type": "transaction_failed",
+      "label": "Failed transactions",
+      "count": 5,
+      "timestamp": "2026-04-28T13:45:00Z",
+      "severity": "warning",
+      "trend": "spike detected",
+      "action_url": "/admin/transactions?filter=failed"
+    },
+    {
+      "type": "api_error",
+      "label": "API errors (5xx)",
+      "count": 12,
+      "timestamp": "2026-04-28T13:30:00Z",
+      "severity": "error",
+      "trend": "p99 latency +200ms",
+      "action_url": "/admin/errors"
+    }
+  ],
+  "timestamp": "2026-04-28T14:22:00Z"
+}
+```
+
+**Event Types (Standardized):**
+
+| Type | Description | Severity | Example |
+|------|-------------|----------|---------|
+| `new_user` | New user sign-up | Info | 23 new users last hour |
+| `subscription_started` | New subscription | Info | 5 new subscriptions |
+| `transaction_succeeded` | Payment processed | Info | 150 transactions processed |
+| `transaction_failed` | Payment failed (user/card issue) | Warning | 5 failed transactions |
+| `chargeback` | Disputed charge | Error | 1 chargeback filed |
+| `refund` | Refund issued | Warning | 2 refunds (total $500) |
+| `payout_issued` | Creator payout | Info | 15 payouts (total $8,200) |
+| `payout_failed` | Payout failed (bank issue) | Warning | 2 payouts failed |
+| `api_error` | 5xx / timeout | Error | 12 errors (5xx spike) |
+| `high_latency` | API latency spike | Warning | p99 +250ms vs baseline |
+| `external_api_failure` | Third-party integration down | Error | Stripe API unavailable |
+| `abuse_detected` | Suspicious activity flagged | Warning | 3 fraud flags triggered |
+| `data_anomaly` | Unexpected data pattern | Warning | Revenue spike 5x normal |
+| `feature_error` | Feature-specific error | Warning | Video transcode queue stuck |
+
+**Implementation:**
+
+```tsx
+// In your app's admin router:
+// GET /api/admin/events
+
+const response = {
+  events: [
+    {
+      type: "new_user",
+      label: "New users (last hour)",
+      count: await db.query("SELECT COUNT(*) FROM users WHERE created_at > now() - interval '1 hour'"),
+      timestamp: new Date().toISOString(),
+      severity: "info",
+      trend: calculateTrend("new_users", 1), // "up 15% vs avg", "normal", "down 10%"
+    },
+    {
+      type: "transaction_failed",
+      label: "Failed transactions",
+      count: await db.query("SELECT COUNT(*) FROM transactions WHERE status='failed' AND created_at > now() - interval '1 hour'"),
+      timestamp: new Date().toISOString(),
+      severity: "warning",
+      trend: detectAnomaly("transaction_failed") ? "spike detected" : "normal",
+      action_url: "/admin/transactions?filter=failed",
+    },
+    // ... more events
+  ],
+  timestamp: new Date().toISOString(),
+};
+return c.json(response);
+```
+
+---
+
+## Authentication
+
+All three endpoints **MUST** require authentication. Use Factory Auth + RBAC:
+
+```tsx
+// Middleware: All /api/admin/* routes require admin:read permission
+app.use("/api/admin/*", async (c, next) => {
+  const user = c.get("user"); // From @adrper79-dot/auth middleware
+  if (!user || !hasPermission(user, "admin:read")) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  await next();
+});
+```
+
+**RBAC Permission:**
+- `admin:read` — Can call `/api/admin/*` endpoints
+- `admin:write` — Can trigger actions from Factory Admin (future)
+
+---
+
+## Rate Limiting
+
+Limit Factory Admin telemetry queries to prevent DOS:
+
+```tsx
+// Per authenticated user: 1 request per 10 seconds
+// Per IP (unauthenticated): rejected (must auth first)
+rateLimiter.check(c, {
+  key: `admin:telemetry:${user.id}`,
+  limit: 60,
+  window: 600, // 10 minutes
+});
+```
+
+---
+
+## Data Freshness
+
+- **Health endpoint:** Cache for 30 seconds (trade-off between accuracy and load)
+- **Metrics endpoint:** Cache for 5 minutes (expensive query; run on schedule)
+- **Events endpoint:** Cache for 1 minute (real-time-ish; subset of events)
+
+```tsx
+// Cache headers:
+c.header("Cache-Control", "private, max-age=30");
+```
+
+---
+
+## Error Handling
+
+All endpoints must handle errors gracefully:
+
+```tsx
+// If database query fails:
+return c.json({
+  error: "Unable to fetch health metrics",
+  status: "unknown", // Fallback to "unknown" if we can't determine
+  timestamp: new Date().toISOString(),
+}, 500);
+
+// If external dependency is unreachable:
+external_dependencies: {
+  database: "unknown",
+  stripe: "error", // vs "green", "yellow", "red"
+  neon: "green",
+}
+```
+
+---
+
+## Examples
+
+### videoking App Implementation
+
+videoking exposes all three endpoints at:
+- `GET https://videoking.adrper79.workers.dev/api/admin/health`
+- `GET https://videoking.adrper79.workers.dev/api/admin/metrics`
+- `GET https://videoking.adrper79.workers.dev/api/admin/events`
+
+**Request:**
+```bash
+curl -H "Authorization: Bearer $JWT_TOKEN" \
+  https://videoking.adrper79.workers.dev/api/admin/health
+```
+
+**Response (Health):**
+```json
+{
+  "status": "green",
+  "slo_status": "green",
+  "error_budget_used_pct": 3.2,
+  "p99_latency_ms": 180,
+  "error_rate_pct": 0.05,
+  "uptime_pct": 99.98,
+  "last_incident_at": "2026-04-26T08:00:00Z",
+  "metric_details": {
+    "requests_1h": 45000,
+    "errors_1h": 22,
+    "latency": { "p50": 50, "p95": 140, "p99": 180 },
+    "external_dependencies": { "database": "green", "stripe": "green", "neon": "green" }
+  },
+  "timestamp": "2026-04-28T14:22:00Z"
+}
+```
+
+---
+
+## Onboarding a New App
+
+To expose telemetry for a new Factory app:
+
+1. **Add routes:** Create `/api/admin/health`, `/api/admin/metrics`, `/api/admin/events` in your app
+2. **Implement schema:** Follow the JSON schemas above exactly
+3. **Add auth:** Protect with `admin:read` permission
+4. **Add caching:** Set appropriate Cache-Control headers
+5. **Test:** `curl` each endpoint and verify response structure
+6. **Register:** Add app URL to Factory Admin's app registry (see T4.4 implementation spec)
+7. **Monitor:** Factory Admin will scrape hourly; check for 500 errors in Sentry
+
+---
+
+## Factory Admin Integration
+
+See [docs/integration/factory-admin-app-integration.md](../integration/factory-admin-app-integration.md) for how Factory Admin aggregates this data into dashboards.
+
+---
+
+## Version History
+
+| Date | Change |
+|------|--------|
+| 2026-04-28 | V1.0: Initial contract (health, metrics, events) |
+
+---
+
+## Related Docs
+
+- [videoking SLO Targets](../videoking/slo-targets.md) — Detailed SLO definitions
+- [SLO Framework](../runbooks/slo-framework.md) — SLO concepts and error budget policy
+- [Factory Admin Integration](../integration/factory-admin-app-integration.md) — How Factory Admin consumes this data

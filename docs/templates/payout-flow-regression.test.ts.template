@@ -1,0 +1,767 @@
+/**
+ * Regression Test Suite: Money-Moving Workflows
+ *
+ * VideoKing — Critical payment flows that MUST NOT break:
+ * 1. Subscription → charge → earnings
+ * 2. Unlock purchase → access grant → earnings
+ * 3. Payout batch → execution → transfer
+ * 4. DLQ event → retry → new batch
+ *
+ * Exit Criteria:
+ * - All 4 flows covered (happy path + 5 edge cases each)
+ * - 95%+ coverage on payout-service, stripe-connect, dead-letter-queue
+ * - No double-pays, leaks, or under-pays
+ * - CI enforces 95% min coverage
+ *
+ * Usage:
+ *   npm run test:money-flow  (runs this suite)
+ *   npm run test:money-flow -- --coverage  (with coverage report)
+ *
+ * To add edge cases:
+ * 1. Create test("Flow N: Edge case X", async () => { ... })
+ * 2. Use fixtures from @adrper79-dot/testing
+ * 3. Verify assertions use assertDatabaseState() for consistency
+ * 4. Re-run coverage check: npm test -- --coverage
+ */
+
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import {
+  createMockStripeWebhook,
+  createMockCreator,
+  createMockEarnings,
+  createMockDLQEvent,
+  seedDatabase,
+  cleanupAfterTest,
+  assertDatabaseState,
+  type SeedResult,
+} from '@adrper79-dot/testing';
+
+describe('Money Flow Regression Tests', { timeout: 30000 }, () => {
+  let db: any;
+  let seedData: SeedResult;
+
+  beforeEach(async () => {
+    // Initialize test database (e.g., test Neon branch or SQLite in-memory)
+    // In real implementation, connect to ephemeral database
+    // db = await createTestDb();
+  });
+
+  afterEach(async () => {
+    // Clean up test data
+    if (seedData) {
+      await cleanupAfterTest(db, seedData);
+    }
+  });
+
+  describe('Flow 1: Subscription Checkout → Charge → Earnings', () => {
+    // HAPPY PATH: Creator subscribes → Stripe charges first month → earnings recorded
+    it('Happy path: Subscription created, charged, and earnings recorded', async () => {
+      // 1. Create creator
+      const creator = createMockCreator({ subscriptionStatus: 'none' });
+      seedData = await seedDatabase(db, { creators: [creator] });
+
+      // 2. Simulate subscription checkout (POST /api/payment/checkout)
+      const createSubResponse = await POST('/api/payment/checkout', {
+        creatorId: creator.id,
+        tierId: 'tier_pro',
+        stripeCustomerId: `cus_${randomId(24)}`,
+      });
+      expect(createSubResponse.status).toBe(200);
+      expect(createSubResponse.body.sessionId).toBeDefined();
+
+      // 3. Simulate Stripe webhook: invoice.paid
+      const webhook = createMockStripeWebhook('invoice.paid', {
+        customerId: createSubResponse.body.customerId,
+        amount: 999, // $9.99
+        metadata: { creator_id: creator.id },
+      });
+      const webhookResponse = await POST('/webhooks/stripe', webhook);
+      expect(webhookResponse.status).toBe(200);
+
+      // 4. Verify earnings recorded with correct amount (payout split applied)
+      const expectedCreepEarnings = Math.floor(999 * 0.7); // 70% to creator after fees
+      await assertDatabaseState(db, {
+        creatorId: creator.id,
+        expectedEarnings: expectedCreepEarnings,
+        expectedSubscribers: 1,
+      });
+    });
+
+    // EDGE CASE 1: Duplicate webhook (idempotency key ensures no double-charge)
+    it('Edge case 1: Duplicate webhook does not double-record earnings', async () => {
+      const creator = createMockCreator();
+      seedData = await seedDatabase(db, { creators: [creator] });
+
+      const webhook = createMockStripeWebhook('invoice.paid', {
+        customerId: `cus_${randomId(24)}`,
+        amount: 999,
+        metadata: { creator_id: creator.id },
+      });
+
+      // Send webhook twice with same idempotency key
+      await POST('/webhooks/stripe', webhook);
+      const secondResponse = await POST('/webhooks/stripe', webhook);
+      expect(secondResponse.status).toBe(200);
+
+      // Verify earnings recorded only once (not 2x)
+      await assertDatabaseState(db, {
+        creatorId: creator.id,
+        expectedEarnings: 699, // Only charged once
+      });
+    });
+
+    // EDGE CASE 2: Payment failed mid-transaction
+    it('Edge case 2: Payment failure does not create earnings', async () => {
+      const creator = createMockCreator();
+      seedData = await seedDatabase(db, { creators: [creator] });
+
+      const webhook = createMockStripeWebhook('invoice.payment_failed', {
+        customerId: `cus_${randomId(24)}`,
+        amount: 999,
+        metadata: { creator_id: creator.id },
+      });
+
+      await POST('/webhooks/stripe', webhook);
+
+      // Verify NO earnings recorded
+      await assertDatabaseState(db, {
+        creatorId: creator.id,
+        expectedEarnings: 0,
+      });
+    });
+
+    // EDGE CASE 3: Webhook arrives before subscription record (race condition)
+    it('Edge case 3: Webhook before subscription record queues for retry', async () => {
+      const creator = createMockCreator();
+      seedData = await seedDatabase(db, { creators: [creator] });
+
+      const webhook = createMockStripeWebhook('invoice.paid', {
+        customerId: `cus_unknown_subscriber`, // Not linked to subscription yet
+        amount: 999,
+      });
+
+      const response = await POST('/webhooks/stripe', webhook);
+      expect(response.status).toBe(202); // Accepted for retry
+
+      // DLQ should have queued event for later retry
+      await assertDatabaseState(db, {
+        dlqEventCount: 1,
+      });
+    });
+
+    // EDGE CASE 4: Creator Stripe Connect not fully set up
+    it('Edge case 4: Missing Stripe Connect account queues to DLQ', async () => {
+      const creator = createMockCreator({
+        stripeConnectComplete: false,
+        stripeConnectId: undefined,
+      });
+      seedData = await seedDatabase(db, { creators: [creator] });
+
+      const webhook = createMockStripeWebhook('invoice.paid', {
+        customerId: `cus_${randomId(24)}`,
+        amount: 999,
+        metadata: { creator_id: creator.id },
+      });
+
+      const response = await POST('/webhooks/stripe', webhook);
+      expect(response.status).toBe(202);
+
+      // Event queued in DLQ for operator to retry after Connect setup
+      await assertDatabaseState(db, {
+        dlqEventCount: 1,
+      });
+    });
+
+    // EDGE CASE 5: Network timeout receiving webhook
+    it('Edge case 5: Webhook timeout does not lose transaction', async () => {
+      const creator = createMockCreator();
+      seedData = await seedDatabase(db, { creators: [creator] });
+
+      // Simulate timeout by aborting halfway
+      const webhook = createMockStripeWebhook('invoice.paid', {
+        customerId: `cus_${randomId(24)}`,
+        amount: 999,
+      });
+
+      // In real test, mock fetch to timeout
+      // Response handler should detect and queue to DLQ
+      const response = await POST('/webhooks/stripe', webhook);
+      expect([200, 202]).toContain(response.status); // OK or queued
+
+      // Either earnings recorded or in DLQ (never lost)
+      const state = await getCreatorState(creator.id, db);
+      expect(
+        state.earnings > 0 || state.dlqPending > 0,
+      ).toBe(true);
+    });
+  });
+
+  describe('Flow 2: Unlock Purchase → Access Grant → Earnings', () => {
+    // HAPPY PATH: Viewer purchases unlock → charge succeeds → earnings attributed
+    it('Happy path: Unlock purchased, charged, and earnings recorded', async () => {
+      const creator = createMockCreator();
+      seedData = await seedDatabase(db, { creators: [creator] });
+
+      // POST /api/unlock/purchase
+      const unlockResponse = await POST('/api/unlock/purchase', {
+        videoId: 'video_123',
+        creatorId: creator.id,
+        amount: 499, // $4.99
+      });
+      expect(unlockResponse.status).toBe(200);
+      expect(unlockResponse.body.unlockId).toBeDefined();
+
+      // Simulate Stripe charge.succeeded webhook
+      const webhook = createMockStripeWebhook('charge.succeeded', {
+        customerId: unlockResponse.body.customerId,
+        amount: 499,
+        unlockId: unlockResponse.body.unlockId,
+        creatorId: creator.id,
+      });
+
+      await POST('/webhooks/stripe', webhook);
+
+      // Verify earnings recorded (70% payout)
+      const expectedEarnings = Math.floor(499 * 0.7);
+      await assertDatabaseState(db, {
+        creatorId: creator.id,
+        expectedEarnings,
+      });
+
+      // Verify unlock marked as paid
+      const unlockState = await getUnlockState(
+        unlockResponse.body.unlockId,
+        db,
+      );
+      expect(unlockState.status).toBe('active');
+    });
+
+    // EDGE CASE 1: Charge fails → unlock not granted
+    it('Edge case 1: Failed charge does not grant unlock access', async () => {
+      const creator = createMockCreator();
+      seedData = await seedDatabase(db, { creators: [creator] });
+
+      const unlockResponse = await POST('/api/unlock/purchase', {
+        videoId: 'video_123',
+        creatorId: creator.id,
+        amount: 499,
+      });
+
+      const webhook = createMockStripeWebhook('charge.failed', {
+        customerId: unlockResponse.body.customerId,
+        amount: 499,
+        unlockId: unlockResponse.body.unlockId,
+      });
+
+      await POST('/webhooks/stripe', webhook);
+
+      // Verify unlock remains inactive
+      const unlockState = await getUnlockState(
+        unlockResponse.body.unlockId,
+        db,
+      );
+      expect(unlockState.status).toBe('inactive');
+
+      // Verify NO earnings
+      await assertDatabaseState(db, {
+        creatorId: creator.id,
+        expectedEarnings: 0,
+      });
+    });
+
+    // EDGE CASE 2: Multiple purchases for same video by same user (allowed)
+    it('Edge case 2: User can purchase same unlock multiple times', async () => {
+      const creator = createMockCreator();
+      seedData = await seedDatabase(db, { creators: [creator] });
+
+      // First purchase
+      const unlock1 = await POST('/api/unlock/purchase', {
+        videoId: 'video_123',
+        creatorId: creator.id,
+        amount: 499,
+      });
+
+      // Second purchase (re-purchase or support creator)
+      const unlock2 = await POST('/api/unlock/purchase', {
+        videoId: 'video_123',
+        creatorId: creator.id,
+        amount: 499,
+      });
+
+      expect(unlock1.body.unlockId).not.toBe(unlock2.body.unlockId);
+
+      // Both charges succeed
+      for (const unlock of [unlock1, unlock2]) {
+        const webhook = createMockStripeWebhook('charge.succeeded', {
+          customerId: unlock.body.customerId,
+          amount: 499,
+          unlockId: unlock.body.unlockId,
+        });
+        await POST('/webhooks/stripe', webhook);
+      }
+
+      // Earnings recorded for both
+      const expectedEarnings = Math.floor(499 * 0.7 * 2);
+      await assertDatabaseState(db, {
+        creatorId: creator.id,
+        expectedEarnings,
+      });
+    });
+
+    // EDGE CASE 3: Refund issued after unlock granted
+    it('Edge case 3: Refund reduces creator earnings correctly', async () => {
+      const creator = createMockCreator();
+      seedData = await seedDatabase(db, { creators: [creator] });
+
+      // Purchase and charge
+      const unlockResponse = await POST('/api/unlock/purchase', {
+        videoId: 'video_123',
+        creatorId: creator.id,
+        amount: 499,
+      });
+
+      const chargeWebhook = createMockStripeWebhook('charge.succeeded', {
+        customerId: unlockResponse.body.customerId,
+        amount: 499,
+        unlockId: unlockResponse.body.unlockId,
+      });
+      await POST('/webhooks/stripe', chargeWebhook);
+
+      // Refund issued
+      const refundWebhook = createMockStripeWebhook('charge.refunded', {
+        customerId: unlockResponse.body.customerId,
+        amount: 499,
+        chargeId: chargeWebhook.data.object.id,
+      });
+      await POST('/webhooks/stripe', refundWebhook);
+
+      // Earnings reduced by refund
+      await assertDatabaseState(db, {
+        creatorId: creator.id,
+        expectedEarnings: 0, // Fully refunded
+      });
+    });
+
+    // EDGE CASE 4: Unlock with quota exceeded (rate limiting)
+    it('Edge case 4: Unlock purchase rejected if creator quota exceeded', async () => {
+      const creator = createMockCreator();
+      seedData = await seedDatabase(db, { creators: [creator] });
+
+      // Create 100 unlocks in short time (quota exhausted)
+      for (let i = 0; i < 100; i++) {
+        await POST('/api/unlock/purchase', {
+          videoId: `video_${i}`,
+          creatorId: creator.id,
+          amount: 499,
+        });
+      }
+
+      // 101st unlock rejected
+      const rateLimitResponse = await POST('/api/unlock/purchase', {
+        videoId: 'video_101',
+        creatorId: creator.id,
+        amount: 499,
+      });
+      expect(rateLimitResponse.status).toBe(429);
+    });
+
+    // EDGE CASE 5: Creator deleted after unlock purchased but before charge
+    it('Edge case 5: Earnings still attributed if creator deleted', async () => {
+      const creator = createMockCreator();
+      seedData = await seedDatabase(db, { creators: [creator] });
+
+      const unlockResponse = await POST('/api/unlock/purchase', {
+        videoId: 'video_123',
+        creatorId: creator.id,
+        amount: 499,
+      });
+
+      // Delete creator
+      await DELETE(`/api/admin/creators/${creator.id}`);
+
+      // Charge still succeeds
+      const webhook = createMockStripeWebhook('charge.succeeded', {
+        customerId: unlockResponse.body.customerId,
+        amount: 499,
+        creatorId: creator.id,
+      });
+      await POST('/webhooks/stripe', webhook);
+
+      // Earnings still recorded (creator archive preserved)
+      await assertDatabaseState(db, {
+        creatorId: creator.id,
+        expectedEarnings: Math.floor(499 * 0.7),
+      });
+    });
+  });
+
+  describe('Flow 3: Payout Batch → Snapshot → Execute → Transfer', () => {
+    // HAPPY PATH: Batch created → earnings snapshotted → transfers execute
+    it('Happy path: Batch created, snapshotted, and executed successfully', async () => {
+      const creators = [
+        createMockCreator({ stripeConnectId: 'acct_creator1' }),
+        createMockCreator({ stripeConnectId: 'acct_creator2' }),
+      ];
+      const earnings = [
+        createMockEarnings(creators[0].id, 10000, { status: 'pending' }), // $100
+        createMockEarnings(creators[1].id, 5000, { status: 'pending' }), // $50
+      ];
+      seedData = await seedDatabase(db, { creators, earnings });
+
+      // POST /api/admin/payouts/batch (creates batch snapshot)
+      const batchResponse = await POST('/api/admin/payouts/batch', {
+        batchDate: new Date().toISOString(),
+      });
+      expect(batchResponse.status).toBe(200);
+      const batchId = batchResponse.body.batchId;
+
+      // Verify earnings status moved to 'snapshotted'
+      await assertDatabaseState(db, {
+        creatorId: creators[0].id,
+        earningsStatus: 'snapshotted',
+        payoutBatchId: batchId,
+      });
+
+      // POST /api/admin/payouts/batch/:id/execute
+      const executeResponse = await POST(
+        `/api/admin/payouts/batch/${batchId}/execute`,
+        {},
+      );
+      expect(executeResponse.status).toBe(200);
+      expect(executeResponse.body.transfersAttempted).toBe(2);
+      expect(executeResponse.body.transfersSucceeded).toBe(2);
+
+      // Verify earnings status now 'paid'
+      await assertDatabaseState(db, {
+        creatorId: creators[0].id,
+        earningsStatus: 'paid',
+      });
+    });
+
+    // EDGE CASE 1: Partial transfer failure → DLQ captures failed transfer
+    it('Edge case 1: Failed transfer captured in DLQ for retry', async () => {
+      const creators = [
+        createMockCreator({ stripeConnectId: 'acct_valid' }),
+        createMockCreator({ stripeConnectId: 'acct_disabled' }), // Account disabled
+      ];
+      const earnings = [
+        createMockEarnings(creators[0].id, 10000, { status: 'pending' }),
+        createMockEarnings(creators[1].id, 5000, { status: 'pending' }),
+      ];
+      seedData = await seedDatabase(db, { creators, earnings });
+
+      const batchResponse = await POST('/api/admin/payouts/batch', {});
+      const batchId = batchResponse.body.batchId;
+
+      const executeResponse = await POST(
+        `/api/admin/payouts/batch/${batchId}/execute`,
+        {},
+      );
+
+      expect(executeResponse.body.transfersSucceeded).toBe(1);
+      expect(executeResponse.body.transfersFailed).toBe(1);
+
+      // Failed transfer in DLQ for operator retry
+      await assertDatabaseState(db, {
+        dlqEventCount: 1,
+      });
+    });
+
+    // EDGE CASE 2: Batch execution interrupted mid-way → transactional rollback
+    it('Edge case 2: Interrupted batch execution rolls back to pending', async () => {
+      const creators = Array.from({ length: 50 }, (_, i) =>
+        createMockCreator({ stripeConnectId: `acct_${i}` }),
+      );
+      const earnings = creators.map((c, i) =>
+        createMockEarnings(c.id, 10000 * (i + 1), { status: 'pending' }),
+      );
+      seedData = await seedDatabase(db, { creators, earnings });
+
+      const batchResponse = await POST('/api/admin/payouts/batch', {});
+      const batchId = batchResponse.body.batchId;
+
+      // Simulate interrupt (kill process during transfer loop)
+      // In real test, mock fetch to fail mid-way
+      const executeResponse = await POST(
+        `/api/admin/payouts/batch/${batchId}/execute`,
+        { simulateInterrupt: true },
+      );
+
+      // Either all completed or all rolled back (never partial)
+      for (const creator of creators) {
+        const status = await getCreatorPayoutState(creator.id, db);
+        expect(['pending', 'paid']).toContain(status);
+      }
+    });
+
+    // EDGE CASE 3: No earnings in pending state (nothing to batch)
+    it('Edge case 3: Empty batch creation is rejected', async () => {
+      const creator = createMockCreator();
+      seedData = await seedDatabase(db, { creators: [creator] });
+      // No earnings created
+
+      const batchResponse = await POST('/api/admin/payouts/batch', {});
+      expect(batchResponse.status).toBe(400);
+      expect(batchResponse.body.error).toMatch(/no pending earnings/i);
+    });
+
+    // EDGE CASE 4: Creator Stripe Connect account disabled before execution
+    it('Edge case 4: Account disabled during batch blocks transfer + queues DLQ', async () => {
+      const creator = createMockCreator({ stripeConnectId: 'acct_valid' });
+      const earnings = createMockEarnings(creator.id, 10000, {
+        status: 'pending',
+      });
+      seedData = await seedDatabase(db, { creators: [creator], earnings: [earnings] });
+
+      const batchResponse = await POST('/api/admin/payouts/batch', {});
+      const batchId = batchResponse.body.batchId;
+
+      // Disable account in Stripe
+      // (In real test, mock Stripe API response)
+
+      const executeResponse = await POST(
+        `/api/admin/payouts/batch/${batchId}/execute`,
+        {},
+      );
+
+      expect(executeResponse.body.transfersFailed).toBe(1);
+      await assertDatabaseState(db, { dlqEventCount: 1 });
+    });
+
+    // EDGE CASE 5: Duplicate batch creation (same date/creator set)
+    it('Edge case 5: Second batch for same period is rejected', async () => {
+      const creator = createMockCreator();
+      const earnings = createMockEarnings(creator.id, 10000);
+      seedData = await seedDatabase(db, { creators: [creator], earnings: [earnings] });
+
+      const batchDate = new Date().toISOString().split('T')[0]; // Today
+
+      // First batch succeeds
+      const batch1 = await POST('/api/admin/payouts/batch', {
+        batchDate,
+      });
+      expect(batch1.status).toBe(200);
+
+      // Second batch for same date rejected (already snapshotted)
+      const batch2 = await POST('/api/admin/payouts/batch', {
+        batchDate,
+      });
+      expect(batch2.status).toBe(409);
+      expect(batch2.body.error).toMatch(/already snapshotted/i);
+    });
+  });
+
+  describe('Flow 4: DLQ Event → Retry → New Batch', () => {
+    // HAPPY PATH: Failed event marked for retry → retry succeeds → included in next batch
+    it('Happy path: DLQ event retry succeeds and earnings processed', async () => {
+      const creator = createMockCreator({
+        stripeConnectComplete: false, // Initially incomplete
+      });
+      const earnings = createMockEarnings(creator.id, 10000);
+      seedData = await seedDatabase(db, { creators: [creator], earnings: [earnings] });
+
+      // Webhook fails due to incomplete Stripe Connect
+      const webhook = createMockStripeWebhook('invoice.paid', {
+        customerId: `cus_${randomId(24)}`,
+        metadata: { creator_id: creator.id },
+        amount: 999,
+      });
+      await POST('/webhooks/stripe', webhook);
+
+      // DLQ has event
+      let dlqState = await getDLQState(creator.id, db);
+      expect(dlqState.eventCount).toBe(1);
+
+      // Operator completes Stripe Connect for creator
+      await PATCH(`/api/admin/creators/${creator.id}`, {
+        stripeConnectComplete: true,
+      });
+
+      // Retry event (POST /api/admin/dlq/:id/retry)
+      const dlqEventId = dlqState.events[0].id;
+      const retryResponse = await POST(`/api/admin/dlq/${dlqEventId}/retry`, {});
+      expect(retryResponse.status).toBe(200);
+
+      // Earnings now created successfully
+      await assertDatabaseState(db, {
+        creatorId: creator.id,
+        expectedEarnings: Math.floor(999 * 0.7),
+      });
+    });
+
+    // EDGE CASE 1: Max retries exceeded → event marked permanent failure
+    it('Edge case 1: Max retries exceeded moves event to permanent failure', async () => {
+      const creator = createMockCreator({
+        stripeConnectId: 'acct_deleted', // Account deleted, unrecoverable
+      });
+      const earnings = createMockEarnings(creator.id, 10000);
+      seedData = await seedDatabase(db, { creators: [creator], earnings: [earnings] });
+
+      const dlqEvent = createMockDLQEvent('transfer_failed', {
+        creatorId: creator.id,
+        retryCount: 10, // Already retried 10 times
+      });
+
+      // Add to DLQ
+      // Retry is rejected (max retries)
+      const retryResponse = await POST(
+        `/api/admin/dlq/${dlqEvent.id}/retry`,
+        {},
+      );
+      expect(retryResponse.status).toBe(410); // Gone
+      expect(retryResponse.body.reason).toMatch(/max retries/i);
+    });
+
+    // EDGE CASE 2: Webhook malformed → operator must fix and re-submit
+    it('Edge case 2: Malformed webhook queued for operator review', async () => {
+      const creator = createMockCreator();
+      seedData = await seedDatabase(db, { creators: [creator] });
+
+      // Send invalid webhook
+      const malformedWebhook = {
+        type: 'invoice.paid',
+        data: { object: {} }, // Missing required fields
+      };
+
+      const response = await POST('/webhooks/stripe', malformedWebhook);
+      expect([400, 422]).toContain(response.status);
+
+      // Queued for operator DLQ with error details
+      const dlqState = await getDLQState(creator.id, db);
+      expect(dlqState.eventCount).toBeGreaterThan(0);
+      expect(dlqState.events[0].error).toMatch(/missing|invalid/i);
+    });
+
+    // EDGE CASE 3: Retry in progress while another same event is queued
+    it('Edge case 3: Concurrent retry prevents duplicate event processing', async () => {
+      const creator = createMockCreator();
+      seedData = await seedDatabase(db, { creators: [creator] });
+
+      const dlqEvent = createMockDLQEvent('transfer_failed', {
+        creatorId: creator.id,
+      });
+
+      // Start two retries concurrently
+      const [retry1, retry2] = await Promise.allSettled([
+        POST(`/api/admin/dlq/${dlqEvent.id}/retry`, {}),
+        POST(`/api/admin/dlq/${dlqEvent.id}/retry`, {}),
+      ]);
+
+      // One succeeds, one fails (idempotency)
+      const statuses = [
+        retry1.status === 'fulfilled' ? retry1.value.status : retry1.reason,
+        retry2.status === 'fulfilled' ? retry2.value.status : retry2.reason,
+      ];
+      expect(statuses).toContain(200);
+      expect(statuses).toContain(409); // Conflict
+    });
+
+    // EDGE CASE 4: Batch creation includes failed events marked for retry
+    it('Edge case 4: New batch includes DLQ retry in snapshot', async () => {
+      const creator = createMockCreator();
+      const earnings = createMockEarnings(creator.id, 10000);
+      seedData = await seedDatabase(db, { creators: [creator], earnings: [earnings] });
+
+      // Create DLQ event (which has pending earnings)
+      const dlqEvent = createMockDLQEvent('transfer_failed', {
+        creatorId: creator.id,
+        earningsId: earnings.id,
+      });
+
+      // Retry succeeds
+      await POST(`/api/admin/dlq/${dlqEvent.id}/retry`, {});
+
+      // New batch created immediately
+      const batchResponse = await POST('/api/admin/payouts/batch', {});
+      expect(batchResponse.status).toBe(200);
+
+      // Batch includes earnings that was in DLQ
+      const batchDetails = await GET(
+        `/api/admin/payouts/batch/${batchResponse.body.batchId}`,
+      );
+      expect(batchDetails.body.earningsIds).toContain(earnings.id);
+    });
+
+    // EDGE CASE 5: DLQ retention policy (old events auto-archived)
+    it('Edge case 5: DLQ events older than 30 days auto-archived', async () => {
+      const creator = createMockCreator();
+      seedData = await seedDatabase(db, { creators: [creator] });
+
+      const oldEvent = createMockDLQEvent('transfer_failed', {
+        creatorId: creator.id,
+        createdAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000), // 31 days ago
+      });
+
+      // Cleanup job runs
+      const cleanupResponse = await POST('/api/admin/dlq/cleanup', {
+        olderThanDays: 30,
+      });
+      expect(cleanupResponse.status).toBe(200);
+
+      // Old event moved to archive (not in active DLQ)
+      const dlqState = await getDLQState(creator.id, db);
+      expect(dlqState.events.map((e: any) => e.id)).not.toContain(oldEvent.id);
+    });
+  });
+});
+
+// ============================================================================
+// TEST UTILITIES (not part of coverage, but required for tests to run)
+// ============================================================================
+
+/**
+ * Mock HTTP client for testing.
+ * In real app, replace with actual app client.
+ */
+async function POST(
+  path: string,
+  body: Record<string, any>,
+): Promise<{ status: number; body: Record<string, any> }> {
+  // Placeholder; app integrates with real router
+  return { status: 200, body: {} };
+}
+
+async function GET(
+  path: string,
+): Promise<{ status: number; body: Record<string, any> }> {
+  return { status: 200, body: {} };
+}
+
+async function PATCH(
+  path: string,
+  body: Record<string, any>,
+): Promise<{ status: number; body: Record<string, any> }> {
+  return { status: 200, body: {} };
+}
+
+async function DELETE(
+  path: string,
+): Promise<{ status: number; body: Record<string, any> }> {
+  return { status: 204, body: {} };
+}
+
+// Helper functions to fetch state from test database
+async function getCreatorState(creatorId: string, db: any): Promise<any> {
+  return { earnings: 0, dlqPending: 0 };
+}
+
+async function getUnlockState(unlockId: string, db: any): Promise<any> {
+  return { status: 'inactive' };
+}
+
+async function getCreatorPayoutState(creatorId: string, db: any): Promise<any> {
+  return 'pending';
+}
+
+async function getDLQState(creatorId: string, db: any): Promise<any> {
+  return { eventCount: 0, events: [] };
+}
+
+function randomId(length: number): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}

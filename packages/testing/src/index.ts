@@ -49,6 +49,27 @@ export function createMockFn<A extends unknown[], R>(impl?: Fn<A, R>): MockFn<A,
   return fn;
 }
 
+// Re-export money flow testing fixtures
+export {
+  createMockStripeWebhook,
+  createMockCreator,
+  createMockEarnings,
+  createMockDLQEvent,
+  seedDatabase,
+  cleanupAfterTest,
+  assertDatabaseState,
+  randomId,
+  type MockCreator,
+  type MockEarnings,
+  type MockDLQEvent,
+  type SeedData,
+  type SeedResult,
+  type DatabaseStateAssertions,
+  type MockStripeWebhookType,
+  type SubscriptionStatus,
+  type EarningsStatus,
+} from './money-flow-fixtures';
+
 // ---------- Domain test fixtures ----------
 
 /**

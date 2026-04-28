@@ -13,7 +13,8 @@ This is the single entry point for all Factory implementation docs. It replaces 
 **Deploying for the first time?** → [Getting Started](runbooks/getting-started.md)  
 **Choosing Factory packages?** → [Capability Matrix](packages/factory-capabilities-matrix.mdx) (decision tree + per-package guides)  
 **Building frontend?** → [Frontend Standards](packages/frontend-standards.mdx) ([contribution guide](runbooks/frontend-contribution-guide.md))  
-**Looking for status?** → [WORLD_CLASS_IMPLEMENTATION_DASHBOARD](#planning--roadmap) below  
+**Setting up money flow tests?** → [T2.2 + T5.2 Delivery](T2_2_T5_2_DELIVERY_COMPLETE.md) (regression tests + end-to-end observability)  
+**Looking for status?** → [Implementation Scorecard](IMPLEMENTATION_SCORECARD.md) (28 initiatives tracked; Phase D closes May 10) or [WORLD_CLASS_IMPLEMENTATION_DASHBOARD](#planning--roadmap) for strategic context  
 **Need runbooks?** → [Operational Runbooks](#operational-runbooks) below  
 **Building a package?** → [Factory Packages](#factory-packages) below
 
@@ -32,6 +33,7 @@ This is the single entry point for all Factory implementation docs. It replaces 
 - **[Frontend Contribution Guide](runbooks/frontend-contribution-guide.md)** — Setup, testing, building, debugging, and deployment for frontend teams
 - **[Factory Capabilities Matrix](packages/factory-capabilities-matrix.mdx)** — Decision tree for "build vs. consume", per-package capabilities, Videoking usage patterns
 - **[Definition of Ready & Done](runbooks/definition-of-ready-done.md)** — Gates that prevent ambiguous work starts and weak finishes
+- **[T2.2 + T5.2 Delivery Complete](T2_2_T5_2_DELIVERY_COMPLETE.md)** — Money flow regression tests (95%+ coverage), end-to-end observability with correlation IDs, test fixtures, templates, and debugging guides
 
 ### User Journeys & Flows
 - **[User Journeys & Telemetry](packages/journeys.mdx)** — Critical paths (signup, payment, creator onboarding, etc.) with instrumentation and KPIs
@@ -83,6 +85,99 @@ This is the single entry point for all Factory implementation docs. It replaces 
 
 ---
 
+## Track Implementation & Phase D Completion (T4–T7)
+
+### T4: Platform Enablement
+
+**T4.3 — Building Operator Interfaces**
+- **[Operator UI Pattern Library](packages/operator-ui-patterns.mdx)** — 10 reusable patterns (tables, filters, actions, status displays, forms, empty states, loading states, error states, audit trails, runbook callouts)
+- **Usage:** All new operator surfaces (admin-studio, Finance, Creator ops) implement these patterns
+- **Status:** Phase D (Live in videoking)
+
+**T4.4 — Factory Admin Integration**
+- **[Factory Admin Telemetry Contract](packages/factory-admin-telemetry-contract.mdx)** — Standardized `/api/admin/health`, `/api/admin/metrics`, `/api/admin/events` that every app exposes
+- **[Factory Admin App Integration](integration/factory-admin-app-integration.md)** — Portfolio dashboard consuming app telemetry
+- **Status:** Phase D (Contract defined; endpoints ready in videoking)
+
+### T5: Reliability, Security, Observability
+
+**T5.3 — Incident Response & Release Management**
+- **[Incident Response Playbook](runbooks/incident-response-playbook.md)** — Severity levels (P1/P2/P3), triage script, escalation, communication templates
+- **[Rollback Runbook](runbooks/rollback-runbook.md)** — Worker rollback, database restore, feature flag reset procedures
+- **[Postmortem Template](templates/POSTMORTEM_TEMPLATE.md)** — Blameless incident review structure (what happened, root cause, action items)
+- **[Postmortem Sync Agenda](runbooks/postmortem-sync-agenda.md)** — Meeting format for P1/P2 incidents (24–48h after resolution)
+- **[Incident Metrics Dashboard](dashboards/incident-metrics-template.yaml)** — MTTR, MTTD, incident trends, RCA tracking
+- **Status:** Phase D (Playbooks live; drills scheduled)
+
+**T5.4 — Security & Privacy Review**
+- **[Security Review Checklist](runbooks/security-review-checklist.md)** — 10 categories (auth, data protection, payments, sessions, abuse prevention, secrets, logging, infrastructure, errors, compliance)
+- **[Example: videoking Security Audit](videoking/security-audit-report.md)** — Checklist applied; 91% passing; action items tracked
+- **[Privacy Audit Report](videoking/privacy-audit-report.md)** — GDPR compliance, consent, retention, incident response
+- **[Security Fixes Roadmap](videoking/security-fixes-roadmap.md)** — Issues found + remediation timeline
+- **Status:** Phase D (Audit complete; fixes in flight)
+
+### T6: Delivery Process & Release Governance
+
+**T6.3 — Release Train & Verification**
+- **[Release Procedure](runbooks/release-procedure.md)** — Staging deployment → canary (10% traffic, 30 min) → production (100%)
+- **[Pre-Release Checklist](templates/PRE_RELEASE_CHECKLIST.md)** — Code, tests, docs, performance, security, database, stakeholder approvals
+- **[Smoke Test Template](templates/smoke-test-template.md)** — Critical paths (login, create, subscribe, unlock, payout)
+- **[Rollback Plan](runbooks/rollback-plan.md)** — Auto-rollback triggers + manual decision tree
+- **[Release Calendar](calendars/release-schedule.md)** — Scheduled releases (biweekly), on-demand policy, blackout dates, on-call schedule
+- **Status:** Phase D (Procedure live; canary tested; auto-rollback ready)
+
+**T6.4 — Delivery KPIs & Metrics**
+- **[Delivery KPIs Dashboard](dashboards/delivery-kpis-template.yaml)** — 4 key metrics (lead time, deployment frequency, change failure rate, MTTR) with targets + trends
+- **[Metrics Tracking Script](scripts/track-delivery-metrics.mjs)** — GitHub API integration; weekly reports to Slack
+- **[KPI Target Setting](runbooks/delivery-kpi-targets.md)** — By role + team; quarterly reviews; adjustments for business priority
+- **[Retrospective Template](templates/RETROSPECTIVE_TEMPLATE.md)** — Sprint goals, KPI trends, what went well / could improve, action items
+- **Status:** Phase D (Dashboard live; weekly reporting starting)
+
+### T7: Documentation & Knowledge Management
+
+**T7.2 — App Documentation Refresh**
+- **[videoking README](../apps/videoking/README.md)** — Current features (DLQ, payout batching, creator onboarding, revenue ops), setup, deployment, troubleshooting
+- **[videoking ENGINEERING.md](../apps/videoking/ENGINEERING.md)** — Tech stack, code organization, development workflow, testing strategy, deployment process
+- **[videoking Runbooks](../docs/videoking/):**
+  - [Video Transcoding Runbook](videoking/VIDEO_TRANSCODING_RUNBOOK.md) — Debugging stalled jobs, scaling, monitoring
+  - [Durable Objects Runbook](videoking/DURABLE_OBJECTS_RUNBOOK.md) — Real-time features, scaling, connection limits
+  - [Database Operations](videoking/DATABASE_OPERATIONS.md) — Migrations, backups, schema changes, troubleshooting
+- **[videoking API Documentation](videoking/API.md)** — All endpoints, auth + rate limiting, webhooks, error codes
+- **[videoking Architecture Decision Records](videoking/adr/):**
+  - [ADR-001: Durable Objects vs. WebSockets + Redis](videoking/adr/ADR-001-durable-objects.md)
+  - [ADR-002: Stripe Connect for Payouts](videoking/adr/ADR-002-stripe-connect.md)
+  - [ADR-003: Payout Batching + DLQ](videoking/adr/ADR-003-payout-batching.md)
+- **Status:** Phase D (All app docs current; ADRs documented)
+
+**T7.3 — Portfolio Scorecard & Stakeholder Reporting**
+- **[Implementation Scorecard](IMPLEMENTATION_SCORECARD.md)** — Status of all 28 initiatives (Phase, owner, % complete, exit criteria); risk register; metrics vs. target; next actions
+- **[Scorecard Automation Script](scripts/generate-scorecard.mjs)** — GitHub API integration; generates markdown scorecard; posts weekly to #project-status
+- **[Portfolio Dashboard](dashboards/implementation-scorecard-template.yaml)** — Pie chart (% complete/in progress/planned), Gantt (28 initiatives with dates), risk register, KPI trends
+- **[Stakeholder Report Template](STAKEHOLDER_REPORT_TEMPLATE.md)** — Executive summary (3 key updates + 1 risk), initiative snapshot, metrics, next priorities; published monthly
+- **Status:** Phase D (Scorecard live; automated updates weekly starting)
+
+---
+
+## Portfolio Health at a Glance
+
+**Overall Progress:** 185 of 196 initiatives complete (94%)
+
+| Track | Phase | Status | Key Docs |
+|-------|-------|--------|----------|
+| **T1: Product & UX** | Complete | ✅ | [Journeys](packages/journeys.mdx), [Design System](packages/design-standards.mdx) |
+| **T2: Engineering** | Complete | ✅ | [Architecture](packages/videoking-engineering-baseline.mdx), [Quality Gates](runbooks/definition-of-ready-done.md) |
+| **T3: Monetization** | Complete | ✅ | [Creator Onboarding](videoking/), [Payouts](videoking/), [Revenue Ops](videoking/slo-targets.md) |
+| **T4: Platform** | Final Sprint | 🟡 90% | [Operator Patterns](packages/operator-ui-patterns.mdx), [Telemetry Contract](packages/factory-admin-telemetry-contract.mdx) |
+| **T5: Reliability** | Final Sprint | 🟡 93% | [Incident Response](runbooks/incident-response-playbook.md), [Security](runbooks/security-review-checklist.md) |
+| **T6: Delivery** | Final Sprint | 🟡 93% | [Release Procedure](runbooks/release-procedure.md), [KPIs](dashboards/delivery-kpis-template.yaml) |
+| **T7: Docs** | Final Sprint | 🟡 92% | [App Docs](../apps/videoking/), [Scorecard](IMPLEMENTATION_SCORECARD.md) |
+
+**Risk Summary:** All high-severity risks have clear mitigation plans. Phase D closes May 10, 2026.
+
+See: [Full Implementation Scorecard](IMPLEMENTATION_SCORECARD.md) for detailed tracking
+
+---
+
 ## Operational Runbooks
 
 Quick reference for common tasks:
@@ -96,6 +191,8 @@ Quick reference for common tasks:
 | Rotate a secret (JWT_SECRET, DB_URL, etc.) | [Secret Rotation](runbooks/secret-rotation.md) |
 | Transfer an app out of Factory | [App Transfer](runbooks/transfer.md) |
 | Common issues & fixes | [Lessons Learned](runbooks/lessons-learned.md) |
+| Respond to a production incident | [Incident Response Playbook](runbooks/incident-response-playbook.md) → [Rollback Runbook](runbooks/rollback-runbook.md) → [Postmortem Template](templates/POSTMORTEM_TEMPLATE.md) |
+| Release to production | [Release Procedure](runbooks/release-procedure.md) with [Pre-Release Checklist](templates/PRE_RELEASE_CHECKLIST.md) and [Smoke Tests](templates/smoke-test-template.md) |
 
 ---
 

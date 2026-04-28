@@ -1,0 +1,522 @@
+/**
+ * Observability Tracing Test Suite
+ *
+ * Verifies that correlationId flows through entire request lifecycle:
+ * Frontend → Worker → Database → Sentry → DLQ
+ *
+ * Tests verify:
+ * 1. correlationId in HTTP response headers
+ * 2. correlationId in worker/server logs
+ * 3. correlationId in database slow query logs
+ * 4. correlationId in Sentry error events
+ * 5. correlationId in DLQ events for transaction tracing
+ * 6. GET /admin/trace/:correlationId retrieves full history <5s
+ */
+
+import { describe, it, expect, beforeEach } from 'vitest';
+
+describe.skip('Observability End-to-End Tracing', () => {
+  let correlationId: string;
+
+  beforeEach(() => {
+    // Generate fresh correlationId for each test
+    correlationId = `test_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  });
+
+  describe('Correlation ID Flow', () => {
+    it('includes correlationId in HTTP response header', async () => {
+      const response = await fetch('POST /api/payment/checkout', {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-correlation-id': correlationId,
+        },
+        body: JSON.stringify({ creatorId: 'test_creator' }),
+      });
+
+      expect(response.ok).toBe(true);
+      expect(response.headers.get('x-correlation-id')).toBe(correlationId);
+    });
+
+    it('generates correlationId if client does not provide one', async () => {
+      const response = await fetch('POST /api/payment/checkout', {
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ creatorId: 'test_creator' }),
+      });
+
+      const generatedId = response.headers.get('x-correlation-id');
+      expect(generatedId).toBeDefined();
+      expect(generatedId).toMatch(/^[a-f0-9-]{36}$/); // UUID format
+    });
+
+    it('preserves client-provided correlationId through entire request', async () => {
+      const response = await fetch('POST /api/payment/checkout', {
+        headers: {
+          'x-correlation-id': correlationId,
+        },
+        body: JSON.stringify({ creatorId: 'test_creator' }),
+      });
+
+      // Even if error occurs, correlationId preserved
+      const responseId = response.headers.get('x-correlation-id');
+      expect(responseId).toBe(correlationId);
+    });
+  });
+
+  describe('Logging Integration', () => {
+    it('includes correlationId in worker/server logs', async () => {
+      // Trigger a request
+      await fetch('POST /api/payment/checkout', {
+        headers: { 'x-correlation-id': correlationId },
+        body: JSON.stringify({ creatorId: 'test_creator' }),
+      });
+
+      // Wait for logs to be indexed
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Query logs
+      const logs = await fetch(
+        `GET /admin/logs?correlationId=${correlationId}&limit=10`,
+        {
+          headers: { 'Authorization': 'Bearer admin_token' },
+        },
+      ).then((r) => r.json());
+
+      expect(logs.length).toBeGreaterThan(0);
+      expect(logs.every((log: any) => log.correlationId === correlationId)).toBe(true);
+
+      // Verify log entries include key events
+      const messages = logs.map((l: any) => l.message);
+      expect(messages).toContainEqual(
+        expect.stringMatching(/request started|POST.*payment/i),
+      );
+    });
+
+    it('logs include context (userId, operation, status)', async () => {
+      const response = await fetch('POST /api/payment/checkout', {
+        headers: {
+          'x-correlation-id': correlationId,
+        },
+        body: JSON.stringify({ creatorId: 'test_creator' }),
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const logs = await fetch(
+        `GET /admin/logs?correlationId=${correlationId}`,
+        {
+          headers: { 'Authorization': 'Bearer admin_token' },
+        },
+      ).then((r) => r.json());
+
+      // At least one log should have full context
+      const contextLog = logs.find(
+        (l: any) =>
+          l.creatorId &&
+          l.operation &&
+          l.statusCode,
+      );
+      expect(contextLog).toBeDefined();
+    });
+  });
+
+  describe('Database Query Tracing', () => {
+    it('includes correlationId in slow query logs (>200ms)', async () => {
+      // Trigger an operation that includes a slow query
+      const simulateSlowQuery = await fetch(
+        'POST /api/admin/debug/slow-query',
+        {
+          headers: { 'x-correlation-id': correlationId },
+          body: JSON.stringify({ delay: 300 }), // Force 300ms delay
+        },
+      );
+
+      expect(simulateSlowQuery.ok).toBe(true);
+
+      // Wait for query logs
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Query database slow query logs
+      const slowQueries = await fetch(
+        `GET /admin/slow-queries?correlationId=${correlationId}`,
+        {
+          headers: { 'Authorization': 'Bearer admin_token' },
+        },
+      ).then((r) => r.json());
+
+      expect(slowQueries.length).toBeGreaterThan(0);
+      expect(slowQueries[0].durationMs).toBeGreaterThan(200);
+      expect(slowQueries[0].correlationId).toBe(correlationId);
+    });
+
+    it('correlationId appears in database query context', async () => {
+      await fetch('POST /api/payment/checkout', {
+        headers: { 'x-correlation-id': correlationId },
+        body: JSON.stringify({ creatorId: 'test_creator' }),
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const slowQueries = await fetch(
+        `GET /admin/slow-queries?correlationId=${correlationId}`,
+        {
+          headers: { 'Authorization': 'Bearer admin_token' },
+        },
+      ).then((r) => r.json());
+
+      // Even if no query exceeded 200ms, if any query was executed,
+      // its context should include correlationId
+      if (slowQueries.length > 0) {
+        expect(slowQueries[0]).toMatchObject({
+          correlationId,
+          query: expect.stringContaining('SELECT') || expect.stringContaining('INSERT'),
+        });
+      }
+    });
+  });
+
+  describe('Error Tracing (Sentry)', () => {
+    it('includes correlationId in Sentry error events', async () => {
+      // Trigger an error
+      const response = await fetch('POST /api/payment/checkout', {
+        headers: { 'x-correlation-id': correlationId },
+        body: JSON.stringify({ creatorId: 'nonexistent_creator' }), // Will 404
+      });
+
+      expect(response.status).toBe(404);
+
+      // Wait for Sentry to receive event
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Query Sentry for events with this correlationId
+      const sentryEvents = await fetch(
+        `GET /admin/sentry?tag=correlationId&value=${correlationId}`,
+        {
+          headers: { 'Authorization': 'Bearer admin_token' },
+        },
+      ).then((r) => r.json());
+
+      expect(sentryEvents.length).toBeGreaterThan(0);
+      expect(sentryEvents[0].tags.correlationId).toBe(correlationId);
+    });
+
+    it('Sentry event includes full stack trace and context', async () => {
+      // Trigger an error with rich context
+      const response = await fetch('POST /api/admin/debug/throw-error', {
+        headers: { 'x-correlation-id': correlationId },
+        body: JSON.stringify({ message: 'Test error' }),
+      });
+
+      expect(response.status).toBe(500);
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      const sentryEvents = await fetch(
+        `GET /admin/sentry?tag=correlationId&value=${correlationId}`,
+        {
+          headers: { 'Authorization': 'Bearer admin_token' },
+        },
+      ).then((r) => r.json());
+
+      expect(sentryEvents[0]).toMatchObject({
+        message: expect.any(String),
+        exception: {
+          values: expect.arrayContaining([
+            expect.objectContaining({
+              stacktrace: expect.objectContaining({
+                frames: expect.arrayContaining([
+                  expect.objectContaining({ filename: expect.any(String) }),
+                ]),
+              }),
+            }),
+          ]),
+        },
+        tags: expect.objectContaining({
+          correlationId,
+        }),
+      });
+    });
+  });
+
+  describe('DLQ Event Tracing', () => {
+    it('includes correlationId in DLQ events for retryable failures', async () => {
+      // Trigger a transfer failure (creator Stripe disabled)
+      const batchResponse = await fetch(
+        'POST /api/admin/payouts/batch',
+        {
+          method: 'POST',
+          headers: { 'x-correlation-id': correlationId },
+          body: JSON.stringify({ batchDate: new Date().toISOString() }),
+        },
+      ).then((r) => r.json());
+
+      const dlqEvents = await fetch(
+        `GET /admin/dlq?correlationId=${correlationId}`,
+        {
+          headers: { 'Authorization': 'Bearer admin_token' },
+        },
+      ).then((r) => r.json());
+
+      // If batch had failures, DLQ events should include correlationId
+      if (dlqEvents.length > 0) {
+        expect(dlqEvents[0].correlationId).toBe(correlationId);
+      }
+    });
+
+    it('DLQ event preserves correlationId through retry', async () => {
+      // Simulate: transfer fails → DLQ → operator fixes issue → retry
+
+      // 1. Trigger initial request
+      await fetch('POST /api/payment/checkout', {
+        headers: { 'x-correlation-id': correlationId },
+        body: JSON.stringify({ creatorId: 'test_creator' }),
+      });
+
+      // 2. If it failed and queued to DLQ, retry it
+      const dlqEvents = await fetch(
+        `GET /admin/dlq?correlationId=${correlationId}`,
+        {
+          headers: { 'Authorization': 'Bearer admin_token' },
+        },
+      ).then((r) => r.json());
+
+      if (dlqEvents.length > 0) {
+        const dlqEventId = dlqEvents[0].id;
+
+        // 3. Retry DLQ event
+        const retryResponse = await fetch(`POST /api/admin/dlq/${dlqEventId}/retry`, {
+          method: 'POST',
+          headers: { 'x-correlation-id': correlationId },
+        });
+
+        expect(retryResponse.ok).toBe(true);
+
+        // 4. Verify retry includes same correlationId
+        const retryEvent = await retryResponse.json();
+        expect(retryEvent.correlationId).toBe(correlationId);
+      }
+    });
+  });
+
+  describe('Trace Retrieval Endpoint', () => {
+    it('GET /admin/trace/:correlationId returns complete trace history', async () => {
+      // 1. Make a request
+      await fetch('POST /api/payment/checkout', {
+        headers: { 'x-correlation-id': correlationId },
+        body: JSON.stringify({ creatorId: 'test_creator' }),
+      });
+
+      // 2. Wait for all layers to log
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // 3. Retrieve trace
+      const traceResponse = await fetch(
+        `GET /admin/trace/${correlationId}`,
+        {
+          headers: { 'Authorization': 'Bearer admin_token' },
+        },
+      );
+
+      expect(traceResponse.ok).toBe(true);
+      const trace = await traceResponse.json();
+
+      // 4. Verify structure
+      expect(trace).toMatchObject({
+        correlationId,
+        trace: expect.arrayContaining([
+          expect.objectContaining({
+            timestamp: expect.any(String),
+            source: expect.stringMatching(/worker_log|database|sentry|dlq|analytics/),
+            message: expect.any(String),
+          }),
+        ]),
+        summary: expect.objectContaining({
+          totalEntries: expect.any(Number),
+          startTime: expect.any(String),
+          endTime: expect.any(String),
+          errorCount: expect.any(Number),
+          dlqEventCount: expect.any(Number),
+        }),
+      });
+
+      // 5. Verify chrononological order
+      const timestamps = trace.trace.map((t: any) => new Date(t.timestamp).getTime());
+      for (let i = 1; i < timestamps.length; i++) {
+        expect(timestamps[i]).toBeGreaterThanOrEqual(timestamps[i - 1]);
+      }
+    });
+
+    it('trace retrieval completes in <5 seconds', async () => {
+      // Make a complex request with multiple layers
+      await fetch('POST /api/payment/checkout', {
+        headers: { 'x-correlation-id': correlationId },
+        body: JSON.stringify({ creatorId: 'test_creator' }),
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Measure retrieval time
+      const start = performance.now();
+      const traceResponse = await fetch(
+        `GET /admin/trace/${correlationId}`,
+        {
+          headers: { 'Authorization': 'Bearer admin_token' },
+        },
+      );
+      const duration = performance.now() - start;
+
+      expect(traceResponse.ok).toBe(true);
+      expect(duration).toBeLessThan(5000);
+    });
+
+    it('trace includes entries from all layers', async () => {
+      // Trigger an operation that touches multiple layers
+      const response = await fetch('POST /api/payment/checkout', {
+        headers: { 'x-correlation-id': correlationId },
+        body: JSON.stringify({
+          creatorId: 'test_creator',
+          tierId: 'tier_pro',
+        }),
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+
+      const trace = await fetch(`GET /admin/trace/${correlationId}`, {
+        headers: { 'Authorization': 'Bearer admin_token' },
+      }).then((r) => r.json());
+
+      const sources = trace.trace.map((t: any) => t.source);
+
+      // Expect at least these layers
+      expect(sources).toContain('worker_log');
+      expect(sources).toContain('analytics'); // PostHog event
+
+      // If there was database work
+      if (response.ok) {
+        expect(sources).toContain('database');
+      }
+
+      // If there was an error
+      if (!response.ok) {
+        expect(sources).toContain('sentry');
+      }
+    });
+
+    it('trace includes error messages if request failed', async () => {
+      // Trigger an error
+      const response = await fetch('POST /api/payment/checkout', {
+        headers: { 'x-correlation-id': correlationId },
+        body: JSON.stringify({ creatorId: 'invalid' }), // Invalid
+      });
+
+      expect(response.status).toBeGreaterThanOrEqual(400);
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      const trace = await fetch(`GET /admin/trace/${correlationId}`, {
+        headers: { 'Authorization': 'Bearer admin_token' },
+      }).then((r) => r.json());
+
+      // Trace should include error details
+      const errorEntries = trace.trace.filter((t: any) => t.severity === 'error');
+      expect(errorEntries.length).toBeGreaterThan(0);
+      expect(errorEntries[0]).toMatchObject({
+        message: expect.stringMatching(/error|failed|invalid/i),
+      });
+    });
+  });
+
+  describe('Performance & Limits', () => {
+    it('handles high-volume logging without loss', async () => {
+      // Make 10 requests rapidly with same correlationId
+      const promises = Array.from({ length: 10 }, (_, i) =>
+        fetch('POST /api/admin/debug/log-event', {
+          headers: { 'x-correlation-id': correlationId },
+          body: JSON.stringify({ message: `Event ${i}` }),
+        }),
+      );
+
+      await Promise.all(promises);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Retrieve trace
+      const trace = await fetch(`GET /admin/trace/${correlationId}`, {
+        headers: { 'Authorization': 'Bearer admin_token' },
+      }).then((r) => r.json());
+
+      // All events should appear
+      expect(trace.summary.totalEntries).toBeGreaterThanOrEqual(10);
+    });
+
+    it('trace lookups use indexes for performance', async () => {
+      // Make request
+      await fetch('POST /api/payment/checkout', {
+        headers: { 'x-correlation-id': correlationId },
+        body: JSON.stringify({ creatorId: 'test_creator' }),
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Query should use indexes (not full table scans)
+      const start = performance.now();
+      const traceResponse = await fetch(`GET /admin/trace/${correlationId}`, {
+        headers: { 'Authorization': 'Bearer admin_token' },
+      });
+      const duration = performance.now() - start;
+
+      expect(traceResponse.ok).toBe(true);
+      expect(duration).toBeLessThan(500); // Should be sub-500ms with indexes
+    });
+  });
+
+  describe('Multi-Layer Error Scenarios', () => {
+    it('traces database connection error with full context', async () => {
+      // Simulate database connection failure
+      const response = await fetch('POST /api/admin/debug/simulate-db-error', {
+        headers: { 'x-correlation-id': correlationId },
+      });
+
+      expect(response.status).toBeGreaterThanOrEqual(500);
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      const trace = await fetch(`GET /admin/trace/${correlationId}`, {
+        headers: { 'Authorization': 'Bearer admin_token' },
+      }).then((r) => r.json());
+
+      // Trace should show: request → database attempt → error → Sentry
+      expect(trace.trace.length).toBeGreaterThan(2);
+      expect(trace.trace).toContainEqual(
+        expect.objectContaining({
+          source: 'database',
+          message: expect.stringMatching(/connection|error/i),
+        }),
+      );
+      expect(trace.trace).toContainEqual(
+        expect.objectContaining({
+          source: 'sentry',
+          severity: 'error',
+        }),
+      );
+    });
+
+    it('traces Stripe API error through all layers', async () => {
+      // Simulate Stripe API failure
+      const response = await fetch('POST /api/admin/debug/simulate-stripe-error', {
+        headers: { 'x-correlation-id': correlationId },
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      const trace = await fetch(`GET /admin/trace/${correlationId}`, {
+        headers: { 'Authorization': 'Bearer admin_token' },
+      }).then((r) => r.json());
+
+      // Should see: Stripe API error → DLQ (if retryable)
+      expect(trace.trace).toContainEqual(
+        expect.objectContaining({
+          message: expect.stringMatching(/Stripe|api/i),
+        }),
+      );
+    });
+  });
+});

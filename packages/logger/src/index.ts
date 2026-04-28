@@ -126,3 +126,12 @@ export function withRequestId(): MiddlewareHandler {
     await next();
   };
 }
+
+// Re-export correlation ID utilities for full-stack tracing
+export {
+  correlationIdMiddleware,
+  generateCorrelationId,
+  getCorrelationId,
+  createQueryContext,
+  type QueryContext,
+} from './correlation';

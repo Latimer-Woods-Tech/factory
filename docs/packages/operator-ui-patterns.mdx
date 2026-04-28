@@ -1,0 +1,515 @@
+---
+title: Operator UI Pattern Library
+description: Reusable patterns for admin and operational surfaces across all Factory apps. Consistent, accessible, battle-tested components.
+---
+
+# Operator UI Pattern Library
+
+**Last Updated:** April 28, 2026  
+**Phase:** Phase D (T4.3)  
+**Owner:** Platform team (apps/admin-studio)
+
+This library defines patterns for operator (admin/ops) interfaces. All new operator surfaces across the Factory portfolio should implement these patterns to ensure consistency, accessibility, and discoverability.
+
+## Why This Matters
+
+Operators move millions of dollars and affect millions of users. UX inconsistency costs:
+- **Time waste:** Operators learn different patterns for each surface
+- **Errors:** Unfamiliar patterns lead to misclicks
+- **Support burden:** Nonstandard interfaces require custom training
+
+This library eliminates that waste by establishing **one canonical way** to build operator surfaces. All videos, payments, content, and monetization admin tools use these patterns.
+
+---
+
+## Pattern: Tables
+
+### When to Use
+
+Displaying structured data: creator list, payout ledger, user signups, error logs, etc.
+
+### Requirements
+
+- **Sortable columns:** Click header to sort ascending/descending
+- **Filterable rows:** Column-specific filters + global search
+- **Pagination:** Show 25, 50, or 100 rows; jump to page
+- **Re-orderable columns:** Drag header to reorder; persist to localStorage
+- **Consistent spacing:** 16px gutters, 12px padding within cells
+- **Actions column:** Right-aligned; row context menu (three dots)
+- **Empty state:** Illustration + message + CTA when no results
+- **Loading state:** Skeleton UI with pulsing animation
+- **Selectable rows:** Checkboxes for bulk operations
+
+### Example
+
+```tsx
+<OperatorTable
+  columns={[
+    { key: "id", label: "Creator ID", sortable: true, width: 120 },
+    { key: "name", label: "Name", sortable: true, width: 200 },
+    { key: "email", label: "Email", searchable: true, width: 280 },
+    { key: "earnings", label: "Earnings (30d)", sortable: true, width: 150 },
+    { key: "status", label: "Status", filterable: ["active", "inactive", "suspended"], width: 120 },
+  ]}
+  rows={creators}
+  onSort={(key, direction) => fetchCreators({ sortBy: key, sortDir: direction })}
+  onFilter={(filters) => fetchCreators({ filters })}
+  onSelectRows={(ids) => setBulkSelection(ids)}
+  emptyState={{
+    illustration: <SearchIcon />,
+    message: "No creators found",
+    cta: { label: "Reset filters", onClick: () => resetFilters() },
+  }}
+/>
+```
+
+### Component Location
+
+`apps/admin-studio/src/components/operators/OperatorTable.tsx`
+
+---
+
+## Pattern: Filters
+
+### When to Use
+
+Any surface with >10 rows of data. Users need to slice by date, status, category, or text search.
+
+### Requirements
+
+- **Date range picker:** "Last 7 days", "Last 30 days", "Custom range"
+- **Status chips:** Multi-select; click to toggle; visual feedback (filled vs. outlined)
+- **Free-text search:** Debounced; searches across name, email, ID
+- **Reset button:** Clear all filters at once
+- **Saved filters:** (Optional) Save current filter set for later re-use
+- **Visual state:** Show active filter count as badge
+- **Mobile-friendly:** Stack vertically on mobile; horizontal on desktop
+
+### Example
+
+```tsx
+<OperatorFilter
+  dateRange={{ from: "2026-04-01", to: "2026-04-28" }}
+  onDateRangeChange={(from, to) => setFilters({ dateRange: { from, to } })}
+  statusOptions={["active", "inactive", "suspended", "pending"]}
+  selectedStatuses={["active"]}
+  onStatusChange={(statuses) => setFilters({ statuses })}
+  searchQuery=""
+  onSearchChange={(q) => setFilters({ search: q })}
+  onReset={() => resetAllFilters()}
+  saveFilterLabel="Save this filter"
+  onSaveFilter={(name) => saveFilter(name, currentFilters)}
+/>
+```
+
+### Component Location
+
+`apps/admin-studio/src/components/operators/OperatorFilter.tsx`
+
+---
+
+## Pattern: Actions
+
+### When to Use
+
+Every row or bulk selection has outcomes: approve, deny, export, email, resend, retry, etc.
+
+### Requirements
+
+- **Bulk actions row:** Floats above table when rows selected; sticky
+- **Form validation:** Every action triggers validation; errors block submission
+- **Confirmation modal:** High-impact actions (delete, suspend) require confirmation
+- **Retry pattern:** Failed actions show retry button + error message
+- **Undo pattern:** Reversible actions (archive, unsuspend) show "Undo" within 5 seconds
+- **Loading state:** Spinner during submission; disable form during request
+- **Success toast:** Show result count + link to audit log
+- **Error toast:** Show error message + link to support docs
+
+### Example
+
+```tsx
+<OperatorAction
+  action="approve_payout"
+  selectedCount={5}
+  label="Approve Selected Payouts"
+  icon={<CheckIcon />}
+  onSubmit={async (ids) => {
+    const response = await approveBatch(ids);
+    return { success: true, count: response.approved };
+  }}
+  confirmationRequired
+  confirmationTitle="Approve 5 payouts?"
+  confirmationMessage="This cannot be undone. Creators will receive funds within 24 hours."
+  confirmationCta="Approve"
+  onSuccess={(result) => showToast(`Approved ${result.count} payouts`)}
+  onError={(error) => showToast(error.message, "error")}
+/>
+```
+
+### Component Location
+
+`apps/admin-studio/src/components/operators/OperatorAction.tsx`
+
+---
+
+## Pattern: Status Displays
+
+### When to Use
+
+Showing a thing's current state: payout status, creator tier, video transcoding progress, user KYC status, etc.
+
+### Requirements
+
+- **Status badge:** Color-coded (green=good, yellow=warning, red=error), includes icon + text
+- **Timestamp:** When did this status change? ISO 8601 format
+- **Actor:** Who/what triggered the status change (API, manual, automated rule)
+- **Reason:** Tooltip or expandable reason message
+- **Audit trail link:** Click to see full history of this entity
+
+### Color Codes
+
+- **Green (#22c55e):** Active, approved, completed, success
+- **Yellow (#eab308):** Pending, in progress, warning, review needed
+- **Red (#ef4444):** Failed, suspended, blocked, error
+- **Gray (#6b7280):** Inactive, archived, unknown
+
+### Example
+
+```tsx
+<StatusBadge
+  status="pending_payout"
+  label="Pending Payout"
+  timestamp="2026-04-28T14:22:00Z"
+  actor="system"
+  reason="Waiting for 5 more creators to reach $100 minimum"
+  onAuditTrail={() => navigate(`/audit/${entityId}`)}
+/>
+```
+
+### Component Location
+
+`apps/admin-studio/src/components/operators/StatusBadge.tsx`
+
+---
+
+## Pattern: Forms
+
+### When to Use
+
+Creating or updating entities: creator info, payout rules, content guidelines, alert thresholds.
+
+### Requirements
+
+- **Progressive disclosure:** Basic fields always shown; "Advanced options" section for power users
+- **Inline validation:** Show error immediately on blur; green checkmark on valid
+- **Field grouping:** Use sections (hr) and headings to organize
+- **Unsaved changes warning:** Warn before navigating away if form dirty
+- **Auto-save drafts:** Save to localStorage as user types (optional)
+- **Help text:** Beneath each field; use `<HelpText />` component
+- **Submit button:** Disabled until valid; shows spinner during submission
+- **Error summary:** Scroll to top on submit error; show all field errors
+
+### Example
+
+```tsx
+<OperatorForm
+  title="Update Payout Rules"
+  fields={[
+    { name: "minAmount", label: "Minimum Payout", type: "number", required: true, help: "USD" },
+    { name: "frequency", label: "Frequency", type: "select", options: ["weekly", "biweekly", "monthly"], required: true },
+  ]}
+  advancedFields={[
+    { name: "delayDays", label: "Delay (days)", type: "number", help: "Hold funds for N days before processing" },
+  ]}
+  onSubmit={async (formData) => updatePayoutRules(formData)}
+  onSuccess={() => showToast("Payout rules updated")}
+  onError={(error) => showError(error.message)}
+/>
+```
+
+### Component Location
+
+`apps/admin-studio/src/components/operators/OperatorForm.tsx` (wrapper; individual field components in `fields/`)
+
+---
+
+## Pattern: Empty States
+
+### When to Use
+
+No data: filters exhausted results, data loading failed, surface is new.
+
+### Requirements
+
+- **Illustration:** Simple SVG or icon conveying the state (search, sleeping box, error, etc.)
+- **Message:** 1–2 sentences; clear and empathetic
+- **CTA button:** "Reset filters", "Try again", "Learn more"
+- **Optional secondary text:** Subtle explanation or link to docs
+
+### Examples
+
+**No results from search:**
+```tsx
+<EmptyState
+  illustration={<SearchIcon />}
+  message="No creators match your search"
+  cta={{ label: "Clear search", onClick: () => setSearch("") }}
+  secondary="Try a different name or email"
+/>
+```
+
+**Data load failed:**
+```tsx
+<EmptyState
+  illustration={<ErrorIcon />}
+  message="Failed to load creators"
+  cta={{ label: "Retry", onClick: () => refetch() }}
+  secondary={<a href="/docs/runbooks/troubleshooting">Troubleshooting guide</a>}
+/>
+```
+
+### Component Location
+
+`apps/admin-studio/src/components/operators/EmptyState.tsx`
+
+---
+
+## Pattern: Loading States
+
+### When to Use
+
+Data is fetching. Use immediate visual feedback so operators know something is happening.
+
+### Requirements
+
+- **Table loading:** Skeleton rows (10–25 rows); pulsing animation
+- **Action loading:** Spinner inside button; disabled state
+- **Fetch loading:** Skeleton cards or full-page spinner (rare; prefer incremental load)
+- **Progress indicator:** Long-running operations (video transcode, batch payout, etc.)
+
+### Example
+
+```tsx
+<OperatorTable
+  isLoading={true}
+  rows={skeletonRows} // 20 placeholder rows
+  skeleton
+/>
+
+// Or for actions:
+<button disabled={isSubmitting}>
+  {isSubmitting ? <Spinner /> : "Approve Payout"}
+</button>
+
+// Or for long operations:
+<ProgressIndicator
+  total={1000}
+  current={347}
+  label="Processing payouts: 347/1000 (35%)"
+/>
+```
+
+### Component Location
+
+`apps/admin-studio/src/components/operators/SkeletonTable.tsx`, `ProgressIndicator.tsx`
+
+---
+
+## Pattern: Error States
+
+### When to Use
+
+An operation failed and the user needs to understand why and what to do next.
+
+### Requirements
+
+- **Error boundary:** Catch component crashes; show fallback UI + error details (dev mode only)
+- **Inline errors:** Below form field; brief, actionable message
+- **Toast errors:** Network errors, API errors; include error code
+- **Retry option:** Always offer retry for transient failures (network timeout, 503, etc.)
+- **Context link:** Link to relevant runbook or support docs (e.g., "Why did this fail?")
+- **Logging:** Log error to Sentry with context (user ID, action, timestamp)
+
+### Example
+
+```tsx
+<ErrorBoundary fallback={<ErrorFallback />}>
+  <OperatorTable ... />
+</ErrorBoundary>
+
+// Form-level error:
+{error && (
+  <Alert type="error" onRetry={() => retry()}>
+    {error.message}
+    <a href="/docs/runbooks/payout-errors">Why did this happen?</a>
+  </Alert>
+)}
+
+// Toast-level error:
+showToast(error.message || "Something went wrong", {
+  type: "error",
+  action: { label: "Retry", onClick: () => retry() },
+});
+```
+
+### Component Location
+
+`apps/admin-studio/src/components/operators/ErrorBoundary.tsx`, `ErrorAlert.tsx`
+
+---
+
+## Pattern: Audit Trails
+
+### When to Use
+
+Critical operations that operators need to review: payout approvals, creator suspensions, rule changes, refunds issued.
+
+### Requirements
+
+- **Who:** Operator name (or "system" if automated)
+- **What:** Action taken (e.g., "Approved payout #12345")
+- **When:** ISO 8601 timestamp with timezone
+- **Why:** Reason or comment (optional; high-value)
+- **Details:** Expandable row showing full request/response (dev mode; prod redacted)
+- **Search + filter:** By actor, action, date range, entity ID
+- **Export:** CSV export of audit trail (GDPR compliance)
+
+### Example
+
+```tsx
+<AuditTrail
+  entries={auditLog}
+  columns={["actor", "action", "timestamp", "reason"]}
+  onFilter={(filters) => fetchAuditLog(filters)}
+  searchByEntityId={entityId}
+/>
+```
+
+**Audit log entry structure:**
+```json
+{
+  "id": "audit-12345",
+  "actor": "ops@factory.example",
+  "action": "payout_approved",
+  "entity": { "type": "payout", "id": "payout-999" },
+  "timestamp": "2026-04-28T14:22:00Z",
+  "reason": "Batch #234 processing",
+  "changes": { "status": { "from": "pending", "to": "approved" } }
+}
+```
+
+### Component Location
+
+`apps/admin-studio/src/components/operators/AuditTrail.tsx`
+
+---
+
+## Pattern: Runbook Callouts
+
+### When to Use
+
+Embedding operational guidance directly in the UI. E.g., "When you see a red 'stuck' status, follow these steps..."
+
+### Requirements
+
+- **Placement:** Right sidebar or expandable callout near relevant data
+- **Icon:** Question mark, info, warning, or exclamation depending on severity
+- **Title:** "When you see X, do Y"
+- **Steps:** Numbered checklist (1–5 steps max)
+- **Link to full runbook:** "Read full runbook →"
+- **Dismissible:** Operator can close; preference saved to localStorage
+
+### Example
+
+```tsx
+<RunbookSidebar
+  title="When a payout is stuck"
+  icon="warning"
+  steps={[
+    "Check the error log: click 'Details'",
+    "If it's a bank account mismatch, click 'Edit bank info'",
+    "If it's a compliance block, contact compliance team",
+    "Once fixed, click 'Retry'",
+  ]}
+  learnMore="/docs/runbooks/payout-stuck"
+/>
+```
+
+### Component Location
+
+`apps/admin-studio/src/components/operators/RunbookSidebar.tsx`
+
+---
+
+## Implementation Checklist
+
+When building a new operator surface, use this checklist:
+
+- [ ] **Table:** Sortable, filterable, paginated with consistent spacing
+- [ ] **Filters:** Date range, status chips, search, reset, saved filters
+- [ ] **Actions:** Bulk actions, form validation, confirmation, retry, undo
+- [ ] **Status:** Badge (color + text), timestamp, actor, reason, audit link
+- [ ] **Forms:** Progressive disclosure, inline validation, unsaved warning
+- [ ] **Empty states:** Illustration + message + CTA for all states (no results, error, loading)
+- [ ] **Loading:** Skeleton UI or spinner with progress indicator
+- [ ] **Error handling:** Error boundary, inline errors, toast, retry option
+- [ ] **Audit trail:** Who/what/when/why searchable and exportable
+- [ ] **Runbook callouts:** Guidance embedded for operators
+- [ ] **Accessibility:** WCAG 2.2 AA compliant (keyboard nav, screen reader, color contrast)
+- [ ] **Mobile-responsive:** Works on tablet (1024px width minimum)
+- [ ] **Performance:** <1s initial load, fast filter/sort (debounced)
+- [ ] **Analytics:** Track operator actions (approve, deny, export) to PostHog
+
+---
+
+## Component Status
+
+| Component | Location | Status | Used By |
+|-----------|----------|--------|---------|
+| OperatorTable | `components/operators/OperatorTable.tsx` | Stable | Payout ops, Creator admin |
+| OperatorFilter | `components/operators/OperatorFilter.tsx` | Stable | All surfaces |
+| OperatorAction | `components/operators/OperatorAction.tsx` | Stable | Payout ops, Creator admin |
+| StatusBadge | `components/operators/StatusBadge.tsx` | Stable | All surfaces |
+| OperatorForm | `components/operators/OperatorForm.tsx` | Beta | Creator onboarding |
+| EmptyState | `components/operators/EmptyState.tsx` | Stable | All surfaces |
+| SkeletonTable | `components/operators/SkeletonTable.tsx` | Stable | All surfaces |
+| ErrorBoundary | `components/operators/ErrorBoundary.tsx` | Stable | All surfaces |
+| AuditTrail | `components/operators/AuditTrail.tsx` | Beta | Payout ops |
+| RunbookSidebar | `components/operators/RunbookSidebar.tsx` | Beta | Creator admin, DLQ |
+
+---
+
+## Figma Integration
+
+Master components in Figma (linked):
+- [Operator UI Library](https://figma.com/file/...) (factory workspace, read-only for devs)
+  - Button (Primary, Secondary, Danger, Disabled)
+  - Badge (Status: Green/Yellow/Red/Gray)
+  - Table Cell (Text, Icon, Avatar, Action menu)
+  - Filter Chip (Status, Selected, Clearable)
+  - Input (Text, Error state, Placeholder)
+  - Tooltip (Help text, Overflow)
+
+**Design tokens applied:**
+- Color: Factory palette (primary #3b82f6, error #ef4444, success #22c55e)
+- Typography: Factory font stack (system fonts; fallback Helvetica)
+- Spacing: 4px baseline (4, 8, 12, 16, 20, 24 px)
+- Shadows: Minimal; only on elevated surfaces (dropdowns, modals)
+
+---
+
+## Next Steps
+
+1. **Consume this library:** All new operator surfaces use these patterns
+2. **Refinement:** After 3 months of usage, convene design + ops for feedback loop
+3. **Expansion:** Add patterns for multi-step wizards, data import, real-time dashboards
+4. **Testing:** Conduct usability testing with actual operators quarterly
+5. **Docs:** Keep this library in sync with Figma as patterns evolve
+
+---
+
+## Related Docs
+
+- [Frontend Quality Standards](frontend-standards.mdx) — Component design patterns, testing targets
+- [Design Standards](design-standards.mdx) — Color palette, typography, spacing
+- [Definition of Done](../runbooks/definition-of-ready-done.md) — Checklist for component pull requests

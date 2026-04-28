@@ -1,0 +1,285 @@
+# Accessibility Metrics Dashboard Template
+
+**Purpose:** Weekly tracking of WCAG 2.2 AA compliance trends  
+**Audience:** Engineering team, product leadership  
+**Update Frequency:** Weekly (Monday morning)  
+**Owner:** Accessibility Champion  
+
+---
+
+## Setup Instructions
+
+### Option A: GitHub Markdown Table (Recommended)
+File: `docs/dashboards/accessibility-metrics.md`
+
+### Option B: Spreadsheet Integration
+File: `docs/dashboards/accessibility-metrics.csv`
+- Published to GitHub Pages weekly
+- Embeddable chart links
+
+---
+
+## Weekly Metrics Report
+
+**Week of April 28, 2026**
+
+### Summary
+
+| Metric | Week 17 | Week 16 | Change | Target | Status |
+|--------|---------|---------|--------|---------|--------|
+| **WCAG AA Compliance %** | 68% | 68% | — | 90% | 🔴 Off-track |
+| **High-Priority Issues** | 26 | 26 | — | 0 | 🔴 Off-track |
+| **Medium-Priority Issues** | 34 | 34 | — | 0 | 🟡 At-risk |
+| **Low-Priority Issues** | 12 | 12 | — | <5 | 🟡 At-risk |
+| **Keyboard Issues** | 8 | 8 | — | 0 | 🔴 Off-track |
+| **Color Contrast Issues** | 22 | 22 | — | 0 | 🔴 Off-track |
+| **Aria/Semantic Issues** | 18 | 18 | — | 0 | 🔴 Off-track |
+| **Screen Reader Issues** | 8 | 8 | — | 0 | 🔴 Off-track |
+
+### Remediation Timeline
+
+| Phase | Timeline | Compliance | Status |
+|-------|----------|-----------|--------|
+| **Phase 1: Keyboard & Focus** | Week 17–18 | 72% | Starting |
+| **Phase 2: Aria & Semantics** | Week 19–20 | 78% | Scheduled |
+| **Phase 3: Contrast** | Week 21–22 | 82% | Scheduled |
+| **Phase 4: Forms & Validation** | Week 23–24 | 87% | Scheduled |
+| **Phase 5: Content & Testing** | Week 25–26 | 90% | Scheduled |
+
+### Recent Activity
+
+**Merged PRs (Week 17):**
+- [ ] None yet (Phase 1 starting)
+
+**In Review:**
+- [ ] None yet
+
+**Blockers:**
+- None
+
+### Next Week Goals (Week 18)
+
+- [ ] Merge 3–4 PRs fixing keyboard traps and focus indicators
+- [ ] Estimated compliance: 72%
+- [ ] Team training session (1 hour)
+
+---
+
+## Compliance Trend Graph
+
+```
+WCAG 2.2 AA Compliance Trend (Target: 90% by June 30)
+
+100% |                                    🎯
+ 90% |                            ╱────────
+ 80% |              ╱─────────────
+ 70% |             ╱
+ 68% | ────────────
+ 60% |
+     ├─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┤
+     W17   W18   W19   W20   W21   W22   W23   W24   W25   W26
+     Apr28 May5  May12 May19 May26 Jun2  Jun9  Jun16 Jun23 Jun30
+     
+Legend:
+  ─ = Actual compliance
+  ╱ = Target trend
+  🎯 = Target (90% by June 30)
+```
+
+---
+
+## Issues by Category
+
+### Keyboard Navigation
+
+| Issue | Count | Priority | Status |
+|-------|-------|----------|--------|
+| Keyboard traps (modal, overlay) | 4 | High | Fixing W17 |
+| Missing keyboard shortcuts | 6 | High | Fixing W18 |
+| No focus indicator | 8 | High | Fixing W17 |
+| Tab order incorrect | 3 | High | Fixing W18 |
+| Keyboard: No trap | 2 | High | Fixing W18 |
+| **Subtotal** | **23** | | |
+
+### Color & Contrast
+
+| Issue | Count | Priority | Status |
+|-------|-------|----------|--------|
+| Text contrast <7:1 | 18 | High | Fixing W21 |
+| Non-text contrast <3:1 | 4 | High | Fixing W21 |
+| Color-only status indicator | 6 | Medium | Fixing W21 |
+| **Subtotal** | **28** | | |
+
+### Aria & Semantics
+
+| Issue | Count | Priority | Status |
+|-------|-------|----------|--------|
+| Missing aria-label | 8 | High | Fixing W19 |
+| Missing semantic HTML | 5 | High | Fixing W19 |
+| No role="alert" on errors | 4 | High | Fixing W19 |
+| Aria-live missing | 3 | Medium | Fixing W20 |
+| **Subtotal** | **20** | | |
+
+### Screen Reader
+
+| Issue | Count | Priority | Status |
+|-------|-------|----------|--------|
+| Missing alt text | 5 | High | Fixing W20 |
+| No image descriptions | 3 | Medium | Fixing W24 |
+| **Subtotal** | **8** | | |
+
+### Total Issues by Journey
+
+| Journey | High | Medium | Low | Compliance |
+|---------|------|--------|-----|-----------|
+| 1: Anonymous Viewer | 8 | 6 | 2 | 52% |
+| 2: Creator Signup | 7 | 5 | 1 | 60% |
+| 3: Subscription Checkout | 6 | 5 | 1 | 64% |
+| 4: Unlock Purchase (PPV) | 8 | 6 | 2 | 56% |
+| 5: Creator Upload | 5 | 4 | 1 | 68% |
+| 6: Admin Dashboard | 4 | 3 | 1 | 72% |
+| 7: Stripe Connect | 6 | 4 | 2 | 64% |
+| 8: Payout Operations | 3 | 3 | 1 | 76% |
+
+---
+
+## Team Performance
+
+### Accessibility Reviews (Per Developer)
+
+| Developer | PRs Reviewed | Avg A11y Issues | Coaching Needed |
+|-----------|-------------|-----------------|-----------------|
+| @alice | 8 | 0.2 | None |
+| @bob | 6 | 1.5 | Color contrast |
+| @charlie | 5 | 2.1 | Aria labels |
+| @diana | 4 | 0.8 | None |
+
+---
+
+## Testing Coverage
+
+| Test Type | Frequency | Status | Responsibility |
+|-----------|-----------|--------|-----------------|
+| **Keyboard Navigation** | Weekly | Starting W17 | All developers |
+| **Screen Reader (NVDA)** | Biweekly | Starting W17 | @accessibility-champion |
+| **Color Contrast** | Per PR | Starting W17 | Axe CI |
+| **Automated (Axe)** | Per commit | Starting W17 | CI/CD |
+
+---
+
+## Risks & Mitigation
+
+| Risk | Impact | Likelihood | Mitigation |
+|------|--------|-----------|-----------|
+| Keyboard fixes introduce regressions | Re-test entire app | Medium | Extensive QA in W17 |
+| Color contrast conflicts with brand | Design rework needed | Low | Champion + design sign-off |
+| Screen reader tool not working | Blockers on testing | Low | Test tools in W17 setup |
+| Team burnout from tight timeline | Quality issues | Medium | Realistic scope per sprint |
+
+---
+
+## Resource Allocation
+
+| Week | Lead (hrs) | Support (hrs) | QA (hrs) | Total |
+|-----|-----------|--------------|---------|-------|
+| W17–18 | 16 | 8 | — | 24 |
+| W19–20 | 12 | 12 | — | 24 |
+| W21–22 | 12 | 12 | — | 24 |
+| W23–24 | 8 | 12 | — | 20 |
+| W25–26 | 4 | 8 | 8 | 20 |
+
+---
+
+## Compliance Breakdown (Current: 68%)
+
+### Passing Criteria (17/25)
+
+✅ **2.4.3 Focus Order** — Logical tab order maintained  
+✅ **2.4.7 Focus Visible** — Some focus indicators present  
+✅ **3.1.1 Language** — Page lang attribute set  
+✅ **3.3.2 Form Labels** — Most labels associated  
+✅ **1.5.8 Color Independence** — Not color-dependent  
+✅ **[And 12 more...]**
+
+### At-Risk Criteria (5/25)
+
+⚠️ **1.4.3 Contrast** — 22 issues (need fixes)  
+⚠️ **2.1.1 Keyboard** — 6 missing shortcuts  
+⚠️ **2.1.2 No Trap** — 4 keyboard traps  
+⚠️ **4.1.2 Name, Role, Value** — 8 missing aria-labels  
+⚠️ **1.1.1 Alt Text** — 5 missing descriptions  
+
+### Failing Criteria (3/25)
+
+❌ **3.3.3 Error Suggestion** — No error help text  
+❌ **4.1.3 Status Messages** — Not announced  
+❌ **2.1.4 Keyboard Shortcuts** — Not documented  
+
+---
+
+## Monthly Snapshot Template
+
+**Update at end of each month:**
+
+```
+## Month: May 2026
+
+- **Start Compliance:** 68%
+- **End Compliance:** 78% ✓
+- **Issues Closed:** 18 (high-priority)
+- **PRs Merged:** 12
+- **Blockers:** None
+- **Team Satisfaction:** 8/10 (survey)
+
+## Highlights
+- Keyboard navigation fixes merged successfully
+- NVDA screen reader testing started (3 complete)
+- No production accessibility regressions
+
+## Challenges
+- Color contrast fixes took longer (design review needed)
+- 2 developers needed extra training on aria-live
+
+## Next Month Focus
+- Semantic HTML cleanup
+- Form validation announcements
+- Prepare for 85% target (June)
+```
+
+---
+
+## How to Use This Dashboard
+
+1. **Weekly Update** (Monday AM) — Champion updates metrics from issue tracker
+2. **Team Review** — Shared in Slack #accessibility channel
+3. **Monthly Sync** — Presented in company all-hands or team meeting
+4. **Quarterly Review** — Trend analysis + retrospective
+
+---
+
+## Data Sources
+
+- **Compliance %:** Calculated from audit report + closed issues
+- **Issue Count:** GitHub issue tracker (labeled `a11y`, prioritized)
+- **PRs Reviewed:** GitHub PR analytics
+- **Team Performance:** Internal review tracking
+- **Testing Data:** Axe CI reports + manual test logs
+
+---
+
+## Connecting to PostHog/Sentry
+
+*Optional: If you have instrumentation*
+
+```
+# Add to analytics
+- A11y test pass rate: 100% (0 Axe violations)
+- Keyboard navigation: Started W17
+- Screen reader usage: 0.3% of traffic (baseline)
+```
+
+---
+
+**Dashboard Created:** April 28, 2026  
+**First Update:** May 5, 2026  
+**Refresh Cycle:** Weekly (Mondays)
