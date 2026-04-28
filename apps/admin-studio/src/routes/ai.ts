@@ -12,8 +12,8 @@
  * proposals once the editor + commit-to-branch flow lands.
  */
 import { Hono } from 'hono';
-import { stream as anthropicStream } from '@adrper79-dot/llm';
-import type { AIChatEvent, AIChatRequest } from '@adrper79-dot/studio-core';
+import { complete, stream as anthropicStream } from '@adrper79-dot/llm';
+import type { AIChatEvent, AIChatRequest, AIProposal, AIProposalRequest } from '@adrper79-dot/studio-core';
 import type { AppEnv } from '../types.js';
 
 const ai = new Hono<AppEnv>();
@@ -177,8 +177,103 @@ ai.post('/chat', async (c) => {
   });
 });
 
-ai.post('/proposals', (c) =>
-  c.json({ error: 'not implemented', detail: 'Diff proposals land in Phase D.2.' }, 501),
-);
+ai.post('/proposals', async (c) => {
+  const body = await c.req.json<AIProposalRequest>();
+  if (!body.path || !body.instruction || typeof body.before !== 'string') {
+    return c.json({ error: 'path + instruction + before required' }, 400);
+  }
+  if (!c.env.ANTHROPIC_API_KEY) {
+    return c.json({ error: 'ANTHROPIC_API_KEY not configured' }, 503);
+  }
+
+  const language = body.language ?? guessLanguage(body.path);
+  const system = [
+    'You are an automated code-edit assistant for the Factory monorepo.',
+    'You will receive a single file and an instruction. Produce the FULL revised file content.',
+    'Honour Factory standing orders: Cloudflare Workers, Hono, Drizzle, Web Crypto JWT, ESM-only,',
+    'no process.env, no Node built-ins, no Buffer, no jsonwebtoken.',
+    '',
+    'Output STRICTLY in this format and nothing else:',
+    '<<<RATIONALE>>>',
+    'one short paragraph explaining what changed and why',
+    '<<<AFTER>>>',
+    `\`\`\`${language}`,
+    'the full updated file content',
+    '```',
+    '',
+    'Do not add prose outside those markers.',
+  ].join('\n');
+
+  const userPrompt = [
+    `File: ${body.path}`,
+    `Instruction: ${body.instruction}`,
+    '',
+    'Current content:',
+    `\`\`\`${language}`,
+    truncate(body.before, 16000),
+    '```',
+  ].join('\n');
+
+  const result = await complete(
+    [{ role: 'user', content: userPrompt }],
+    {
+      ANTHROPIC_API_KEY: c.env.ANTHROPIC_API_KEY,
+      GROK_API_KEY: c.env.XAI_API_KEY ?? '',
+      GROQ_API_KEY: c.env.GROQ_API_KEY ?? '',
+    },
+    { system, maxTokens: 4096, temperature: 0.2 },
+  );
+
+  if (result.error || !result.data) {
+    return c.json({ error: 'llm failed', detail: result.error?.message }, 502);
+  }
+
+  const parsed = parseProposal(result.data.content, body);
+  if (!parsed) {
+    return c.json(
+      { error: 'model returned malformed proposal', raw: result.data.content.slice(0, 500) },
+      502,
+    );
+  }
+  const proposal: AIProposal = parsed;
+  return c.json({ proposal, provider: result.data.provider, tokens: result.data.tokens });
+});
+
+/**
+ * Pull the rationale + new file content out of the model's structured reply.
+ * Returns null if the markers are missing or we cannot find a fenced block.
+ */
+function parseProposal(raw: string, req: AIProposalRequest): AIProposal | null {
+  const ratIdx = raw.indexOf('<<<RATIONALE>>>');
+  const afterIdx = raw.indexOf('<<<AFTER>>>');
+  if (ratIdx === -1 || afterIdx === -1 || afterIdx < ratIdx) return null;
+
+  const rationale = raw.slice(ratIdx + '<<<RATIONALE>>>'.length, afterIdx).trim();
+  const afterSection = raw.slice(afterIdx + '<<<AFTER>>>'.length);
+
+  const fenceMatch = afterSection.match(/```[a-zA-Z0-9_-]*\n([\s\S]*?)```/);
+  if (!fenceMatch || !fenceMatch[1]) return null;
+  const after = fenceMatch[1].replace(/\n$/, '');
+
+  return { path: req.path, before: req.before, after, rationale };
+}
+
+function guessLanguage(path: string): string {
+  const ext = path.toLowerCase().split('.').pop() ?? '';
+  switch (ext) {
+    case 'ts':
+    case 'tsx': return 'typescript';
+    case 'js':
+    case 'jsx': return 'javascript';
+    case 'json': return 'json';
+    case 'md': return 'markdown';
+    case 'sql': return 'sql';
+    case 'yml':
+    case 'yaml': return 'yaml';
+    case 'css': return 'css';
+    case 'html': return 'html';
+    default: return 'text';
+  }
+}
 
 export default ai;

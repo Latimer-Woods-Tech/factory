@@ -122,3 +122,82 @@ export type AIChatEvent =
       provider: 'anthropic' | 'grok' | 'groq';
       tokens?: { input: number; output: number };
     };
+
+/**
+ * Body for `POST /repo/commit`.
+ *
+ * Studio refuses to commit to `main` server-side; the UI also disables the
+ * commit panel when the active branch is the default. `baseSha` is the
+ * blob SHA of the file as last read — GitHub uses it for optimistic
+ * concurrency control.
+ */
+export interface RepoCommitRequest {
+  /** Branch to commit to. Must NOT be `main` or a protected branch. */
+  branch: string;
+  path: string;
+  /** Full new file contents (UTF-8). */
+  content: string;
+  /** Existing blob SHA (omit when creating a new file). */
+  baseSha?: string;
+  message: string;
+}
+
+export interface RepoCommitResponse {
+  /** SHA of the new commit. */
+  commitSha: string;
+  /** SHA of the new blob. */
+  blobSha: string;
+  branch: string;
+  path: string;
+}
+
+/**
+ * Body for `POST /repo/pull-requests`.
+ */
+export interface RepoOpenPRRequest {
+  /** Source branch (must already exist). */
+  head: string;
+  /** Target branch — defaults to `main`. */
+  base?: string;
+  title: string;
+  body?: string;
+  draft?: boolean;
+}
+
+/**
+ * Body for `POST /repo/branches`.
+ */
+export interface RepoCreateBranchRequest {
+  name: string;
+  /** Branch or commit SHA to fork from — defaults to `main`. */
+  from?: string;
+}
+
+/**
+ * Body for `POST /ai/proposals`.
+ *
+ * The model is asked to return a unified diff against the file content
+ * the UI passes in. The Worker normalises whatever the model emits into
+ * a {@link AIProposal} so the UI doesn't have to parse free-form output.
+ */
+export interface AIProposalRequest {
+  path: string;
+  /** Original file content the model must diff against. */
+  before: string;
+  /** What the user wants done — usually a chat turn. */
+  instruction: string;
+  language?: string;
+}
+
+/**
+ * Result of `POST /ai/proposals` — a single text edit proposal.
+ */
+export interface AIProposal {
+  path: string;
+  /** Original content (echoed for client-side diffing). */
+  before: string;
+  /** Proposed full file content. */
+  after: string;
+  /** Free-form rationale from the model. */
+  rationale: string;
+}

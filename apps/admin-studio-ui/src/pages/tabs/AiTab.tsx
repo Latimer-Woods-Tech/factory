@@ -1,15 +1,25 @@
 /**
- * Phase D — AI chat tab.
+ * Phase D.2 — AI chat tab.
  *
- * Streaming SSE consumer for `POST /ai/chat`. Uses fetch + ReadableStream
- * (EventSource is GET-only). Renders token-by-token with mode buttons and
- * conversation history. Optional code context can be supplied free-form;
- * Phase D.2 will wire CodeTab → AiTab so the active file flows through.
+ * Streaming SSE consumer for `POST /ai/chat` plus structured
+ * `POST /ai/proposals` for diff-based code edits.
+ *
+ * The right-hand panel auto-pulls the active CodeTab file (via
+ * `useActiveFile`) so chats and proposals run against whatever the user is
+ * editing. Approving a proposal calls `useActiveFile.edit(after)` which marks
+ * the file dirty, after which the user commits via CodeTab's commit panel.
  */
 import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { AIChatEvent, AIChatMode, AIChatTurn } from '@adrper79-dot/studio-core';
+import type {
+  AIChatEvent,
+  AIChatMode,
+  AIChatTurn,
+  AIProposal,
+} from '@adrper79-dot/studio-core';
 import { useSession } from '../../stores/session.js';
+import { useActiveFile } from '../../stores/activeFile.js';
+import { apiFetch } from '../../lib/api.js';
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api';
 
@@ -24,15 +34,19 @@ function turn(role: 'user' | 'assistant', content: string): AIChatTurn {
 }
 
 export function AiTab() {
+  const active = useActiveFile();
   const [history, setHistory] = useState<AIChatTurn[]>([]);
   const [prompt, setPrompt] = useState('');
   const [mode, setMode] = useState<AIChatMode>('generate');
-  const [contextPath, setContextPath] = useState('');
-  const [contextSnippet, setContextSnippet] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [partial, setPartial] = useState('');
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Proposal state.
+  const [proposalBusy, setProposalBusy] = useState(false);
+  const [proposal, setProposal] = useState<AIProposal | null>(null);
+  const [proposalError, setProposalError] = useState<string | null>(null);
 
   async function send() {
     if (!prompt.trim() || streaming) return;
@@ -51,8 +65,12 @@ export function AiTab() {
     const body = {
       mode,
       history: nextHistory,
-      context: contextPath || contextSnippet
-        ? { path: contextPath || undefined, snippet: contextSnippet || undefined }
+      context: active.path
+        ? {
+            path: active.path,
+            // Truncate generously here; server caps at 8 KB.
+            snippet: active.draftText.slice(0, 8000),
+          }
         : undefined,
     };
 
@@ -130,6 +148,43 @@ export function AiTab() {
     setError(null);
   }
 
+  async function requestProposal() {
+    if (!active.path || !prompt.trim() || proposalBusy) {
+      setProposalError(
+        !active.path
+          ? 'Open a file in the Code tab first'
+          : 'Type an instruction in the prompt box',
+      );
+      return;
+    }
+    setProposalBusy(true);
+    setProposalError(null);
+    setProposal(null);
+    try {
+      const r = await apiFetch<{ proposal: AIProposal }>('/ai/proposals', {
+        method: 'POST',
+        body: JSON.stringify({
+          path: active.path,
+          before: active.draftText,
+          instruction: prompt.trim(),
+          language: active.language,
+        }),
+      });
+      setProposal(r.proposal);
+    } catch (err) {
+      setProposalError((err as Error).message);
+    } finally {
+      setProposalBusy(false);
+    }
+  }
+
+  function applyProposal() {
+    if (!proposal) return;
+    active.edit(proposal.after);
+    setProposal(null);
+    setPrompt('');
+  }
+
   return (
     <div className="flex h-[calc(100vh-92px)] gap-4">
       <section className="flex-1 flex flex-col rounded border border-slate-800 bg-slate-900 min-w-0">
@@ -198,11 +253,19 @@ export function AiTab() {
               }
             }}
             disabled={streaming}
-            placeholder="Ask… (Cmd/Ctrl+Enter to send)"
+            placeholder="Ask… (Cmd/Ctrl+Enter to send chat; click Propose for a diff)"
             rows={3}
             className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm font-mono text-slate-100 resize-none disabled:opacity-50"
           />
-          <div className="mt-2 flex justify-end">
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              onClick={() => void requestProposal()}
+              disabled={proposalBusy || streaming || !prompt.trim() || !active.path}
+              title={!active.path ? 'Open a file in the Code tab first' : 'Generate a code diff'}
+              className="text-xs px-3 py-1.5 rounded bg-indigo-700 hover:bg-indigo-600 text-white disabled:opacity-40"
+            >
+              {proposalBusy ? 'Proposing…' : 'Propose diff'}
+            </button>
             <button
               onClick={() => void send()}
               disabled={streaming || !prompt.trim()}
@@ -214,24 +277,53 @@ export function AiTab() {
         </footer>
       </section>
 
-      <aside className="w-80 shrink-0 flex flex-col rounded border border-slate-800 bg-slate-900 p-3 gap-3">
-        <h3 className="text-xs uppercase tracking-wide text-slate-500">Code context (optional)</h3>
-        <input
-          value={contextPath}
-          onChange={(e) => setContextPath(e.target.value)}
-          placeholder="e.g. apps/admin-studio/src/index.ts"
-          className="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-slate-100"
-        />
-        <textarea
-          value={contextSnippet}
-          onChange={(e) => setContextSnippet(e.target.value)}
-          placeholder="Paste relevant code…"
-          rows={12}
-          className="flex-1 bg-slate-950 border border-slate-700 rounded p-2 text-[11px] font-mono text-slate-100 resize-none"
-        />
-        <p className="text-[11px] text-slate-500">
-          Truncated to 8 KB server-side. Phase D.2 pipes the active CodeTab file in here automatically.
-        </p>
+      <aside className="w-96 shrink-0 flex flex-col rounded border border-slate-800 bg-slate-900 p-3 gap-3 overflow-auto">
+        <h3 className="text-xs uppercase tracking-wide text-slate-500">Active file</h3>
+        {active.path ? (
+          <div className="text-xs space-y-1">
+            <p className="font-mono text-slate-200 break-all">{active.path}</p>
+            <p className="text-slate-500">
+              {active.branch} · {active.language} · {active.draftText.length} chars
+              {active.dirty && <span className="text-amber-400"> · dirty</span>}
+            </p>
+          </div>
+        ) : (
+          <p className="text-slate-500 text-xs">No file open. Pick one in the Code tab.</p>
+        )}
+
+        <div className="border-t border-slate-800 pt-3">
+          <h3 className="text-xs uppercase tracking-wide text-slate-500 mb-2">Proposal</h3>
+          {proposalError && <p className="text-rose-400 text-xs mb-2">⚠ {proposalError}</p>}
+          {!proposal && !proposalBusy && (
+            <p className="text-slate-500 text-xs">
+              Type an instruction in the chat box and click <span className="text-indigo-300">Propose diff</span>
+              {' '}to get a structured rewrite of the active file.
+            </p>
+          )}
+          {proposalBusy && <p className="text-slate-500 text-xs">Generating proposal…</p>}
+          {proposal && (
+            <div className="space-y-2">
+              <p className="text-[11px] text-slate-300 italic whitespace-pre-wrap">
+                {proposal.rationale}
+              </p>
+              <DiffView before={proposal.before} after={proposal.after} />
+              <div className="flex gap-2">
+                <button
+                  onClick={applyProposal}
+                  className="text-xs px-3 py-1.5 rounded bg-emerald-700 hover:bg-emerald-600 text-white"
+                >
+                  Apply (marks dirty)
+                </button>
+                <button
+                  onClick={() => setProposal(null)}
+                  className="text-xs px-3 py-1.5 rounded bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </aside>
     </div>
   );
@@ -253,4 +345,73 @@ function Bubble(props: { role: 'user' | 'assistant'; streaming?: boolean; childr
       </div>
     </div>
   );
+}
+
+/**
+ * Lightweight line-level diff viewer. Computes a longest-common-subsequence
+ * between before/after and renders +/- gutter markers. Not a full Myers diff
+ * but adequate for review-then-apply UX.
+ */
+function DiffView(props: { before: string; after: string }) {
+  const beforeLines = props.before.split('\n');
+  const afterLines = props.after.split('\n');
+  const ops = lineDiff(beforeLines, afterLines);
+  return (
+    <pre className="text-[11px] font-mono leading-snug border border-slate-800 rounded bg-slate-950 max-h-[40vh] overflow-auto">
+      {ops.map((op, i) => (
+        <div
+          key={i}
+          className={
+            op.kind === 'add'
+              ? 'bg-emerald-900/30 text-emerald-200'
+              : op.kind === 'del'
+                ? 'bg-rose-900/30 text-rose-200'
+                : 'text-slate-400'
+          }
+        >
+          <span className="select-none px-1 text-slate-500">
+            {op.kind === 'add' ? '+' : op.kind === 'del' ? '-' : ' '}
+          </span>
+          {op.text || ' '}
+        </div>
+      ))}
+    </pre>
+  );
+}
+
+interface DiffOp { kind: 'add' | 'del' | 'eq'; text: string }
+
+function lineDiff(a: readonly string[], b: readonly string[]): DiffOp[] {
+  const m = a.length;
+  const n = b.length;
+  // LCS DP table — bounded by file size; proposals capped at 16 KB so this is tiny.
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array<number>(n + 1).fill(0));
+  for (let i = m - 1; i >= 0; i -= 1) {
+    for (let j = n - 1; j >= 0; j -= 1) {
+      if (a[i] === b[j]) {
+        dp[i]![j] = (dp[i + 1]![j + 1] ?? 0) + 1;
+      } else {
+        dp[i]![j] = Math.max(dp[i + 1]![j] ?? 0, dp[i]![j + 1] ?? 0);
+      }
+    }
+  }
+  const ops: DiffOp[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < m && j < n) {
+    if (a[i] === b[j]) {
+      ops.push({ kind: 'eq', text: a[i]! });
+      i += 1;
+      j += 1;
+    } else if ((dp[i + 1]![j] ?? 0) >= (dp[i]![j + 1] ?? 0)) {
+      ops.push({ kind: 'del', text: a[i]! });
+      i += 1;
+    } else {
+      ops.push({ kind: 'add', text: b[j]! });
+      j += 1;
+    }
+  }
+  while (i < m) ops.push({ kind: 'del', text: a[i++]! });
+  while (j < n) ops.push({ kind: 'add', text: b[j++]! });
+  return ops;
 }

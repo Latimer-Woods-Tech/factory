@@ -1,17 +1,24 @@
 /**
- * Phase D — Code tab.
+ * Phase D.2 — Code tab with Monaco editor + commit panel.
  *
- * Read-only file browser backed by `/repo/*` worker routes. Phase D.2 adds
- * Monaco for editing + commit/PR. For now the viewer is a syntax-light
- * `<pre>` so we can ship the GitHub plumbing without the 3MB editor bundle.
+ * Reads/writes drift through `useActiveFile` so AiTab can pick up the same
+ * file context. Writes to protected branches (e.g. `main`) are blocked
+ * client-side AND server-side; users must commit to a feature branch and
+ * open a PR.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type {
   RepoBranch,
+  RepoCommitResponse,
   RepoFileContent,
   RepoTreeNode,
 } from '@adrper79-dot/studio-core';
 import { apiFetch } from '../../lib/api.js';
+import { useActiveFile, guessLanguage } from '../../stores/activeFile.js';
+
+const MonacoEditor = lazy(() =>
+  import('@monaco-editor/react').then((m) => ({ default: m.default })),
+);
 
 interface TreeFolder {
   name: string;
@@ -45,53 +52,64 @@ function buildTree(nodes: readonly RepoTreeNode[]): TreeFolder {
 }
 
 export function CodeTab() {
+  const active = useActiveFile();
   const [branches, setBranches] = useState<RepoBranch[]>([]);
+  const [branchesTick, setBranchesTick] = useState(0);
   const [ref, setRef] = useState<string>('main');
   const [tree, setTree] = useState<RepoTreeNode[]>([]);
   const [treeLoading, setTreeLoading] = useState(false);
   const [treeError, setTreeError] = useState<string | null>(null);
-  const [openPath, setOpenPath] = useState<string | null>(null);
-  const [file, setFile] = useState<RepoFileContent | null>(null);
   const [fileLoading, setFileLoading] = useState(false);
+  const [fileMeta, setFileMeta] = useState<RepoFileContent | null>(null);
 
   useEffect(() => {
     apiFetch<{ branches: RepoBranch[] }>('/repo/branches')
       .then((r) => setBranches(r.branches))
       .catch((err) => setTreeError((err as Error).message));
-  }, []);
+  }, [branchesTick]);
 
   useEffect(() => {
     let cancelled = false;
     setTreeLoading(true);
     setTreeError(null);
-    apiFetch<{ nodes: RepoTreeNode[]; truncated: boolean }>(`/repo/tree?ref=${encodeURIComponent(ref)}`)
-      .then((r) => {
-        if (cancelled) return;
-        setTree(r.nodes);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setTreeError((err as Error).message);
-      })
-      .finally(() => {
-        if (!cancelled) setTreeLoading(false);
-      });
+    apiFetch<{ nodes: RepoTreeNode[]; truncated: boolean }>(
+      `/repo/tree?ref=${encodeURIComponent(ref)}`,
+    )
+      .then((r) => !cancelled && setTree(r.nodes))
+      .catch((err) => !cancelled && setTreeError((err as Error).message))
+      .finally(() => !cancelled && setTreeLoading(false));
     return () => {
       cancelled = true;
     };
   }, [ref]);
 
   async function openFile(path: string) {
-    setOpenPath(path);
-    setFile(null);
+    if (active.dirty && !confirm('Discard unsaved changes?')) return;
     setFileLoading(true);
+    setFileMeta(null);
     try {
       const r = await apiFetch<{ file: RepoFileContent }>(
         `/repo/file?path=${encodeURIComponent(path)}&ref=${encodeURIComponent(ref)}`,
       );
-      setFile(r.file);
+      setFileMeta(r.file);
+      if (!r.file.binary && r.file.text !== undefined) {
+        active.open({
+          path: r.file.path,
+          branch: ref,
+          language: guessLanguage(r.file.path),
+          baseSha: r.file.sha,
+          text: r.file.text,
+        });
+      }
     } catch (err) {
-      setFile({ path, ref, sha: '', binary: true, size: 0, text: `Error: ${(err as Error).message}` });
+      setFileMeta({
+        path,
+        ref,
+        sha: '',
+        binary: true,
+        size: 0,
+        text: `Error: ${(err as Error).message}`,
+      });
     } finally {
       setFileLoading(false);
     }
@@ -101,9 +119,9 @@ export function CodeTab() {
 
   return (
     <div className="flex h-[calc(100vh-92px)] gap-4">
-      <aside className="w-80 shrink-0 flex flex-col rounded border border-slate-800 bg-slate-900">
+      <aside className="w-72 shrink-0 flex flex-col rounded border border-slate-800 bg-slate-900">
         <div className="border-b border-slate-800 p-2">
-          <label className="text-[11px] uppercase tracking-wide text-slate-500">Branch</label>
+          <label className="text-[11px] uppercase tracking-wide text-slate-500">View branch</label>
           <select
             value={ref}
             onChange={(e) => setRef(e.target.value)}
@@ -121,38 +139,216 @@ export function CodeTab() {
           {treeLoading && <p className="text-slate-500">Loading tree…</p>}
           {treeError && <p className="text-rose-400">{treeError}</p>}
           {!treeLoading && !treeError && (
-            <FolderNode folder={root} depth={0} onPick={openFile} active={openPath} initialOpen />
+            <FolderNode folder={root} depth={0} onPick={openFile} active={active.path} initialOpen />
           )}
         </div>
       </aside>
 
       <section className="flex-1 flex flex-col rounded border border-slate-800 bg-slate-900 min-w-0">
         <header className="border-b border-slate-800 px-3 py-2 text-xs text-slate-400 flex items-center gap-2">
-          {openPath ? (
+          {active.path ? (
             <>
-              <span className="font-mono text-slate-200 truncate">{openPath}</span>
-              {file && !file.binary && (
-                <span className="ml-auto text-slate-500">{file.size} bytes</span>
+              <span className="font-mono text-slate-200 truncate">{active.path}</span>
+              {active.dirty && (
+                <span className="text-amber-400 text-[10px] uppercase">● dirty</span>
               )}
+              <span className="ml-auto text-slate-500">{active.draftText.length} chars</span>
             </>
+          ) : fileMeta?.binary ? (
+            <span className="font-mono text-slate-200">{fileMeta.path} — binary file</span>
           ) : (
-            <span>Select a file to view its contents.</span>
+            <span>Select a file to edit.</span>
           )}
         </header>
-        <div className="flex-1 overflow-auto">
+
+        <div className="flex-1 min-h-0">
           {fileLoading && <p className="p-4 text-sm text-slate-500">Loading…</p>}
-          {file && file.binary && (
+          {fileMeta?.binary && (
             <p className="p-4 text-sm text-slate-400">
-              Binary or oversized file — preview disabled. Phase D.2 will surface a download link.
+              Binary or oversized file — preview disabled.
             </p>
           )}
-          {file && !file.binary && file.text !== undefined && (
-            <pre className="p-3 text-[12px] leading-snug font-mono text-slate-200 whitespace-pre overflow-auto">
-              {file.text}
-            </pre>
+          {active.path && !fileMeta?.binary && (
+            <Suspense fallback={<p className="p-4 text-sm text-slate-500">Loading editor…</p>}>
+              <MonacoEditor
+                height="100%"
+                language={active.language}
+                value={active.draftText}
+                theme="vs-dark"
+                onChange={(v) => active.edit(v ?? '')}
+                options={{
+                  fontSize: 12,
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  tabSize: 2,
+                }}
+              />
+            </Suspense>
           )}
         </div>
+
+        {active.path && !fileMeta?.binary && (
+          <CommitPanel
+            branches={branches}
+            onBranchCreated={() => setBranchesTick((t) => t + 1)}
+          />
+        )}
       </section>
+    </div>
+  );
+}
+
+function CommitPanel(props: {
+  branches: RepoBranch[];
+  onBranchCreated: () => void;
+}) {
+  const active = useActiveFile();
+  const writableBranches = props.branches.filter((b) => !b.isDefault && !b.protected);
+  const [commitBranch, setCommitBranch] = useState<string>('');
+  const [newBranchName, setNewBranchName] = useState<string>('');
+  const [creatingBranch, setCreatingBranch] = useState(false);
+  const [message, setMessage] = useState<string>('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Default commit-target to first writable branch.
+  useEffect(() => {
+    if (!commitBranch && writableBranches.length > 0) {
+      setCommitBranch(writableBranches[0]!.name);
+    }
+  }, [writableBranches, commitBranch]);
+
+  async function commit() {
+    if (!active.path || busy) return;
+    if (!commitBranch) {
+      setError('Pick or create a branch first');
+      return;
+    }
+    if (!message.trim()) {
+      setError('Commit message required');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const r = await apiFetch<RepoCommitResponse>('/repo/commit', {
+        method: 'POST',
+        body: JSON.stringify({
+          branch: commitBranch,
+          path: active.path,
+          content: active.draftText,
+          baseSha: commitBranch === active.branch ? active.baseSha ?? undefined : undefined,
+          message: message.trim(),
+        }),
+      });
+      active.saved(r.blobSha, active.draftText);
+      setSuccess(`Committed ${r.commitSha.slice(0, 7)} → ${r.branch}`);
+      setMessage('');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function createBranch() {
+    if (!newBranchName.trim() || creatingBranch) return;
+    setCreatingBranch(true);
+    setError(null);
+    try {
+      await apiFetch<{ branch: { name: string; sha: string } }>('/repo/branches', {
+        method: 'POST',
+        body: JSON.stringify({ name: newBranchName.trim(), from: 'main' }),
+      });
+      const created = newBranchName.trim();
+      setNewBranchName('');
+      setSuccess(`Branch ${created} created`);
+      props.onBranchCreated();
+      setCommitBranch(created);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setCreatingBranch(false);
+    }
+  }
+
+  async function openPR() {
+    if (!commitBranch) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await apiFetch<{ pr: { number: number; url: string } }>('/repo/pull-requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          head: commitBranch,
+          base: 'main',
+          title: message.trim() || `Studio: changes from ${commitBranch}`,
+        }),
+      });
+      setSuccess(`PR #${r.pr.number} opened — ${r.pr.url}`);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="border-t border-slate-800 p-3 space-y-2 text-xs">
+      <div className="flex gap-2 items-center flex-wrap">
+        <label className="text-slate-500 uppercase text-[10px]">Commit to</label>
+        <select
+          value={commitBranch}
+          onChange={(e) => setCommitBranch(e.target.value)}
+          className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-100"
+        >
+          {writableBranches.length === 0 && <option value="">(no writable branches)</option>}
+          {writableBranches.map((b) => (
+            <option key={b.name} value={b.name}>{b.name}</option>
+          ))}
+        </select>
+        <span className="text-slate-600">or</span>
+        <input
+          value={newBranchName}
+          onChange={(e) => setNewBranchName(e.target.value)}
+          placeholder="new-branch-name"
+          className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-100 w-48"
+        />
+        <button
+          onClick={() => void createBranch()}
+          disabled={!newBranchName.trim() || creatingBranch}
+          className="text-[11px] px-2 py-1 rounded bg-slate-800 border border-slate-700 hover:bg-slate-700 disabled:opacity-40"
+        >
+          {creatingBranch ? '…' : 'Create branch'}
+        </button>
+      </div>
+      <input
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="Commit message"
+        className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-100"
+      />
+      <div className="flex gap-2 flex-wrap">
+        <button
+          onClick={() => void commit()}
+          disabled={busy || !active.dirty || !commitBranch}
+          className="text-xs px-3 py-1.5 rounded bg-emerald-700 hover:bg-emerald-600 text-white disabled:opacity-40"
+        >
+          {busy ? 'Committing…' : 'Commit'}
+        </button>
+        <button
+          onClick={() => void openPR()}
+          disabled={busy || !commitBranch}
+          className="text-xs px-3 py-1.5 rounded bg-slate-800 border border-slate-700 hover:bg-slate-700 disabled:opacity-40"
+        >
+          Open PR → main
+        </button>
+        {error && <span className="text-rose-400 self-center ml-2">{error}</span>}
+        {success && <span className="text-emerald-400 self-center ml-2">{success}</span>}
+      </div>
     </div>
   );
 }
@@ -219,7 +415,9 @@ function FileLink(props: {
     <button
       onClick={() => onPick(node.path)}
       className={`flex items-center gap-1 w-full text-left px-1 rounded ${
-        isActive ? 'bg-emerald-900/40 text-emerald-200' : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
+        isActive
+          ? 'bg-emerald-900/40 text-emerald-200'
+          : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
       }`}
       style={{ paddingLeft: `${depth * 8 + 12}px` }}
     >

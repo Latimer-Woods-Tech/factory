@@ -3,8 +3,13 @@ import type {
   AIChatEvent,
   AIChatRequest,
   AIChatTurn,
+  AIProposal,
+  AIProposalRequest,
   RepoBranch,
+  RepoCommitRequest,
+  RepoCreateBranchRequest,
   RepoFileContent,
+  RepoOpenPRRequest,
   RepoTreeNode,
 } from './repo.js';
 
@@ -54,5 +59,52 @@ describe('AI chat types', () => {
     expect(tok.type).toBe('token');
     expect(err.type).toBe('error');
     expect(done.type).toBe('done');
+  });
+});
+
+describe('Phase D.2 commit + PR + proposal types', () => {
+  it('RepoCommitRequest accepts new file (no baseSha) and update', () => {
+    const create: RepoCommitRequest = {
+      branch: 'studio/new-file',
+      path: 'apps/x/README.md',
+      content: '# hi',
+      message: 'add readme',
+    };
+    const update: RepoCommitRequest = {
+      branch: 'studio/edit',
+      path: 'apps/x/README.md',
+      content: '# hi 2',
+      baseSha: 'abc123',
+      message: 'tweak readme',
+    };
+    expect(create.baseSha).toBeUndefined();
+    expect(update.baseSha).toBe('abc123');
+  });
+
+  it('RepoCreateBranchRequest defaults from to main when omitted', () => {
+    const req: RepoCreateBranchRequest = { name: 'studio/foo' };
+    expect(req.from).toBeUndefined();
+  });
+
+  it('RepoOpenPRRequest base defaults to main implicitly', () => {
+    const req: RepoOpenPRRequest = { head: 'studio/foo', title: 'Add foo' };
+    expect(req.base).toBeUndefined();
+    expect(req.draft).toBeUndefined();
+  });
+
+  it('AIProposalRequest + AIProposal pair carries before/after', () => {
+    const req: AIProposalRequest = {
+      path: 'a.ts',
+      before: 'export const a = 1;\n',
+      instruction: 'rename a to b',
+    };
+    const proposal: AIProposal = {
+      path: req.path,
+      before: req.before,
+      after: 'export const b = 1;\n',
+      rationale: 'renamed',
+    };
+    expect(proposal.before).toBe(req.before);
+    expect(proposal.after).not.toBe(proposal.before);
   });
 });

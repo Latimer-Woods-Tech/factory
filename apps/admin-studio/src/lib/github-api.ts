@@ -15,7 +15,7 @@
  * All responses are constrained to the minimal fields exposed by
  * `@adrper79-dot/studio-core` types.
  */
-import type { RepoBranch, RepoFileContent, RepoTreeNode } from '@adrper79-dot/studio-core';
+import type { RepoBranch, RepoFileContent, RepoPullRequest, RepoTreeNode } from '@adrper79-dot/studio-core';
 
 const FACTORY_OWNER = 'adrper79-dot';
 const FACTORY_REPO = 'factory';
@@ -181,6 +181,12 @@ function base64ToBytes(b64: string): Uint8Array {
   return out;
 }
 
+function bytesToBase64(bytes: Uint8Array): string {
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 1) bin += String.fromCharCode(bytes[i]!);
+  return btoa(bin);
+}
+
 /**
  * Heuristic: any NUL byte in the first 8KB ⇒ binary. Reliable enough for
  * the "should we render this in the browser" decision.
@@ -191,4 +197,113 @@ function looksBinary(bytes: Uint8Array): boolean {
     if (sample[i] === 0) return true;
   }
   return false;
+}
+
+/**
+ * Resolve a branch tip SHA. Used as the parent commit for new branches and
+ * as the optimistic-concurrency anchor for commits.
+ */
+async function fetchBranchSha(token: string, branch: string): Promise<string> {
+  const res = await gh(
+    token,
+    `/repos/${FACTORY_OWNER}/${FACTORY_REPO}/git/refs/heads/${encodeURIComponent(branch)}`,
+  );
+  const data = await readJson<{ object: { sha: string } }>(res);
+  return data.object.sha;
+}
+
+/**
+ * Create a new branch off `from` (defaults to `main`). Idempotent: if the
+ * ref already exists, GitHub returns 422 and we surface a friendly error.
+ */
+export async function createBranch(
+  token: string,
+  name: string,
+  from: string = 'main',
+): Promise<{ name: string; sha: string }> {
+  const sha = await fetchBranchSha(token, from);
+  const res = await gh(token, `/repos/${FACTORY_OWNER}/${FACTORY_REPO}/git/refs`, {
+    method: 'POST',
+    body: JSON.stringify({ ref: `refs/heads/${name}`, sha }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new GitHubApiError(`createBranch ${res.status}`, res.status, text);
+  }
+  return { name, sha };
+}
+
+/**
+ * Commit a single file via the contents API. `baseSha` is the blob SHA of
+ * the existing file (omit for new files). Returns the new commit + blob SHAs.
+ *
+ * Caller is responsible for refusing to write to protected branches; this
+ * function does not enforce that policy.
+ */
+export async function commitFile(
+  token: string,
+  args: {
+    branch: string;
+    path: string;
+    content: string;
+    baseSha?: string;
+    message: string;
+  },
+): Promise<{ commitSha: string; blobSha: string }> {
+  const url = `/repos/${FACTORY_OWNER}/${FACTORY_REPO}/contents/${encodePath(args.path)}`;
+  const body: Record<string, unknown> = {
+    message: args.message,
+    content: bytesToBase64(new TextEncoder().encode(args.content)),
+    branch: args.branch,
+  };
+  if (args.baseSha) body.sha = args.baseSha;
+  const res = await gh(token, url, { method: 'PUT', body: JSON.stringify(body) });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new GitHubApiError(`commitFile ${res.status}`, res.status, text);
+  }
+  const data = (await res.json()) as { commit: { sha: string }; content: { sha: string } };
+  return { commitSha: data.commit.sha, blobSha: data.content.sha };
+}
+
+interface GhPullResponse {
+  number: number;
+  html_url: string;
+  state: 'open' | 'closed';
+  merged?: boolean;
+  head: { ref: string };
+  base: { ref: string };
+  title: string;
+}
+
+/**
+ * Open a PR from `head` into `base` (default `main`).
+ */
+export async function openPullRequest(
+  token: string,
+  args: { head: string; base?: string; title: string; body?: string; draft?: boolean },
+): Promise<RepoPullRequest> {
+  const res = await gh(token, `/repos/${FACTORY_OWNER}/${FACTORY_REPO}/pulls`, {
+    method: 'POST',
+    body: JSON.stringify({
+      head: args.head,
+      base: args.base ?? 'main',
+      title: args.title,
+      body: args.body ?? '',
+      draft: args.draft ?? false,
+    }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new GitHubApiError(`openPullRequest ${res.status}`, res.status, text);
+  }
+  const data = (await res.json()) as GhPullResponse;
+  return {
+    number: data.number,
+    url: data.html_url,
+    state: data.merged ? 'merged' : data.state,
+    head: data.head.ref,
+    base: data.base.ref,
+    title: data.title,
+  };
 }

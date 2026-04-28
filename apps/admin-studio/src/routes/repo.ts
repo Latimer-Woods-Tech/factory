@@ -1,25 +1,38 @@
 /**
- * Phase D — Repository browser routes (read-only in this pass).
+ * Phase D — Repository browser + write routes.
  *
- *   GET /repo/branches              → list branches (default flagged)
- *   GET /repo/tree?ref=:ref         → full recursive tree at ref
- *   GET /repo/file?path=…&ref=…     → single-file content (text or binary flag)
+ *   GET  /repo/branches              → list branches (default flagged)
+ *   GET  /repo/tree?ref=:ref         → full recursive tree at ref
+ *   GET  /repo/file?path=…&ref=…     → single-file content (text or binary flag)
+ *   POST /repo/branches              → create a new branch off `main`
+ *   POST /repo/commit                → commit a single file (refuses `main`)
+ *   POST /repo/pull-requests         → open a PR
  *
  * The Worker proxies all GitHub calls so the browser never sees the PAT.
- * Rate limiting / caching beyond GitHub's own ETag handling is a Phase D.2
- * follow-up.
+ * Writes are blocked against the default branch and any branch GitHub
+ * reports as protected.
  */
 import { Hono } from 'hono';
 import type { Context } from 'hono';
+import type {
+  RepoCommitRequest,
+  RepoCreateBranchRequest,
+  RepoOpenPRRequest,
+} from '@adrper79-dot/studio-core';
 import type { AppEnv } from '../types.js';
 import {
   GitHubApiError,
+  commitFile,
+  createBranch,
   fetchBranches,
   fetchFile,
   fetchTree,
+  openPullRequest,
 } from '../lib/github-api.js';
 
 const repo = new Hono<AppEnv>();
+
+const PROTECTED_BRANCHES = new Set(['main']);
 
 repo.get('/branches', async (c) => {
   if (!c.env.GITHUB_TOKEN) return c.json({ error: 'GITHUB_TOKEN not configured' }, 503);
@@ -56,10 +69,84 @@ repo.get('/file', async (c) => {
   }
 });
 
+repo.post('/branches', async (c) => {
+  if (!c.env.GITHUB_TOKEN) return c.json({ error: 'GITHUB_TOKEN not configured' }, 503);
+  const body = await c.req.json<RepoCreateBranchRequest>();
+  if (!body.name || !/^[A-Za-z0-9._/-]{1,128}$/.test(body.name)) {
+    return c.json({ error: 'invalid branch name' }, 400);
+  }
+  if (PROTECTED_BRANCHES.has(body.name)) {
+    return c.json({ error: 'branch is protected' }, 403);
+  }
+  try {
+    const created = await createBranch(c.env.GITHUB_TOKEN, body.name, body.from ?? 'main');
+    return c.json({ branch: created }, 201);
+  } catch (err) {
+    return mapError(c, err);
+  }
+});
+
+repo.post('/commit', async (c) => {
+  if (!c.env.GITHUB_TOKEN) return c.json({ error: 'GITHUB_TOKEN not configured' }, 503);
+  const body = await c.req.json<RepoCommitRequest>();
+  if (!body.path || body.path.includes('..')) return c.json({ error: 'invalid path' }, 400);
+  if (!body.branch) return c.json({ error: 'branch required' }, 400);
+  if (PROTECTED_BRANCHES.has(body.branch)) {
+    return c.json({ error: 'cannot commit to protected branch', branch: body.branch }, 403);
+  }
+  if (!body.message?.trim()) return c.json({ error: 'message required' }, 400);
+  if (typeof body.content !== 'string') return c.json({ error: 'content required' }, 400);
+
+  // Belt-and-braces: also reject branches GitHub reports as protected.
+  try {
+    const branches = await fetchBranches(c.env.GITHUB_TOKEN);
+    const branch = branches.find((b) => b.name === body.branch);
+    if (branch?.protected) {
+      return c.json({ error: 'cannot commit to protected branch', branch: body.branch }, 403);
+    }
+  } catch (err) {
+    return mapError(c, err);
+  }
+
+  try {
+    const result = await commitFile(c.env.GITHUB_TOKEN, {
+      branch: body.branch,
+      path: body.path,
+      content: body.content,
+      baseSha: body.baseSha,
+      message: body.message,
+    });
+    return c.json({
+      commitSha: result.commitSha,
+      blobSha: result.blobSha,
+      branch: body.branch,
+      path: body.path,
+    });
+  } catch (err) {
+    return mapError(c, err);
+  }
+});
+
+repo.post('/pull-requests', async (c) => {
+  if (!c.env.GITHUB_TOKEN) return c.json({ error: 'GITHUB_TOKEN not configured' }, 503);
+  const body = await c.req.json<RepoOpenPRRequest>();
+  if (!body.head || !body.title) return c.json({ error: 'head + title required' }, 400);
+  if (PROTECTED_BRANCHES.has(body.head)) {
+    return c.json({ error: 'head must not be a protected branch' }, 400);
+  }
+  try {
+    const pr = await openPullRequest(c.env.GITHUB_TOKEN, body);
+    return c.json({ pr }, 201);
+  } catch (err) {
+    return mapError(c, err);
+  }
+});
+
 function mapError(c: Context<AppEnv>, err: unknown) {
   if (err instanceof GitHubApiError) {
     if (err.status === 404) return c.json({ error: 'github', status: 404, detail: err.body.slice(0, 500) }, 404);
     if (err.status === 403) return c.json({ error: 'github', status: 403, detail: err.body.slice(0, 500) }, 403);
+    if (err.status === 422) return c.json({ error: 'github', status: 422, detail: err.body.slice(0, 500) }, 422);
     return c.json({ error: 'github', status: err.status, detail: err.body.slice(0, 500) }, 502);
   }
   console.error('[repo] unexpected error:', (err as Error).message);
