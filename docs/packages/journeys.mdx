@@ -1,0 +1,704 @@
+# User & Operator Journey Maps for VideoKing
+
+## Overview
+
+This document maps the eight critical user flows for videoking. Each journey includes:
+- **User steps:** What the user does, decision points, and expected outcomes
+- **Error states:** What can go wrong and how to recover
+- **Data dependencies:** Database tables, API calls, integrations touched
+- **KPIs to track:** Analytics events that indicate success/failure
+- **Factory support:** Where Factory infrastructure (auth, analytics) applies vs where videoking owns the flow
+- **Testing requirements:** What must be tested before launch
+
+These journeys inform instrumentation, test requirements, and API design.
+
+---
+
+## Flow 1: Anonymous Viewer Journey
+
+### User Steps
+
+| Step | Action | Expected Outcome | Decision Point |
+|------|--------|------------------|-----------------|
+| 1 | Navigate to itsjusus.com | Homepage loaded with featured videos | Can user see videos? |
+| 2 | Browse video feed (scroll, filter by category) | See 10+ videos; infinite scroll works | Does user find interesting content? |
+| 3 | Click on a video | Video player opens; metadata visible (title, creator, views, subscription nudge) | Is player working? |
+| 4 | Watch video (play, pause, seek, full-screen) | Playback is smooth (no buffering) | Does user like content? |
+| 5 | Decide to subscribe? | Nudge appears: "Subscribe for more from this creator" | → **YES:** go to Checkout Flow<br>→ **NO:** continue browsing or leave |
+| 6 | (Optional) Leave reaction (like, emoji) | Reaction recorded; count updated in real time | Engagement tracked |
+
+### Error States
+
+| Error | Trigger | Recovery |
+|-------|---------|----------|
+| Video not loading | Cloudflare Stream API down or video not published | Show "Video unavailable" message with refresh button |
+| Network timeout | User on slow connection (3G, interrupted) | Show "Connection timeout" message; offer offline/lower-quality option |
+| Subscription nudge fails to render | Creator not found or subscription config broken | Hide nudge; log error to Sentry; flow continues |
+| Reaction post fails | Analytics or DLQ backend error | User sees spinning icon; auto-retry after 3s; show Sentry error if persists |
+
+### Data Dependencies
+
+| Resource | Table/API | Fetched By | Caching |
+|----------|-----------|-----------|---------|
+| Video metadata | `videos` table | Worker API GET /videos | CDN cache 5 min |
+| Thumbnails | R2 bucket | CDN | Cache 1 month |
+| Creator profile | `creators` table | Worker API GET /creators/:id | Cache 10 min |
+| Subscription config | `subscription_tiers` + subscription relation | Worker API | Cache 10 min |
+| Reactions/counts | Redis (real-time) or `video_reactions` | WebSocket (Durable Objects) | Real-time via broadcast |
+| Analytics events | PostHog, factory_events table | HTTP POST /api/events | No cache (fire-and-forget) |
+
+### KPIs to Track
+
+| Event | Payload | Goal | Alert Threshold |
+|-------|---------|------|-----------------|
+| `viewer:page_load` | `{timestamp, url, source}` | Measure time to first contentful paint | FCP > 2.5s |
+| `viewer:video_view` | `{video_id, creator_id, duration_watched, completed}` | Measure engagement | < 50% opt-in to view event |
+| `viewer:video_play` | `{video_id, timestamp}` | Measure play button clicks | Drop-off at play step |
+| `viewer:subscription_nudge_shown` | `{video_id, creator_id, subscription_tier}` | Measure nudge impression | Rate conversion rate after |
+| `viewer:reaction_sent` | `{video_id, creator_id, reaction_type (emoji)}` | Measure engagement | Reactions = 0 (system down) |
+| `viewer:error` | `{error_code, error_message, step}` | Measure error rate | Error rate > 2% |
+
+### Factory Support
+
+- **Auth:** Not applicable (anonymous flow)
+- **Analytics:** Factory `factory_events` table receives viewer events; videoking app posts events to Factory's analytics worker endpoint
+- **Errors:** Sentry integration via `@adrper79-dot/monitoring` package for client-side errors
+- **Video:** Cloudflare Stream (videoking owns integration)
+
+### Videoking Owns
+
+- Video feed sorting/filtering
+- Real-time reactions (WebSocket via Durable Objects)
+- Subscription nudge UI and logic
+- Video player overlay/ controls
+- Recommendation algorithm (future)
+
+### Testing Requirements
+
+**Unit tests:**
+- [ ] Video metadata load and render
+- [ ] Infinite scroll pagination
+- [ ] Video player state machine (play, pause, seek, fullscreen)
+- [ ] Reaction submission and optimistic update
+
+**E2E tests:**
+- [ ] Navigate homepage → load feed
+- [ ] Scroll feed → new videos load (pagination)
+- [ ] Click video → player opens, plays, seeks work
+- [ ] Send reaction → appears immediately; count increments
+- [ ] (Logged-out) See subscription nudge; click → navigate to login/checkout
+- [ ] Network timeout → retry works
+
+**Performance benchmarks:**
+- [ ] FCP < 1.5s
+- [ ] LCP (video thumbnail) < 2.5s
+- [ ] Video playback starts < 3s
+- [ ] Reaction sent-to-received < 500ms
+
+---
+
+## Flow 2: Creator Signup Workflow
+
+### User Steps
+
+| Step | Action | Expected Outcome | Decision Point |
+|------|--------|------------------|-----------------|
+| 1 | Click "Create Creator Account" button | Signup form loads (email, password) | Is form accessible? |
+| 2 | Enter email | Email validation (no duplicates) | → **Email exists:** show error, link to login<br>→ **New email:** continue |
+| 3 | Enter password (confirm) | Password meets requirements (8+ chars, mixed case, number) | → **Weak password:** show error<br>→ **Strong:** continue |
+| 4 | Submit signup | Confirmation email sent; button shows "Check your email" | Did email send? |
+| 5 | Click email confirmation link | Session created; redirect to profile setup page | Was email valid? |
+| 6 | Fill creator profile (name, bio, profile pic, category) | Profile saved; redirect to account connection page | Is profile complete? |
+| 7 | Connect account (TBD: YouTube, Twitch, TikTok, or manual) | Account linked or manual entry confirmed; redirect to first upload | Is account validated? |
+| 8 | Upload first video (title, description, category, privacy) | Video transcoded; thumbnail generated; redirect to publish page | Is upload successful? |
+
+### Error States
+
+| Error | Trigger | Recovery |
+|-------|---------|----------|
+| Email already exists | User tries to sign up with existing email | Show "Email already registered" with link to login |
+| Email confirmation link expired | Confirmation link older than 1 hour | Show "Link expired" with button to resend email |
+| Email service down (Resend fails) | Resend API is down or blocked | Show "Email could not be sent" with retry button; log to DLQ |
+| Profile photo upload fails | R2 connection error | Show error, offer "Skip photo" to proceed; warn user photo required later |
+| Password reset token expires | User waits > 1 hour before resetting | Show "Link expired" with button to request new token |
+| Session timeout during signup | User inactive for > 30 min | Clear sensitive data; ask user to start over (don't lose progress) |
+
+### Data Dependencies
+
+| Resource | Table/API | Source | Flow |
+|----------|-----------|--------|------|
+| Auth session | Factory Auth package (JWT) | POST /api/auth/signup | Issued after email confirmation |
+| Creators table | `creators` (Drizzle schema: name, bio, category, profile_pic_url) | Worker POST /api/creators | Created after profile setup |
+| Profile photo | R2 bucket (videoking-r2) | Web app → Worker → R2 | Stored as `/creators/{creator_id}/profile.jpg` |
+| Account connections | `creator_accounts` table (YouTube ID, TikTok handle, etc.) | Worker POST /api/creators/:id/accounts | Optional; TBD integration |
+| Email confirmation token | Redis (TTL 1 hour) or DB | Resend integration | Validated before session creation |
+| Analytics | factory_events table | POST /api/events | `creator:signup_attempt`, `creator:email_confirmed`, `creator:profile_complete` |
+
+### KPIs to Track
+
+| Event | Payload | Goal | Alert Threshold |
+|-------|---------|------|-----------------|
+| `creator:signup_attempt` | `{email, timestamp, source}` | Measure signup interest | Flat or declining |
+| `creator:email_confirmed` | `{creator_id, email, confirmation_time_sec}` | Measure email confirmation rate & speed | Confirmation rate < 70% |
+| `creator:profile_complete` | `{creator_id, category, profile_pic_uploaded}` | Measure profile completion | Completion rate < 80% |
+| `creator:account_connected` | `{creator_id, account_type}` | Measure account linking adoption | Link success rate < 50% |
+| `creator:first_video_uploaded` | `{creator_id, video_id, duration_sec}` | Measure content arrival | < 20% of signups upload |
+| `creator:signup_error` | `{error_code, step, error_message}` | Measure where flow breaks | Any error > 5% of attempts |
+| `creator:signup_funnel_drop` | `{step_name, drop_off_rate}` | Identify biggest drop-off | Any step > 30% drop-off |
+
+### Factory Support
+
+- **Auth:** Factory Auth package provides `POST /api/auth/signup` and session management; videoking calls Factory auth endpoints
+- **Email:** Resend integration (videoking owns; could be moved to Factory email package in future)
+- **Analytics:** Factory events table; videoking posts `creator:*` events to Factory analytics worker
+- **Errors:** Sentry integration via monitoring package
+
+### Videoking Owns
+
+- Profile UI (name, bio, category picker)
+- Profile photo upload to R2
+- Account connection UI (YouTube/Twitch linking, if implemented)
+- First video upload flow
+
+### Testing Requirements
+
+**Unit tests:**
+- [ ] Email validation (duplicates, format)
+- [ ] Password strength checker
+- [ ] Profile form validation
+- [ ] Photo upload to R2
+
+**E2E tests:**
+- [ ] Complete signup: email → confirm → profile → upload → success
+- [ ] Email already exists → show error, link to login
+- [ ] Confirmation link expires → resend email works
+- [ ] Session timeout mid-signup → user can recover
+- [ ] Upload first video → published successfully
+
+**Performance benchmarks:**
+- [ ] Profile page load < 1.5s
+- [ ] Photo upload to R2 < 5s (user feedback)
+- [ ] Profile save response < 500ms
+
+---
+
+## Flow 3: Subscription Checkout
+
+### User Steps
+
+| Step | Action | Expected Outcome | Decision Point |
+|------|--------|------------------|-----------------|
+| 1 | Click CTA (subscribe, unlock, or from nudge) | Checkout page loads with subscription tiers | Does page load? |
+| 2 | Browse tiers (free tier info, tier names, pricing, features) | Tiers displayed with comparison (what's included) | → **Select tier:** continue<br>→ **Exit:** close or back |
+| 3 | Click tier (e.g., "Start at $4.99/month") | Stripe checkout page opens (or in-page form) | Is Stripe loading? |
+| 4 | Enter payment info (card, email if not logged in) | Stripe validates card; tokenizes | → **Card valid:** continue<br>→ **Card declined:** show error |
+| 5 | Review: creator name, tier, billing frequency, total | Summary shown before final submit | Does subscription make sense? |
+| 6 | Click "Subscribe" or "Subscribe & Login" | Payment processed; subscription created in `subscriptions` table; redirect to confirmation | Did payment succeed? |
+| 7 | Confirmation page | User sees: subscription tier, duration, access instructions, receipt email | Subscription active |
+
+### Error States
+
+| Error | Trigger | Recovery |
+|-------|---------|----------|
+| Stripe connection down | Stripe API timeout or unreachable | Show "Payment service unavailable" with retry button |
+| Card declined | Payment failed (insufficient funds, expired, blocked) | Show Stripe error message (Stripe provides specific reason) with retry or alternative payment method |
+| Duplicate subscription | User clicks "Subscribe" twice (double-click) | Catch idempotency; show "Already subscribed" |
+| Subscription creation fails (DB error) | Worker error after payment succeeds | Payment succeeded but subscription not created → DLQ event recorded; operator intervention required; user sees warning and support link |
+| Session timeout at checkout | User inactive > 30 min | Cart data stored in localStorage; user can resume |
+| Email confirmation spam filter | Confirmation email goes to spam | Show link to check spam; offer resend |
+
+### Data Dependencies
+
+| Resource | Table/API | Source | Flow |
+|----------|-----------|--------|------|
+| Subscription tiers | `subscription_tiers` (videoking-specific) | Worker GET /api/subscription-tiers | Displayed on checkout page |
+| Payment intent | Stripe PaymentIntent API | Worker POST /api/checkout/create-intent | Created for each session |
+| Subscription record | `subscriptions` table (creator_id, user_id, tier_id, status, start_date, end_date, renewal_date) | Worker POST /api/subscriptions | Created after payment succeeds |
+| Webhook event | Stripe webhook (charge.succeeded, charge.failed) | Stripe → Worker → subscriptions table update | Handles async confirmation |
+| Confirmation email | Resend template | Resend API | Email with receipt, access info |
+| Analytics event | factory_events table | POST /api/events | `subscription:checkout_started`, `subscription:payment_success`, `subscription:payment_failed` |
+
+### KPIs to Track
+
+| Event | Payload | Goal | Alert Threshold |
+|-------|---------|------|-----------------|
+| `subscription:checkout_started` | `{viewer_id, creator_id, tier_id, source}` | Measure checkout interest | Flat or declining |
+| `subscription:tier_selected` | `{viewer_id, tier_id, price_usd}` | Measure tier preference | Identify most/least popular tier |
+| `subscription:payment_attempted` | `{viewer_id, tier_id, amount_usd}` | Measure payment attempts | Ratio vs success |
+| `subscription:payment_success` | `{viewer_id, creator_id, subscription_id, amount_usd, source:(web/app/nudge)}` | **Primary KPI:** track revenue | CVR target: 3-5% |
+| `subscription:payment_failed` | `{viewer_id, reason, amount_usd}` | Identify payment barriers | Reason breakdown: declined, expired, insufficient funds |
+| `subscription:cart_abandoned` | `{viewer_id, tier_id, time_elapsed_sec}` | Measure drop-off before payment | Cart abandonment rate < 70% |
+| `subscription:checkout_error` | `{error_code, step}` | Measure reliability | Error rate < 1% |
+
+### Factory Support
+
+- **Auth:** Factory Auth package; user session created/validated before checkout
+- **Payments:** Stripe integration (videoking owns; could integrate with Factory stripe package)
+- **Analytics:** factory_events table for `subscription:*` events
+- **Errors:** Sentry integration; DLQ for failed subscription creations
+
+### Videoking Owns
+
+- Tier UI and comparison display
+- Checkout page logic (Stripe integration, form)
+- Subscription creation and webhook handling
+- Confirmation email template
+
+### Testing Requirements
+
+**Unit tests:**
+- [ ] Tier filtering and display
+- [ ] Stripe payment intent creation
+- [ ] Idempotency check (double-click protection)
+- [ ] Subscription creation from webhook
+
+**E2E tests:**
+- [ ] Browse tiers → select → complete checkout → success page
+- [ ] Payment declined → error message → retry works
+- [ ] Double-click checkout → only one subscription created
+- [ ] Webhook fires → subscription status updated
+- [ ] Email sent with receipt and access info
+
+**Performance benchmarks:**
+- [ ] Checkout page load < 1.5s
+- [ ] Stripe payment popup < 2s
+- [ ] Subscription confirmed < 3s after payment
+
+---
+
+## Flow 4: Unlock Purchase (Pay-Per-View)
+
+### User Steps
+
+| Step | Action | Expected Outcome | Decision Point |
+|------|--------|------------------|-----------------|
+| 1 | View a premium/paid video as non-subscriber | Paywall displayed: "Unlock for $X.99" or "Subscribe to watch" | → **Click unlock:** go to checkout<br>→ **Back:** exit |
+| 2 | Click "Unlock video" CTA | Stripe checkout page opens (or in-page) | Is form loaded? |
+| 3 | Enter payment info (card) | Stripe validates and tokenizes | → **Valid:** go to review<br>→ **Declined:** show error |
+| 4 | Review and confirm | Summary: video name, price, total | Does purchase make sense? |
+| 5 | Click "Unlock" or "Pay" | Payment processed; unlock record created in `unlocks` table; redirect to player | Did payment succeed? |
+| 6 | Watch video | Video player opens; unlock verified; full access granted | Can user play? |
+
+### Error States
+
+| Error | Trigger | Recovery |
+|-------|---------|----------|
+| Video not found | Video ID invalid or deleted | Show "Video unavailable" |
+| Video price changed | Price updated between page load and checkout | Re-fetch price; show new total; ask to confirm |
+| Card declined | Payment failed | Show decline reason; offer retry or cancel |
+| Unlock creation fails | DB error after payment | Payment succeeded but unlock not recorded → DLQ; user sees warning; support link |
+| Duplicate unlock | User clicks "Unlock" twice | Idempotency check; user sees "Already unlocked" |
+| Session timeout | Inactive > 30 min | Resume with cart data stored locally |
+
+### Data Dependencies
+
+| Resource | Table/API | Source | Flow |
+|----------|-----------|--------|------|
+| Video metadata | `videos` table (price_usd, access_level) | Worker GET /api/videos/:id | Displayed on paywall |
+| Access control | `unlocks` table (video_id, user_id, created_at, expires_at) | Worker POST /api/unlocks | Created after payment |
+| Payment intent | Stripe PaymentIntent | Worker POST /api/unlocks/create-checkout | One-time payment |
+| Webhook event | Stripe charge.succeeded | Stripe → Worker → unlocks table | Async confirmation |
+| Video playback | Cloudflare Stream embed | Validate unlock before embedding | Unlock token passed to player |
+| Analytics | factory_events table | POST /api/events | `ppv:unlock_attempted`, `ppv:payment_success`, `ppv:video_played` |
+
+### KPIs to Track
+
+| Event | Payload | Goal | Alert Threshold |
+|-------|---------|------|-----------------|
+| `ppv:unlock_attempted` | `{viewer_id, video_id, price_usd}` | Measure ppv interest | Flat or declining |
+| `ppv:payment_success` | `{viewer_id, video_id, creator_id, price_usd}` | Track ppv revenue | Revenue trend |
+| `ppv:payment_failed` | `{viewer_id, reason}` | Identify payment barriers | Error rate breakdown |
+| `ppv:video_played` | `{viewer_id, video_id, duration_watched}` | Measure playback after unlock | Video engagement |
+| `ppv:paywall_shown` | `{viewer_id, video_id, price_usd}` | Measure paywall impressions | Ratio: paywall → unlock attempt |
+
+### Factory Support
+
+- **Auth:** Factory Auth; viewer session validated
+- **Payments:** Stripe integration (videoking owns)
+- **Analytics:** factory_events table
+- **Errors:** Sentry, DLQ for failed unlocks
+
+### Videoking Owns
+
+- Paywall UI
+- Stripe checkout integration
+- Unlock record creation and webhook handling
+- Video access control (verify unlock before playback)
+
+### Testing Requirements
+
+**Unit tests:**
+- [ ] Paywall rendering (price display)
+- [ ] Stripe payment intent creation
+- [ ] Unlock idempotency
+
+**E2E tests:**
+- [ ] See paywall → click unlock → complete payment → watch video
+- [ ] Card declined → error → retry works
+- [ ] Unlock verified → player streams without errors
+
+---
+
+## Flow 5: Creator Upload & Publish
+
+### User Steps
+
+| Step | Action | Expected Outcome | Decision Point |
+|------|--------|------------------|-----------------|
+| 1 | Click "Upload Video" in creator dashboard | Upload page loads with drag-and-drop area | Is uploader ready? |
+| 2 | Drag or select video file (MP4, MOV, etc.) | File validated (format, size < 5GB) | → **Valid:** display progress bar<br>→ **Invalid:** show error, ask user to try again |
+| 3 | Upload starts | Progress bar shows upload % to R2; should not block further edits | Upload in background; user can edit metadata now |
+| 4 | Enter metadata while uploading: title, description, category, thumbnail (auto or upload), tags | Metadata saved as draft | Are required fields present? |
+| 5 | Choose privacy: Public, Unlisted, Private, or Subscriber-only | Draft saved with privacy setting | Is privacy chosen? |
+| 6 | Click "Publish" when upload complete | Video transcoding queued in Cloudflare Stream; redirect to "publishing" state | Is transcoding started? |
+| 7 | Wait for transcoding (1-5 min depending on length) | Status page shows progress; user can leave and return | Is transcoding finishing? |
+| 8 | Transcoding complete | Video is now available to viewers; thumbnail generated; user notified | Video is live |
+
+### Error States
+
+| Error | Trigger | Recovery |
+|-------|---------|----------|
+| File too large (> 5GB) | User uploads 8K video | Show size limit; suggest compression tool link |
+| Unsupported format | User uploads .AVI or .WMV | Show supported formats (MP4, MOV, WebM, etc.); offer conversion tool link |
+| Upload interrupted | Network dropout mid-upload | Pause upload; show resume button; resume from where it stopped (if R2 supports) |
+| Metadata save fails | DB error | Show "Draft not saved" warning; retry button |
+| Transcoding fails | Cloudflare Stream error | Status page shows error; user can re-upload or contact support; video marked "failed" in DB |
+| Thumbnail generation fails | Stream API error | Use auto-generated thumbnail; don't block publish |
+| Privacy setting updated after publish | User changes from Public to Private | Update immediately; access control enforced at playback time |
+
+### Data Dependencies
+
+| Resource | Table/API | Source | Flow |
+|----------|-----------|--------|------|
+| Video file | R2 bucket (videoking-r2) | Web app → Worker → R2 PUT | Uploaded by creator |
+| Video metadata | `videos` table (title, description, category, privacy, thumbnail_url, duration) | Worker POST /api/videos | Saved as draft, updated at publish |
+| Transcoding job | Cloudflare Stream API | Worker POST to Stream API | Job ID stored in `videos` table |
+| Transcoding status | Cloudflare Stream webhook | Webhook → Worker → videos table update | Status: queued → processing → ready / failed |
+| Thumbnail | R2 bucket | Cloudflare Stream auto-generate or user upload | Stored as `/videos/{video_id}/thumbnail.jpg` |
+| Analytics | factory_events table | POST /api/events | `creator:upload_started`, `creator:video_published` |
+
+### KPIs to Track
+
+| Event | Payload | Goal | Alert Threshold |
+|-------|---------|------|-----------------|
+| `creator:upload_started` | `{creator_id, video_id, file_size_mb}` | Measure upload traffic | Traffic trend |
+| `creator:upload_completed` | `{creator_id, video_id, duration_min}` | Measure upload completion rate | Completion rate < 90% |
+| `creator:transcoding_started` | `{video_id, duration_min}` | Measure transcoding queue | Queue time |
+| `creator:transcoding_complete` | `{video_id, duration_min, transcoding_time_sec}` | **Primary KPI:** measure video readiness | Avg transcoding time |
+| `creator:video_published` | `{creator_id, video_id, privacy_level}` | Measure content arrival | Videos published per creator |
+| `creator:upload_error` | `{error_code, step}` | Measure reliability | Error rate < 2% |
+
+### Factory Support
+
+- **Auth:** Factory Auth; creator session validation
+- **Analytics:** factory_events table for `creator:*` events
+- **Errors:** Sentry integration
+
+### Videoking Owns
+
+- Upload UI (drag-and-drop)
+- R2 integration for file storage
+- Cloudflare Stream integration for transcoding
+- Video metadata management
+- Thumbnail handling (auto or upload)
+- Publishing state machine
+
+### Testing Requirements
+
+**Unit tests:**
+- [ ] File validation (format, size)
+- [ ] Metadata validation (title required, category in list)
+- [ ] Privacy setting save
+
+**E2E tests:**
+- [ ] Upload video file → metadata → publish → transcoding → available for viewers
+- [ ] Upload interrupted → resume works
+- [ ] Large file (> 1GB) → upload completes without timeout
+- [ ] Privacy changed after publish → access control enforced
+
+**Performance benchmarks:**
+- [ ] R2 upload: large file (500MB) in < 2 min on 10Mbps connection
+- [ ] Transcoding: typical video (60 min, 1080p) in < 5 min
+
+---
+
+## Flow 6: Creator Admin Dashboard
+
+### User Steps
+
+| Step | Action | Expected Outcome | Decision Point |
+|------|--------|------------------|-----------------|
+| 1 | Click "Dashboard" or navigate to /dashboard | Dashboard page loads showing key stats | Was user authenticated? |
+| 2 | View stats card: total earnings, subscribers, video views, watch time | Real-time or cached numbers from analytics | Are stats accurate? |
+| 3 | Switch tab/panel: Videos | List of all uploaded videos with view counts, engagement metrics | Are videos loading? |
+| 4 | Switch tab: Subscribers | List of active subscribers (anonymized), tier breakdown, churn rate | Are subscriber lists loading? |
+| 5 | Switch tab: Analytics | Time-series graphs: views over time, avg watch time, revenue trend | Are graphs rendering? |
+| 6 | Switch tab: Settings | Creator profile (bio, photo), Stripe Connect status, earnings payout settings | Are settings editable? |
+| 7 | Click a video row → detail view | Video-specific analytics: views, avg watch duration (%, not absolute time), drop-off curve, region breakdown, device breakdown | Are details accurate? |
+
+### Error States
+
+| Error | Trigger | Recovery |
+|-------|---------|----------|
+| Analytics data delayed | PostHog or analytics worker timeout | Show "Data is updating" message; show cached/partial data if available |
+| Stripe balance not loading | Stripe API timeout | Show "Earnings data unavailable" with retry button |
+| Dashboard page timeout | Too many API calls at once | Lazy-load tabs; show skeleton on first load |
+| User not authenticated | Session expired | Redirect to login; preserve intended destination |
+
+### Data Dependencies
+
+| Resource | Table/API | Source | Flow |
+|----------|-----------|--------|------|
+| Creator summary | `creators` table + aggregates | Worker GET /api/creators/:id/summary | Stats cards |
+| Videos list | `videos` table + view counts | Worker GET /api/creators/:id/videos | Videos tab |
+| Subscriber list | `subscriptions` table (anonymized) | Worker GET /api/creators/:id/subscribers | Subscribers tab |
+| Analytics | PostHog queries or factory_events table | Worker GET /api/analytics/creator/:id | Analytics tab |
+| Stripe account details | Stripe Connected Account API | Worker GET /api/stripe/account | Settings tab |
+| Video analytics | PostHog (video:view, video:watch_time events) | Query PostHog API or summary table | Video detail view |
+
+### KPIs to Track
+
+| Event | Payload | Goal | Alert Threshold |
+|-------|---------|------|-----------------|
+| `dashboard:page_load` | `{creator_id, load_time_ms}` | Measure dashboard performance | Load time > 3s |
+| `dashboard:tab_switch` | `{tab_name, load_time_ms}` | Measure individual tab load times | Load time > 2s |
+| `dashboard:analytics_viewed` | `{creator_id}` | Measure engagement with analytics | % of creators viewing analytics |
+
+### Factory Support
+
+- **Auth:** Factory Auth; creator session management
+- **Analytics:** factory_events table + PostHog queries
+- **Database:** Factory neon package for creator/video queries
+
+### Videoking Owns
+
+- Dashboard UI and layout
+- Tab switching and state management
+- PostHog/analytics queries
+- Stripe connected account data pulling
+- Charts and data visualization
+
+### Testing Requirements
+
+**Unit tests:**
+- [ ] Stat calculations (earnings, subscribers, views sum correctly)
+- [ ] Date range filtering (7-day, 30-day, all-time)
+
+**E2E tests:**
+- [ ] Load dashboard → all tabs render
+- [ ] Switch between tabs → data loads and caches properly
+- [ ] Video detail → analytics graph renders
+- [ ] Analytics data updates in real-time (or on refresh)
+
+---
+
+## Flow 7: Creator Stripe Connect Onboarding
+
+### User Steps
+
+| Step | Action | Expected Outcome | Decision Point |
+|-------|---------|----------|-----------------|
+| 1 | Click "Connect Stripe Account" in settings | Redirect to Stripe Connect OAuth flow | Is Stripe loaded? |
+| 2 | User authenticates with Stripe account | Stripe login page shown; user enters email/password | → **Existing account:** continue<br>→ **New account:** create first |
+| 3 | Authorize videoking app in Stripe | Scope selection shown (read/write to customers, charges, etc.) | Does user grant access? |
+| 4 | Complete Stripe setup (legal entity, business details, person details, bank account) | Stripe Progressive Onboarding: shows form with required fields; fields pre-filled where possible | Is all info provided? |
+| 5 | Return to videoking | User redirected back to /settings with `state` verification; Stripe Account ID stored in `creator_accounts` table | Is redirect verified? |
+| 6 | Verification badge shown | Settings page shows "Stripe Connected" with account email | Account is ready for payouts |
+
+### Error States
+
+| Error | Trigger | Recovery |
+|-------|---------|----------|
+| OAuth state mismatch | Attacker replays old OAuth flow or session invalid | Show "Authorization failed"; redirect to retry |
+| Stripe account incomplete | User starts Stripe flow but doesn't finish setup | Show "Stripe setup incomplete"; offer retry link to Stripe Connect flow |
+| Stripe account restricted | Stripe flags account as high-risk (velocity check, etc.) | Show "Account under review"; provide Stripe support email |
+| User already connected | User tries to connect second Stripe account | Show "Already connected to {email}"; offer to disconnect and reconnect |
+
+### Data Dependencies
+
+| Resource | Table/API | Source | Flow |
+|----------|-----------|--------|------|
+| OAuth state token | Redis (TTL 10 min) | Worker stores state before redirecting to Stripe | Verified on return |
+| Stripe Account ID | `creator_accounts` table (stripe_account_id, email, status) | Stripe OAuth callback | Stored after successful auth |
+| Onboarding status | Stripe Account API (charges_enabled, payouts_enabled flags) | Worker queries Stripe API | Shown in settings |
+| Analytics | factory_events table | POST /api/events | `creator:stripe_connected`, `creator:payout_enabled` |
+
+### KPIs to Track
+
+| Event | Payload | Goal | Alert Threshold |
+|-------|---------|------|-----------------|
+| `creator:stripe_connect_started` | `{creator_id}` | Measure onboarding interest | Flat or declining |
+| `creator:stripe_oauth_completed` | `{creator_id, stripe_account_id}` | Measure successful connections | Completion rate < 80% |
+| `creator:stripe_setup_complete` | `{creator_id, charges_enabled, payouts_enabled}` | **Primary KPI:** creators ready to earn | % with payouts_enabled |
+| `creator:stripe_connect_errors` | `{error_code, step}` | Identify barriers | Error rate breakdown |
+
+### Factory Support
+
+- **Auth:** Factory Auth; creator session + identity validation
+- **Errors:** Sentry for OAuth errors
+- **Analytics:** factory_events table
+
+### Videoking Owns
+
+- Stripe Connect OAuth flow integration
+- Progressive Onboarding completion (may be Stripe-hosted)
+- Account status polling and display
+- Disconnect/re-connect UI (if needed)
+
+### Testing Requirements
+
+**Unit tests:**
+- [ ] OAuth state generation and validation
+- [ ] Stripe account ID parsing and storage
+- [ ] Status flag interpretation (charges_enabled, payouts_enabled)
+
+**E2E tests:**
+- [ ] Start Stripe Connect flow → Stripe OAuth → return to videoking → account connected
+- [ ] OAuth state mismatch → show error
+- [ ] Already connected → show "Already connected"
+- [ ] Stripe setup incomplete → remind user to complete
+
+---
+
+## Flow 8: Payout Operations (Operator Flow)
+
+### User Steps (Creator/Operator Perspective)
+
+| Step | Action | Expected Outcome | Decision Point |
+|------|--------|------------------|-----------------|
+| **Automated (Daily Cron)** |  |  |  |
+| 1 | Cron job runs daily (e.g., 02:00 UTC) | Pending earnings aggregated; payout batch created with all eligible creators | Did cron fire? |
+| 2 | Batch status: "pending_review" | Operator can review batch summary (# creators, total amount, any flagged accounts) | Are any creators flagged? |
+| **Manual Operator Review** |  |  |  |
+| 3 | Operator logs into admin panel | Payout dashboard shown with pending batches | Is dashboard loading? |
+| 4 | Operator reviews batch: creator list, total amount, any errors from previous batches | Batch details rendered; any failed payouts from last batch shown | Are there issues to resolve? |
+| 5 | Operator clicks "Execute Batch" | Stripe transfers initiated for all creators; batch status changes to "executing" | Are transfers being sent? |
+| **Async Stripe Webhook** |  |  |  |
+| 6 | Stripe webhook fires (transfer.created, transfer.updated) for each transfer | Worker updates `payouts` table with status (succeeded, failed, pending); records earnings.status = "transferred" | Were all transfers successful? |
+| 7 | If any transfer fails | DLQ event recorded with error details; operator notified (via email or dashboard alert) | Can operator recover? |
+| **Operator Recovery** |  |  |  |
+| 8 | For any failed transfer: Operator investigates error (insufficient funds, account restricted, etc.) | DLQ details shown; operator decides: retry, skip, or manual transfer | What's the fix? |
+| 9 | Operator clicks "Retry" or "Skip" for each failed item | Transfer retried or removed from batch | Did fix work? |
+| 10 | Batch status: "completed" (some transfers succeeded, some skipped) or "partial_failure" | Batch marked done; operator creates manual transfer for skipped items if needed | Is payout complete? |
+
+### Error States
+
+| Error | Trigger | Recovery |
+|-------|---------|----------|
+| Stripe account not connected | Creator never completed Stripe onboarding | Skip creator; note in DLQ; operator contacts creator out-of-band |
+| Insufficient Stripe balance | Videoking's Stripe account has < total payout amount | Batch paused; operator notifies management; can partial execute (top N creators) |
+| Rate limit hit | Stripe API rejects too many transfers at once | Implement exponential backoff (wait 2s between transfers); queue retries |
+| Disputed transaction | Creator claims transfer is incorrect | DLQ logged; operator investigates; can reverse transfer via Stripe if needed |
+| Creator account suspended | Creator violated T&Cs after earnings accrued | Withhold payout; note in DLQ; legal review required |
+
+### Data Dependencies
+
+| Resource | Table/API | Source | Flow |
+|----------|-----------|--------|------|
+| Pending earnings | `earnings` table (status = 'pending', creator_id, amount_usd) | Worker query + aggregation | Batch creation |
+| Eligible creators | `creators` + `creator_accounts` table (stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled) | Worker filter | Who gets paid |
+| Payout batch | `payout_batches` table (period_date, status, total_usd, creator_count, success_count, failure_count) | Worker POST /api/admin/payouts/batch | Tracking |
+| Payout record | `payouts` table (creator_id, amount_usd, stripe_transfer_id, status, effort_from_dq). Linked to earnings via `earnings.status = 'transferred'` | Worker POST (initiate) + Stripe webhook (update) | Individual transfer tracking |
+| Stripe transfers | Stripe Transfers API | Worker → Stripe | One transfer per creator per batch |
+| Error recovery | `dead_letter_queue` table (event_type = 'payout_transfer_failed', related_id = creator_id) | Worker POST on Stripe webhook failure | Operator can investigate and retry |
+| Audit trail | Audit log (admin_user_id, action, batch_id, timestamp) | Worker POST | Compliance / tracking who executed payout |
+
+### KPIs to Track
+
+| Event | Payload | Goal | Alert Threshold |
+|-------|---------|------|-----------------|
+| `payout:batch_created` | `{batch_id, creator_count, total_usd, pending_creators_count}` | Measure batch frequency | Batch runs daily |
+| `payout:batch_executed` | `{batch_id, creator_count, succeeded_count, failed_count, total_usd}` | **Primary KPI:** track payout success rate | Success rate < 99% |
+| `payout:transfer_initiated` | `{creator_id, stripe_transfer_id, amount_usd}` | Measure transfer volume | Volume trend |
+| `payout:transfer_succeeded` | `{creator_id, amount_usd, transfer_time_sec}` | Measure successful payouts | Speed to payout (< 1 day) |
+| `payout:transfer_failed` | `{creator_id, reason (insufficient_funds, account_restricted, etc.)}` | Identify failure reasons | Failure reason breakdown |
+| `payout:operator_recovery_action` | `{batch_id, operator_id, action (retry/skip/manual)}` | Measure operator interventions | Adoption of recovery tools |
+| `payout:dispute_filed` | `{creator_id, amount_usd, reason}` | Measure payout disputes | Dispute rate |
+
+### Factory Support
+
+- **Auth:** Factory Auth; operator role validation
+- **Database:** Factory neon package for queries
+- **Errors:** Sentry + DLQ for failed transfers
+- **Payments:** Stripe integration (videoking owns; could be in Factory stripe package)
+- **Analytics:** factory_events table for payout events
+
+### Videoking Owns
+
+- Payout batch creation (daily cron)
+- Stripe transfer execution
+- DLQ integration for failed payouts
+- Operator admin dashboard (batch review, recovery actions)
+- Audit trail logging
+
+### Testing Requirements
+
+**Unit tests:**
+- [ ] Batch creation: correct creator selection, amount aggregation
+- [ ] Stripe transfer initiation
+- [ ] DLQ recording on failure
+- [ ] Recovery action processing (retry, skip)
+
+**E2E tests (Integration)**
+- [ ] Run payout cron → batch created with correct entries
+- [ ] Execute batch → Stripe transfers initiated
+- [ ] Webhook fires → earnings.status updated, payouts table updated
+- [ ] Transfer fails → DLQ event recorded
+- [ ] Operator recovery: retry failed transfer → succeeds
+- [ ] Operator recovery: skip transfer → batch completed with partial success
+
+**Load tests:**
+- [ ] Batch of 1000 creators → all transfers initiated within 5 min
+- [ ] Rate limiting handled (backoff, retry)
+
+**Data integrity:**
+- [ ] No double-payout (idempotency on transfer_id)
+- [ ] Earning status always consistent with payout status
+- [ ] Audit trail complete for compliance
+
+---
+
+## Summary: Journey Map Dependencies
+
+### Database Tables Touched (Across All Flows)
+
+| Table | Primary Use | Flows |
+|-------|-------------|-------|
+| `creators` | Creator profile | 2, 5, 6, 8 |
+| `users` | Viewer/subscriber | 1, 3, 4 |
+| `videos` | Video metadata | 1, 5, 6, 7 |
+| `subscriptions` | Subscription records | 2, 3, 6 |
+| `unlocks` | Pay-per-view records | 4 |
+| `earnings` | Earnings tracking (per creator) | 6, 8 |
+| `payout_batches` | Batch tracking | 8 |
+| `payouts` | Individual transfer records | 8 |
+| `creator_accounts` | Stripe Connect details | 7, 8 |
+| `dead_letter_queue` | Error recovery | 1, 2, 3, 4, 5, 8 |
+| `factory_events` | Analytics (Factory-managed) | 1-8 |
+
+### Analytics Events Posted to factory_events
+
+- `viewer:page_load`, `viewer:video_view`, `viewer:video_play`, `viewer:subscription_nudge_shown`, `viewer:reaction_sent`, `viewer:error`
+- `creator:signup_attempt`, `creator:email_confirmed`, `creator:profile_complete`, `creator:account_connected`, `creator:first_video_uploaded`, `creator:upload_started`, `creator:upload_completed`, `creator:transcoding_started`, `creator:transcoding_complete`, `creator:video_published`, `creator:upload_error`
+- `subscription:checkout_started`, `subscription:tier_selected`, `subscription:payment_attempted`, `subscription:payment_success`, `subscription:payment_failed`, `subscription:cart_abandoned`, `subscription:checkout_error`
+- `ppv:unlock_attempted`, `ppv:payment_success`, `ppv:payment_failed`, `ppv:video_played`, `ppv:paywall_shown`
+- `dashboard:page_load`, `dashboard:tab_switch`, `dashboard:analytics_viewed`
+- `payout:batch_created`, `payout:batch_executed`, `payout:transfer_initiated`, `payout:transfer_succeeded`, `payout:transfer_failed`, `payout:operator_recovery_action`, `payout:dispute_filed`
+
+### Factory Infrastructure Used
+
+| Component | Flows |
+|-----------|-------|
+| Auth (session, JWT) | 2, 3, 4, 5, 6, 7, 8 |
+| Analytics (factory_events table, PostHog) | All flows |
+| Errors (Sentry, DLQ) | All flows |
+| Database (Neon, Drizzle) | All flows |
+| Monitoring (observability) | All flows |
+
+---
+
+## Version History
+
+| Date | Author | Change |
+|------|--------|--------|
+| 2026-04-28 | Baseline | Initial journey maps for 8 critical videoking flows |

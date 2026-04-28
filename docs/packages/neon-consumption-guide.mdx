@@ -1,0 +1,546 @@
+export const metadata = {
+  title: "Neon Package Consumption Guide",
+  description: "Drizzle ORM, Hyperdrive, Migrations, and RLS patterns",
+};
+
+# @adrper79-dot/neon — Database Consumption Guide
+
+**Last Updated:** April 28, 2026  
+**Target Audience:** Backend engineers working with PostgreSQL  
+**Quick Start Time:** 1–2 hours
+
+---
+
+## Overview
+
+The `@adrper79-dot/neon` package provides:
+- **Drizzle ORM client** — Type-safe queries bound to Neon + Hyperdrive
+- **Migrations layer** — Run Drizzle-generated SQL migrations
+- **Row-Level Security (RLS) integration** — Set `app.tenant_id` context for automatic data filtering
+- **Query helpers** — Re-exported `sql` tag from Drizzle for raw queries when needed
+
+### Why Factory Neon?
+- **Zero-friction:** Hyperdrive → Neon connection handled automatically
+- **Type-safe by default:** Drizzle generates types from schema
+- **Multi-tenant ready:** `setTenantId()` enables RLS for secure data isolation
+- **Videoking-proven:** All 92 tables, production queries, DLQ, payout batches
+
+---
+
+## Installation & Setup
+
+### 1. Install the package
+```bash
+npm install @adrper79-dot/neon
+```
+
+### 2. Add Hyperdrive binding to `wrangler.jsonc`
+
+```json
+{
+  "env": {
+    "production": {
+      "hyperdrive": [
+        {
+          "id": "YOUR_HYPERDRIVE_ID",
+          "binding": "DB"
+        }
+      ]
+    }
+  }
+}
+```
+
+Get `YOUR_HYPERDRIVE_ID` from Cloudflare dashboard → Hyperdrive → Copy the ID.
+
+### 3. Create your Drizzle schema
+
+Create `src/schema.ts`:
+
+```typescript
+import { pgTable, serial, text, integer, pgEnum, timestamp } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+
+export const userRole = pgEnum('user_role', ['owner', 'admin', 'member', 'viewer']);
+
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  email: text('email').notNull().unique(),
+  name: text('name'),
+  role: userRole('role').default('member'),
+  tenantId: text('tenant_id').notNull(),
+  createdAt: timestamp('created_at').default(sql`now()`),
+  updatedAt: timestamp('updated_at').default(sql`now()`),
+});
+
+export const videos = pgTable('videos', {
+  id: text('id').primaryKey(),
+  creatorId: integer('creator_id').notNull().references(() => users.id),
+  title: text('title').notNull(),
+  description: text('description'),
+  url: text('url').notNull(),
+  tenantId: text('tenant_id').notNull(),
+  createdAt: timestamp('created_at').default(sql`now()`),
+});
+```
+
+### 4. Generate migrations
+
+```bash
+npx drizzle-kit generate --config drizzle.config.ts
+```
+
+This creates migration files in `drizzle/migrations/`.
+
+### 5. Initialize the database client in your Worker
+
+```typescript
+import { Hono } from 'hono';
+import { createDb, runMigrations, setTenantId } from '@adrper79-dot/neon';
+
+const app = new Hono();
+
+// Initialize DB client
+const db = createDb(env.DB);
+
+// Run migrations on worker startup
+await runMigrations(db, { migrationsFolder: './drizzle/migrations' });
+
+// Use in routes
+app.get('/api/videos', async (c) => {
+  const user = c.get('user'); // From auth middleware
+  const videos = await db.query.videos.findMany();
+  return c.json(videos);
+});
+
+export default app;
+```
+
+---
+
+## Core Concepts
+
+### Type-Safe Queries
+
+Drizzle generates types from your schema:
+
+```typescript
+import { eq } from 'drizzle-orm';
+import { users, videos } from './schema';
+
+// INSERT
+const newUser = await db
+  .insert(users)
+  .values({
+    email: 'creator@example.com',
+    name: 'John Creator',
+    tenantId: 'workspace_123',
+  })
+  .returning();
+// ✅ TypeScript ensures: email, name, tenantId are provided; role is optional
+
+// SELECT
+const user = await db.query.users.findFirst({
+  where: eq(users.email, 'creator@example.com'),
+});
+// ✅ Inferred type: { id: number; email: string; name: string | null; ... }
+
+// UPDATE
+await db
+  .update(users)
+  .set({ name: 'Updated Name' })
+  .where(eq(users.id, user.id));
+
+// DELETE
+await db.delete(users).where(eq(users.id, userId));
+```
+
+### Row-Level Security (RLS) with setTenantId
+
+In multi-tenant apps, use `setTenantId()` to automatically filter data by tenant:
+
+```typescript
+import { setTenantId } from '@adrper79-dot/neon';
+
+app.get('/api/videos', async (c) => {
+  const user = c.get('user');
+  
+  // Set tenant context for this request
+  const videos = await setTenantId(db, user.tenantId, async () => {
+    // Query inside this callback automatically filters by tenant_id
+    return await db.query.videos.findMany();
+    // ✅ SQL WHERE clause: ... WHERE tenant_id = ${user.tenantId}
+  });
+
+  return c.json(videos);
+});
+```
+
+### Transactions
+
+Wrap multiple queries in a transaction:
+
+```typescript
+await db.transaction(async (tx) => {
+  // Create user
+  const user = await tx
+    .insert(users)
+    .values({ email, tenantId })
+    .returning();
+
+  // Create empty profile
+  await tx
+    .insert(profiles)
+    .values({ userId: user[0].id, tenantId })
+    .returning();
+
+  // If any query fails, entire transaction rolls back
+});
+```
+
+---
+
+## Migrations
+
+### Drizzle Config
+
+Create `drizzle.config.ts`:
+
+```typescript
+import type { Config } from 'drizzle-kit';
+
+export default {
+  schema: './src/schema.ts',
+  out: './drizzle/migrations',
+  driver: 'pg',
+  dbCredentials: {
+    connectionString: process.env.DATABASE_URL,
+  },
+} satisfies Config;
+```
+
+### Generate Migrations
+
+After modifying `src/schema.ts`:
+
+```bash
+npx drizzle-kit generate --name add_video_duration_field
+```
+
+Creates `drizzle/migrations/0001_add_video_duration_field.sql`.
+
+### Run Migrations in Worker
+
+```typescript
+import { createDb, runMigrations } from '@adrper79-dot/neon';
+
+export default {
+  async fetch(req, env) {
+    const db = createDb(env.DB);
+    
+    // Run on startup (idempotent)
+    await runMigrations(db, { migrationsFolder: './drizzle/migrations' });
+
+    // ... rest of worker logic
+  },
+};
+```
+
+**Note:** Migrations are idempotent; running them multiple times is safe.
+
+---
+
+## Videoking Real Usage
+
+### Schema Example: DLQ & Payouts
+
+```typescript
+// src/schema.ts (Videoking)
+
+export const deadLetterQueue = pgTable('dead_letter_queue', {
+  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+  eventType: text('event_type').notNull(), // 'webhook.charge', 'webhook.payout', etc.
+  payload: jsonb('payload').notNull(),
+  errorMessage: text('error_message'),
+  errorStackTrace: text('error_stack_trace'),
+  attemptCount: integer('attempt_count').default(0),
+  status: pgEnum('dlq_status', ['pending', 'processing', 'recovered', 'archived'])('status').default('pending'),
+  createdAt: timestamp('created_at').default(sql`now()`),
+  updatedAt: timestamp('updated_at').default(sql`now()`),
+  relatedId: text('related_id'), // Link to webhook ID or payout ID
+  notes: text('notes'),
+  tenantId: text('tenant_id').notNull(),
+});
+
+export const payoutBatches = pgTable('payout_batches', {
+  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+  periodDate: date('period_date').notNull(), // e.g., '2024-04-28'
+  status: pgEnum('payout_status', ['pending', 'processing', 'completed', 'partial_failure'])('status').default('pending'),
+  creatorCount: integer('creator_count').notNull(),
+  totalUsd: numeric('total_usd', { precision: 10, scale: 2 }).notNull(),
+  successCount: integer('success_count').default(0),
+  failureCount: integer('failure_count').default(0),
+  createdAt: timestamp('created_at').default(sql`now()`),
+  tenantId: text('tenant_id').notNull(),
+});
+```
+
+### DLQ Recording on Webhook Failure
+
+```typescript
+import { createDb, setTenantId, sql } from '@adrper79-dot/neon';
+import { deadLetterQueue } from './schema';
+import { insertInto } from 'drizzle-orm';
+
+async function handleStripeWebhook(event, db, tenantId) {
+  try {
+    // Process webhook
+    if (event.type === 'charge.transfer') {
+      await processPayoutTransfer(event.data, db, tenantId);
+    }
+  } catch (error) {
+    // Record failure to DLQ
+    await setTenantId(db, tenantId, async () => {
+      await db.insert(deadLetterQueue).values({
+        eventType: `webhook.${event.type}`,
+        payload: event,
+        errorMessage: error.message,
+        errorStackTrace: error.stack,
+        status: 'pending',
+        relatedId: event.id,
+        attemptCount: 1,
+      });
+    });
+
+    throw error; // Re-throw to Sentry
+  }
+}
+```
+
+### Admin API: List Pending DLQ
+
+```typescript
+app.get('/api/admin/dead-letter-queue', 
+  rbacMiddleware(['admin', 'owner']),
+  async (c) => {
+    const db = createDb(c.env.DB);
+    const user = c.get('user');
+
+    // List pending DLQ messages for this tenant
+    const pending = await setTenantId(db, user.tenantId, async () => {
+      return await db
+        .select()
+        .from(deadLetterQueue)
+        .where(eq(deadLetterQueue.status, 'pending'))
+        .limit(100);
+    });
+
+    return c.json({ pending, count: pending.length });
+  }
+);
+```
+
+### Payout Batch Creation
+
+```typescript
+// Create batch for creators with pending earnings
+async function createPayoutBatch(creatorEarnings, db, tenantId) {
+  const totalUsd = creatorEarnings.reduce((sum, e) => sum + e.amount, 0);
+
+  const batch = await setTenantId(db, tenantId, async () => {
+    return await db
+      .insert(payoutBatches)
+      .values({
+        periodDate: new Date(),
+        status: 'pending',
+        creatorCount: creatorEarnings.length,
+        totalUsd,
+      })
+      .returning();
+  });
+
+  return batch[0];
+}
+```
+
+---
+
+## Raw Queries (sql tag)
+
+When Drizzle ORM doesn't fit, use raw SQL:
+
+```typescript
+import { createDb, sql } from '@adrper79-dot/neon';
+
+// ✅ Parameterized query (safe from SQL injection)
+const result = await db.execute(
+  sql`SELECT * FROM videos WHERE id = ${videoId} AND tenant_id = ${tenantId}`
+);
+
+// ❌ WRONG: String concatenation = SQL injection
+const wrong = await db.execute(`SELECT * FROM videos WHERE id = '${videoId}'`);
+```
+
+---
+
+## Relationships & Joins
+
+### One-to-Many
+
+```typescript
+// User has many videos
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  name: text('name'),
+  tenantId: text('tenant_id').notNull(),
+});
+
+export const videos = pgTable('videos', {
+  id: text('id').primaryKey(),
+  creatorId: integer('creator_id').references(() => users.id),
+  title: text('title'),
+  tenantId: text('tenant_id').notNull(),
+});
+
+// Query with join
+const creator = await db.query.users.findFirst({
+  with: {
+    videos: true, // Automatically joins videos
+  },
+  where: eq(users.id, userId),
+});
+// Result: { id, name, tenantId, videos: [...] }
+```
+
+### Many-to-Many
+
+```typescript
+export const creatorTags = pgTable('creator_tags', {
+  id: serial('id').primaryKey(),
+  creatorId: integer('creator_id').references(() => users.id),
+  tagId: integer('tag_id').references(() => tags.id),
+  tenantId: text('tenant_id').notNull(),
+});
+
+export const tags = pgTable('tags', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  tenantId: text('tenant_id').notNull(),
+});
+
+// Query creator with tags
+const creator = await db.query.users.findFirst({
+  with: {
+    tags: {
+      with: {
+        tags: true,
+      },
+    },
+  },
+  where: eq(users.id, creatorId),
+});
+```
+
+---
+
+## Error Handling
+
+### DB Errors
+
+```typescript
+import { InternalError, NotFoundError, ErrorCodes } from '@adrper79-dot/errors';
+
+try {
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+
+  if (!user) {
+    throw new NotFoundError('User not found', {
+      code: ErrorCodes.DB_NOT_FOUND,
+      context: { userId },
+    });
+  }
+
+  return user;
+} catch (err) {
+  if (err instanceof NotFoundError) {
+    throw err;
+  }
+
+  throw new InternalError('Database query failed', {
+    code: ErrorCodes.DB_QUERY_FAILED,
+    context: { originalError: err.message },
+  });
+}
+```
+
+---
+
+## Testing
+
+### Mock Database
+
+```typescript
+import { mockDb } from '@adrper79-dot/testing';
+
+describe('Payout Service', () => {
+  it('creates batch for pending creators', async () => {
+    const db = mockDb();
+
+    // Insert test data
+    await db.insert(creators).values({
+      id: 'creator_1',
+      tenantId: 'workspace_1',
+    });
+
+    const batch = await createPayoutBatch([...], db, 'workspace_1');
+    expect(batch.creatorCount).toBe(1);
+  });
+});
+```
+
+---
+
+## Performance Tips
+
+1. **Index foreign keys** — Always create indexes on `creator_id`, `tenant_id`, etc.
+2. **Use `.findFirst()` for single rows** — More efficient than `.findMany().then(r => r[0])`
+3. **Select only needed columns** — Drizzle: `db.select({ id: users.id, email: users.email }).from(users)`
+4. **Paginate large result sets** — Use `.limit()` and `.offset()`
+5. **Monitor slow queries** — Neon dashboard shows query execution times
+
+---
+
+## Troubleshooting
+
+### ❌ "No such table" error
+**Cause:** Migration not run or schema mismatch  
+**Fix:** Ensure `await runMigrations(db, ...)` is called before queries
+
+### ❌ "tenant_id filter not applied"
+**Cause:** Forgot to wrap query in `setTenantId()`  
+**Fix:** Always use `await setTenantId(db, tenantId, async () => { ... })`
+
+### ❌ "Connection timeout"
+**Cause:** Hyperdrive not bound or DATABASE_URL incorrect  
+**Fix:** Check `wrangler.jsonc` hyperdrive ID matches Cloudflare dashboard
+
+### ❌ "SQL syntax error" on migration
+**Cause:** Drizzle schema incompatible with PostgreSQL version  
+**Fix:** Check Neon PostgreSQL version; use compatible Drizzle syntax
+
+---
+
+## Related Docs
+
+- [Factory Capabilities Matrix](factory-capabilities-matrix.mdx)
+- [Database Runbook](../runbooks/database.md) — Migrations, branching, RLS
+- [Videoking Schema](../packages/videoking-engineering-baseline.mdx) — Complete 92-table reference
+- Drizzle Docs: https://orm.drizzle.team/
+
+---
+
+**Version:** 1.0  
+**Maintained by:** Platform team  
+**Last reviewed:** April 28, 2026

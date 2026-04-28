@@ -1,0 +1,727 @@
+export const metadata = {
+  title: "Factory Capabilities Matrix",
+  description: "Comprehensive map of all Factory packages, their capabilities, and when to use them",
+};
+
+# Factory Capabilities Matrix
+
+**Last Updated:** April 28, 2026  
+**Audience:** App developers, platform engineers, technical leads  
+**Purpose:** Answer "Which Factory packages should our app use?" in < 5 minutes
+
+---
+
+## Quick Reference: All 22 Packages
+
+| Package | Status | Primary Use | Videoking Uses? | Est. Learning Curve |
+|---------|--------|-------------|-----------------|-------------------|
+| **@adrper79-dot/errors** | Foundation | Error types, FactoryBaseError | ✅ Yes | 30 min |
+| **@adrper79-dot/monitoring** | Foundation | Sentry integration, error tracking | ✅ Yes | 1 hour |
+| **@adrper79-dot/logger** | Foundation | Structured logging (JSON) | ✅ Yes | 45 min |
+| **@adrper79-dot/auth** | Active | JWT auth, RBAC, middleware | ✅ Yes | 2 hours |
+| **@adrper79-dot/neon** | Active | Drizzle ORM + Hyperdrive, migrations | ✅ Yes | 3 hours |
+| **@adrper79-dot/stripe** | Active | Stripe API client, webhooks, subscriptions | ✅ Yes | 2 hours |
+| **@adrper79-dot/llm** | Active | Multi-provider LLM chain (Anthropic → Grok → Groq) | ✅ Yes | 2 hours |
+| **@adrper79-dot/telephony** | Active | Telnyx voice, Deepgram STT, ElevenLabs TTS | ✅ Yes | 3 hours |
+| **@adrper79-dot/analytics** | Active | PostHog + factory_events table instrumentation | ✅ Yes | 2 hours |
+| **@adrper79-dot/email** | Staging | Resend email delivery | ⏳ Planned | 1 hour |
+| **@adrper79-dot/deploy** | Foundation | Deployment scripts (no runtime deps) | ✅ Shared | 1 hour |
+| **@adrper79-dot/testing** | Foundation | Mock factories, vitest config | ✅ Yes | 1 hour |
+| **@adrper79-dot/compliance** | Staging | GDPR, HIPAA, compliance audit | ⏳ Planned | 2 hours |
+| **@adrper79-dot/video** | Active | Cloudflare Stream + R2 wrappers | ✅ Yes | 2 hours |
+| **@adrper79-dot/schedule** | Active | Video production calendar + priority scoring | ✅ Yes | 2 hours |
+| **@adrper79-dot/admin** | Staging | Admin dashboard capabilities (auth + analytics) | ⏳ Planned | 2 hours |
+| **@adrper79-dot/crm** | Staging | Customer relationship data layer | ⏳ Planned | 2 hours |
+| **@adrper79-dot/content** | Staging | Content + LLM-generated copy | ⏳ Planned | 2 hours |
+| **@adrper79-dot/copy** | Staging | LLM-based copy generation | ⏳ Planned | 1.5 hours |
+| **@adrper79-dot/seo** | Foundation | SEO utilities (schema, sitemap, robots.txt) | ⏳ Planned | 1 hour |
+| **@adrper79-dot/social** | Staging | Social media integration (built on content) | ⏳ Planned | 2 hours |
+| **@adrper79-dot/studio-core** | Foundation | Studio/builder core (shared UI logic) | ⏳ Planned | 3 hours |
+
+---
+
+## Detailed Package Descriptions
+
+### Foundation Tier (Stable, Zero-Risk)
+
+#### **@adrper79-dot/errors**
+- **What it does:** Defines standard error types for all Factory apps
+- **Key exports:** `FactoryBaseError`, `FactoryErrorShape`, `ErrorCodes`, error subclasses (`AuthError`, `NotFoundError`, `ValidationError`, `InternalError`, `ForbiddenError`)
+- **When to use:** Everywhere — catch Factory errors, throw errors that consumers can handle uniformly
+- **Config needed:** None
+- **Dependencies:** None
+- **Videoking usage:** All error handling; DLQ failure recording; webhook error classification
+- **Real example:**
+  ```typescript
+  import { AuthError, ValidationError, ErrorCodes } from '@adrper79-dot/errors';
+  
+  if (!email) {
+    throw new ValidationError('Email is required', {
+      code: ErrorCodes.VALIDATION_ERROR,
+      context: { field: 'email' }
+    });
+  }
+  ```
+
+#### **@adrper79-dot/monitoring**
+- **What it does:** Sentry error tracking + APM (Application Performance Monitoring)
+- **Key exports:** `initSentry`, `captureException`, `captureMessage`, error middleware
+- **When to use:** Initialize once in Worker entry point; all unhandled errors auto-captured
+- **Config needed:** `SENTRY_DSN`, environment name (dev/staging/prod)
+- **Dependencies:** errors
+- **Videoking usage:** Auto-capture of webhook failures, API errors, DLQ events; performance traces for video render pipeline
+- **Real example:**
+  ```typescript
+  import { initSentry } from '@adrper79-dot/monitoring';
+  
+  export default initSentry({
+    dsn: env.SENTRY_DSN,
+    environment: env.ENVIRONMENT,
+    release: env.WORKER_VERSION,
+    tracesSampleRate: 0.1,
+  })(app);
+  ```
+
+#### **@adrper79-dot/logger**
+- **What it does:** JSON structured logging to stdout
+- **Key exports:** `createLogger`, logger with `.info()`, `.warn()`, `.error()`, `.debug()`
+- **When to use:** Log meaningful events (job started, payment processed, error occurred)
+- **Config needed:** None (JSON output auto-formatted)
+- **Dependencies:** errors, monitoring
+- **Videoking usage:** Payout batch logs, webhook processing, admin API activity
+- **Real example:**
+  ```typescript
+  import { createLogger } from '@adrper79-dot/logger';
+  
+  const logger = createLogger('PayoutService');
+  logger.info('Payout batch created', { batchId, creatorCount, totalUsd });
+  ```
+
+#### **@adrper79-dot/deploy**
+- **What it does:** Deployment scripts and CI/CD helpers
+- **Key exports:** Functions for generating version tags, publish scripts, rollback helpers
+- **When to use:** In GitHub Actions workflows during release
+- **Config needed:** GitHub token, Cloudflare credentials
+- **Dependencies:** None
+- **Videoking usage:** Monorepo publish via GitHub Actions
+- **Real example:** Used in `.github/workflows/publish.yml`
+
+#### **@adrper79-dot/testing**
+- **What it does:** Mock factories, fixture generators, vitest config for Workers
+- **Key exports:** Mock DB, mock auth middleware, fixture generators
+- **When to use:** In test files for unit + integration tests
+- **Config needed:** None
+- **Dependencies:** None
+- **Videoking usage:** All `.test.ts` files; DLQ recovery testing, payout batch mock data
+- **Real example:**
+  ```typescript
+  import { mockDb, mockAuthMiddleware } from '@adrper79-dot/testing';
+  
+  describe('PayoutService', () => {
+    it('creates batch for pending creators', async () => {
+      const db = mockDb();
+      // ... test code
+    });
+  });
+  ```
+
+#### **@adrper79-dot/seo**
+- **What it does:** SEO utilities — schema.org JSON-LD, sitemap generation, robots.txt
+- **Key exports:** `generateSchema`, `generateSitemap`, `robotsTxt`
+- **When to use:** In landing page / public-facing endpoints
+- **Config needed:** None
+- **Dependencies:** None
+- **Videoking usage:** Homepage schema markup, sitemap for creator portfolio pages
+- **Real example:**
+  ```typescript
+  import { generateSchema } from '@adrper79-dot/seo';
+  
+  const schema = generateSchema({
+    type: 'VideoObject',
+    name: video.title,
+    description: video.description,
+    thumbnailUrl: video.posterUrl,
+    uploadDate: video.createdAt,
+  });
+  ```
+
+#### **@adrper79-dot/studio-core**
+- **What it does:** Shared UI primitives for builder/studio interfaces (buttons, forms, layouts)
+- **Key exports:** React components, hooks, Tailwind utilities
+- **When to use:** In frontend (Next.js) apps
+- **Config needed:** Tailwind CSS configured
+- **Dependencies:** None (but peer-depends on React)
+- **Videoking usage:** TBD (reserved for future UI builder)
+- **Real example:** TBD
+
+---
+
+### Active Tier (Production Use, Well-Tested)
+
+#### **@adrper79-dot/auth**
+- **What it does:** JWT token creation, validation, RBAC (role-based access control), middleware
+- **Key exports:** `createToken`, `verifyToken`, `rbacMiddleware`, token types
+- **When to use:** Every protected API endpoint; all routes requiring authorization
+- **Config needed:** `JWT_SECRET`, token expiry constants
+- **Dependencies:** errors, logger
+- **Videoking usage:**
+  - Auth middleware on all `/api/*` routes
+  - RBAC for admin endpoints (DLQ recovery requires `admin` role)
+  - Payout batch creation restricted to `admin`
+  - Creator routes require `creator` or `admin` role
+- **Token structure:**
+  ```typescript
+  interface TokenPayload {
+    sub: string;          // user ID
+    tenantId: string;     // org/workspace ID
+    role: 'owner' | 'admin' | 'member' | 'viewer';
+    iat: number;          // issued at
+    exp: number;          // expires at
+  }
+  ```
+- **Real example:**
+  ```typescript
+  import { rbacMiddleware } from '@adrper79-dot/auth';
+  
+  app.post('/api/admin/payouts/batch', 
+    rbacMiddleware(['admin', 'owner']),
+    async (c) => {
+      // POST body: { startDate, endDate }
+      // Only admin/owner can create payout batches
+    }
+  );
+  ```
+
+#### **@adrper79-dot/neon**
+- **What it does:** Drizzle ORM client bound to Neon Hyperdrive, migrations layer
+- **Key exports:** `createDb`, `setTenantId`, `runMigrations`, re-exported `sql` from drizzle-orm
+- **When to use:** All database access; initialization in Worker entry point
+- **Config needed:** `env.DB` Hyperdrive binding
+- **Dependencies:** errors, logger
+- **Videoking usage:**
+  - All 92-table schema queries
+  - Row-level security (RLS) per tenant via `setTenantId()`
+  - Migrations for schema changes
+  - DLQ, payout_batches, video_calendar tables
+- **Real example:**
+  ```typescript
+  import { createDb, setTenantId, sql } from '@adrper79-dot/neon';
+  
+  const db = createDb(env.DB);
+  
+  // Set tenant context for RLS
+  await setTenantId(db, tenantId, async () => {
+    const creators = await db.query.creators.findMany();
+    // Query automatically filtered by current tenant
+  });
+  ```
+
+#### **@adrper79-dot/stripe**
+- **What it does:** Stripe client, webhook validation, subscription lifecycle helpers
+- **Key exports:** `createStripeClient`, `stripeWebhookHandler`, `SubscriptionStatus`, methods for checkout, cancellation
+- **When to use:** Payment endpoints; webhook handlers; subscription state machine
+- **Config needed:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISH_KEY`
+- **Dependencies:** errors, logger, neon
+- **Videoking usage:**
+  - Viewer subscriptions: Citizen tier (free), VIP tier (premium)
+  - Creator payouts via Stripe Connect transfers
+  - Webhook handlers for charge.transfer, customer.subscription.updated
+  - Payout batch execution sends Stripe API calls to each creator's connected account
+- **Subscription states:**
+  ```typescript
+  type SubscriptionStatus = 
+    | 'active'        // Subscription is active
+    | 'trialing'      // In free trial
+    | 'past_due'      // Payment failed, retrying
+    | 'canceled'      // Canceled by customer or system
+    | 'none';         // No subscription (free tier)
+  ```
+- **Real example:**
+  ```typescript
+  import { createStripeClient, stripeWebhookHandler } from '@adrper79-dot/stripe';
+  
+  const stripe = createStripeClient(env.STRIPE_SECRET_KEY);
+  
+  app.post('/webhooks/stripe', stripeWebhookHandler({
+    webhookSecret: env.STRIPE_WEBHOOK_SECRET,
+    stripeClient: stripe,
+    handlers: {
+      'upgraded': async (status) => {
+        // Update user subscription tier
+      },
+      'canceled': async (status) => {
+        // Handle cancellation
+      },
+    },
+  }));
+  ```
+
+#### **@adrper79-dot/llm**
+- **What it does:** Multi-provider LLM chain: tries Anthropic Claude first, falls back to Grok, then Groq
+- **Key exports:** `createLlmChain`, `chatCompletion`, `streamCompletion`, provider fallback logic
+- **When to use:** Any LLM inference (content generation, script writing, embeddings)
+- **Config needed:** `ANTHROPIC_API_KEY`, `GROK_API_KEY`, `GROQ_API_KEY`
+- **Dependencies:** errors, logger
+- **Videoking usage:**
+  - Script generation for video rendering (via render-video.yml GitHub Action)
+  - Suggested copy for creator profiles
+  - Video title/description optimization
+  - Fallback: if Anthropic is rate-limited, automatically retry with Grok
+- **Real example:**
+  ```typescript
+  import { createLlmChain } from '@adrper79-dot/llm';
+  
+  const llm = createLlmChain({
+    anthropicKey: env.ANTHROPIC_API_KEY,
+    grokKey: env.GROK_API_KEY,
+    groqKey: env.GROQ_API_KEY,
+  });
+  
+  const script = await llm.chatCompletion({
+    model: 'claude-3-5-sonnet',
+    messages: [
+      { role: 'user', content: 'Write a script about ${topic}' }
+    ],
+  });
+  // Automatically retries with Grok or Groq if Anthropic fails
+  ```
+
+#### **@adrper79-dot/telephony**
+- **What it does:** Phone call orchestration: Telnyx (voice), Deepgram (speech-to-text), ElevenLabs (text-to-speech)
+- **Key exports:** `initTelephony`, `startCall`, `transcribeAudio`, `synthesizeSpeech`, event handlers
+- **When to use:** Interactive voice experiences, live Q&A calls, customer support
+- **Config needed:** `TELNYX_API_KEY`, `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY`, webhook secret
+- **Dependencies:** errors, logger, llm
+- **Videoking usage:** Creator live calls, audience Q&A during interactive videos
+- **Real example:**
+  ```typescript
+  import { initTelephony } from '@adrper79-dot/telephony';
+  
+  const telephony = initTelephony({
+    telnyxApiKey: env.TELNYX_API_KEY,
+    deepgramKey: env.DEEPGRAM_API_KEY,
+    elevenLabsKey: env.ELEVENLABS_API_KEY,
+  });
+  
+  app.post('/voice/call', async (c) => {
+    const call = await telephony.startCall({
+      to: c.req.body().to,
+      script: 'Welcome to VideoKing support',
+    });
+  });
+  ```
+
+#### **@adrper79-dot/analytics**
+- **What it does:** Dual-write instrumentation to PostHog (product analytics) and factory_events table (revenue + compliance events)
+- **Key exports:** `initAnalytics`, `.track()`, `.identify()`, `.businessEvent()`, `.page()`
+- **When to use:** Every meaningful user action (signup, watch, subscribe, create content)
+- **Config needed:** `POSTHOG_API_KEY`
+- **Dependencies:** errors, neon
+- **Videoking usage:**
+  - Viewer engagement funnels: landing → signup → first watch → subscribe → renew
+  - Creator retention funnels: publish → get views → earnings
+  - Revenue events: subscription.created, subscription.renewed, payout.success
+  - Compliance events: gdpr.data_request, account.deleted
+  - Aligns with journeys from Phase A ("user journeys & telemetry")
+- **Real example:**
+  ```typescript
+  import { initAnalytics } from '@adrper79-dot/analytics';
+  
+  const analytics = initAnalytics({
+    postHogKey: env.POSTHOG_API_KEY,
+    db: env.DB,
+    appId: 'videoking',
+  });
+  
+  // Product event (both PostHog + factory_events)
+  await analytics.track('video.watched', {
+    videoId: video.id,
+    duration: watchDuration,
+    platform: 'web',
+  }, viewerId);
+  
+  // Revenue event (factory_events only, never sent to PostHog)
+  await analytics.businessEvent('revenue.subscription_created', {
+    customerId: customer.id,
+    tier: 'vip',
+    amount: 9.99,
+    currency: 'USD',
+  }, viewerId);
+  ```
+
+#### **@adrper79-dot/video**
+- **What it does:** Cloudflare Stream & R2 wrappers for video upload, transcoding, streaming, and storage
+- **Key exports:** `createStreamClient`, `uploadVideo`, `getStreamEmbed`, `deleteVideo`, R2 helpers
+- **When to use:** All video operations (read: upload, play, delete)
+- **Config needed:** `CF_ACCOUNT_ID`, `CF_STREAM_TOKEN`, R2 binding
+- **Dependencies:** errors
+- **Videoking usage:**
+  - Creator uploads → auto-transcoded by Cloudflare Stream
+  - Stream embed URLs for viewer playback
+  - Poster images stored in R2
+  - Transcripts stored in R2 (captions, SEO)
+- **Real example:**
+  ```typescript
+  import { createStreamClient } from '@adrper79-dot/video';
+  
+  const stream = createStreamClient({
+    accountId: env.CF_ACCOUNT_ID,
+    apiToken: env.CF_STREAM_TOKEN,
+  });
+  
+  const video = await stream.uploadVideo(file, {
+    name: title,
+    requireSignedUrls: true,
+    duration: videoDurationSec,
+  });
+  
+  const embedUrl = stream.getStreamEmbed(video.uid, {
+    requireSignedRequest: true,
+  });
+  ```
+
+#### **@adrper79-dot/schedule**
+- **What it does:** Video production calendar + priority scoring based on PostHog engagement signals
+- **Key exports:** `VideoCalendarService`, `.getPendingJobs()`, `.scorePriority()`, `.updateJobStatus()`
+- **When to use:** In cron Workers to dispatch video renders; in admin UI to track pipeline
+- **Config needed:** Database, PostHog access
+- **Dependencies:** errors, neon, video
+- **Videoking usage:**
+  - Daily cron fires; queries pending videos from `video_calendar` table
+  - Scores engagement (from PostHog) to prioritize render queue
+  - Dispatches GitHub Actions workflow_dispatch for highest-priority videos
+  - Updates job status as renders complete
+- **Real example:**
+  ```typescript
+  import { createScheduleService } from '@adrper79-dot/schedule';
+  
+  const schedule = createScheduleService(db);
+  
+  // In cron Worker
+  const pending = await schedule.getPendingJobs();
+  const scored = await Promise.all(
+    pending.map(job => schedule.scorePriority(job))
+  );
+  
+  const topJobs = scored
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+  
+  for (const job of topJobs) {
+    await dispatch(`github-actions`, 'render-video', {
+      videoCalendarId: job.id,
+      topic: job.topic,
+    });
+  }
+  ```
+
+---
+
+### Staging Tier (Tested, Rollout Plan)
+
+#### **@adrper79-dot/email**
+- **What it does:** Email delivery via Resend
+- **Status:** Tested, scheduled for Phase C
+- **When to use:** Transactional emails (password reset, verification, notifications)
+- **Key exports:** `createEmailClient`, `.send()`
+- **Config needed:** `RESEND_API_KEY`
+- **Dependencies:** errors, logger
+- **Videoking rollout:** Creator notifications, viewer subscription receipts
+
+#### **@adrper79-dot/compliance**
+- **What it does:** GDPR, HIPAA, SOC 2 audit logging
+- **Status:** Tested, rollout starting Phase C
+- **When to use:** Data privacy compliance, audit trails
+- **Key exports:** `initCompliance`, `.logDataAccess()`, `.logDataDeletion()`, audit export
+- **Config needed:** Compliance database table
+- **Dependencies:** neon
+- **Videoking rollout:** User data deletion requests, creator earning audits
+
+#### **@adrper79-dot/admin**
+- **What it does:** Admin dashboard capabilities (auth + analytics)
+- **Status:** Built atop auth + analytics, UI rollout Phase C
+- **When to use:** Admin-only endpoints
+- **Key exports:** Dashboard middleware, admin schema
+- **Config needed:** Auth configured
+- **Dependencies:** auth, analytics
+- **Videoking usage:** DLQ dashboard, payout history, creator earnings reports
+
+#### **@adrper79-dot/crm**
+- **What it does:** Customer relationship management data layer
+- **Status:** Schema designed, rollout Phase C
+- **When to use:** Creator engagement, viewer lifecycle management
+- **Key exports:** CRM schema, journey tracking
+- **Config needed:** Database
+- **Dependencies:** neon, analytics
+- **Videoking usage:** Creator nurture campaigns, churn prediction
+
+#### **@adrper79-dot/content**
+- **What it does:** Content management + LLM-generated copy
+- **Status:** Built on neon + copy package
+- **When to use:** Blog, resource library, community content
+- **Key exports:** Content schema, publishing workflow
+- **Config needed:** Database, LLM
+- **Dependencies:** neon, copy
+- **Videoking usage:** Creator profile bios, video descriptions
+
+#### **@adrper79-dot/copy**
+- **What it does:** LLM-based copy generation (headlines, descriptions, CTAs)
+- **Status:** Core logic stable, UI rollout Phase C
+- **When to use:** Auto-suggest features, bulk content generation
+- **Key exports:** `generateCopy`, `suggestHeadlines`, `optimizeDescription`
+- **Config needed:** LLM client
+- **Dependencies:** llm
+- **Videoking usage:** Video title/description suggestions, creator bio auto-completion
+
+#### **@adrper79-dot/social**
+- **What it does:** Social media integration (Twitter/X, Instagram, LinkedIn)
+- **Status:** APIs tested, auth flows Phase C
+- **When to use:** Cross-post creator content
+- **Key exports:** `initSocial`, `.post()`, `.schedule()`
+- **Config needed:** OAuth tokens per platform
+- **Dependencies:** content
+- **Videoking usage:** Auto-share new videos to creator's socials
+
+---
+
+## Decision Tree: Build vs. Consume
+
+```
+START: Do I need feature X?
+  │
+  ├─ Does Factory have a package for it?
+  │   │
+  │   ├─ YES (found package)
+  │   │   │
+  │   │   ├─ Is it in Foundation or Active tier?
+  │   │   │   │
+  │   │   │   ├─ YES → **CONSUME IT** (production-ready, zero risk)
+  │   │   │   │
+  │   │   │   └─ NO (Staging) → Can I wait 1–2 sprints?
+  │   │   │       │
+  │   │   │       ├─ YES → **PLAN TO CONSUME** (mark in tech debt; milestone = Phase C)
+  │   │   │       │
+  │   │   │       └─ NO → **CONSIDER BUILDING** (but evaluate if you can rework workflow)
+  │   │   │
+  │   │   └─ Does package's API meet 90% of my needs?
+  │   │       │
+  │   │       ├─ YES → **CONSUME IT** + (optional) request minor API extension
+  │   │       │
+  │   │       └─ NO (10+ % mismatch) →
+  │   │           │
+  │   │           ├─ File issue in Factory Core repo (proposing API extension)
+  │   │           │
+  │   │           └─ DECISION POINT:
+  │   │               ├─ If extension accepted → Wait for implementation (1–2 sprints)
+  │   │               └─ If extension rejected → You may build custom (isolation required)
+  │   │
+  │   └─ NO (not in Factory)
+  │       │
+  │       ├─ Is this feature:
+  │       │   ├─ PLATFORM-LEVEL (auth, payments, storage, observability)?
+  │       │   │   → **PROPOSE NEW FACTORY PACKAGE** (Phase C)
+  │       │   │   → Meanwhile, build custom with clear seam for future swap
+  │       │   │
+  │       │   ├─ APP-SPECIFIC (business logic, workflows, domain models)?
+  │       │   │   → **BUILD CUSTOM IN YOUR APP** (not Factory)
+  │       │   │
+  │       │   └─ UNCERTAIN?
+  │       │       → Ask: "Will a different app need this in next 6 months?"
+  │       │       → YES → **PROPOSE FACTORY PACKAGE**
+  │       │       → NO → **BUILD IN YOUR APP**
+  │       │
+  │       └─ Assume you'll build custom...
+  │           │
+  │           └─ Do you have > 1 app that needs this?
+  │               ├─ YES → Extract to Factory package after 2–3 apps prove the pattern
+  │               └─ NO → Build inline; extract only if pattern becomes clear
+```
+
+---
+
+## Usage Patterns by Scenario
+
+### Scenario 1: Launching a Viewer/Creator Marketplace App
+
+**Minimum Foundation (Day 1–3):**
+1. `@adrper79-dot/errors` — Error handling
+2. `@adrper79-dot/monitoring` — Sentry setup
+3. `@adrper79-dot/auth` — JWT + RBAC
+4. `@adrper79-dot/neon` — Database + migrations
+5. `@adrper79-dot/testing` — Unit tests
+
+**Week 1–2:**
+6. `@adrper79-dot/stripe` — Payments (subscriptions + payouts)
+7. `@adrper79-dot/analytics` — User funnels
+8. `@adrper79-dot/video` — Video upload + streaming
+9. `@adrper79-dot/schedule` — Content production pipeline
+
+**Week 3–4:**
+10. `@adrper79-dot/email` — Transactional emails
+11. `@adrper79-dot/logger` — Structured logging for ops
+12. `@adrper79-dot/seo` — Landing page schema + sitemap
+
+**Backlog (Phase C):**
+- `@adrper79-dot/crm` — Viewer retention
+- `@adrper79-dot/compliance` — GDPR audit
+- `@adrper79-dot/social` — Auto-share creator content
+
+### Scenario 2: Voice/Interactive App
+
+**Start with:**
+1. Core: errors, monitoring, auth, neon
+2. Add: `@adrper79-dot/telephony` — Voice infrastructure
+3. Add: `@adrper79-dot/llm` — LLM responses for conversational UX
+4. Add: `@adrper79-dot/analytics` — Call tracking, engagement
+
+### Scenario 3: Content Platform (No Video)
+
+**Start with:**
+1. Core: errors, monitoring, auth, neon
+2. Add: `@adrper79-dot/content` + `@adrper79-dot/copy` — Content + LLM copy
+3. Add: `@adrper79-dot/analytics` — Reading time, engagement
+4. Skip: `@adrper79-dot/video`, `@adrper79-dot/telephony`
+
+---
+
+## App-Facing Contracts (What Each Package Exports)
+
+### Per-Package Export Checklist
+
+For **@adrper79-dot/auth:**
+```typescript
+// ALWAYS exported
+export interface TokenPayload { sub, tenantId, role, iat, exp }
+export function createToken(payload: TokenPayload, secret: string): Promise<string>
+export function verifyToken(token: string, secret: string): Promise<TokenPayload>
+export function rbacMiddleware(allowedRoles: string[]): MiddlewareHandler
+```
+
+For **@adrper79-dot/neon:**
+```typescript
+// ALWAYS exported
+export type FactoryDb = NeonHttpDatabase
+export function createDb(hyperdrive: HyperdriveBinding): FactoryDb
+export function setTenantId(db: FactoryDb, tenantId: string, callback: () => Promise<T>): Promise<T>
+export function runMigrations(db: FactoryDb, options: RunMigrationsOptions): Promise<void>
+export { sql } from 'drizzle-orm'
+```
+
+For **@adrper79-dot/stripe:**
+```typescript
+// ALWAYS exported
+export function createStripeClient(secretKey: string): Stripe
+export function stripeWebhookHandler(options: StripeWebhookHandlerOptions): MiddlewareHandler
+export interface SubscriptionStatus { customerId, status, tier, currentPeriodEnd, cancelAtPeriodEnd }
+```
+
+For **@adrper79-dot/analytics:**
+```typescript
+// ALWAYS exported
+export interface Analytics {
+  track(event: string, properties?: Record<string, unknown>, userId?: string): Promise<void>
+  identify(userId: string, traits: Record<string, unknown>): Promise<void>
+  businessEvent(event: string, properties: Record<string, unknown>, userId?: string): Promise<void>
+  page(name: string, properties?: Record<string, unknown>): Promise<void>
+}
+export function initAnalytics(config: AnalyticsConfig): Analytics
+```
+
+For **@adrper79-dot/monitoring:**
+```typescript
+// ALWAYS exported
+export function initSentry(config: MonitoringConfig): (app: Hono) => Hono
+export function captureException(error: Error, context?: ErrorCaptureContext): void
+export function captureMessage(message: string, level: 'info' | 'warning' | 'error'): void
+```
+
+---
+
+## Required Configuration by Package
+
+| Package | Environment Variables | Bindings | Schema Tables |
+|---------|----------------------|----------|---------------|
+| **errors** | None | None | None |
+| **monitoring** | `SENTRY_DSN` | None | None |
+| **logger** | None | None | None |
+| **auth** | `JWT_SECRET` | None | None |
+| **neon** | None | `DB` (Hyperdrive) | Depends on app |
+| **stripe** | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | None | `customers`, `subscriptions` |
+| **llm** | `ANTHROPIC_API_KEY`, `GROK_API_KEY`, `GROQ_API_KEY` | None | None |
+| **telephony** | `TELNYX_API_KEY`, `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY` | None | `call_logs`, `transcriptions` |
+| **analytics** | `POSTHOG_API_KEY` | None | `factory_events` |
+| **video** | `CF_ACCOUNT_ID`, `CF_STREAM_TOKEN` | R2 bucket | `videos`, `posters` |
+| **schedule** | None | None | `video_calendar` |
+| **email** | `RESEND_API_KEY` | None | `email_logs` |
+| **compliance** | None | None | `audit_log` |
+
+---
+
+## Common Mistakes to Avoid
+
+### ❌ Don't:
+1. **Import private exports** — Use only documented public exports (`index.ts`); package internals may break
+2. **Bypass error handling** — Don't catch `FactoryBaseError` and re-throw as generic `Error`; consumers won't know how to handle
+3. **Skip analytics instrumentation** — Without `.track()` calls, you have no visibility into user behavior
+4. **Use Factory packages for business logic** — Packages are infrastructure only; domain models belong in your app
+5. **Ignore Stripe webhooks** — Missing webhook handler = silent payment failures; use `stripeWebhookHandler` middleware
+6. **Skip tenant context in multi-tenant scenarios** — Missing `setTenantId()` = cross-tenant data leaks
+
+### ✅ Do:
+1. **Always initialize monitoring first** — Sentry should be the first middleware
+2. **Validate auth before accessing DB** — RBAC → DB query, never the reverse
+3. **Log errors with context** — Include userId, tenantId, requestId for debugging
+4. **Test package integration** — Use mock factories from `@adrper79-dot/testing`
+5. **Keep packages platform-neutral** — No Node.js built-ins; use `TextEncoder` not `Buffer`
+6. **Extend thoughtfully** — If a package doesn't fit, propose an extension before building custom
+
+---
+
+## Dependency Graph (For Teams)
+
+**Build order (if starting a new app):**
+
+```
+errors → monitoring
+  ↓         ↓
+logger    (stable)
+  ↓
+auth → neon → stripe
+         ↓        ↓
+      analytics   (business layer)
+         ↑
+     video + schedule
+         ↑
+      llm + telephony
+```
+
+**Key constraint:** Never let `auth`, `neon`, or `analytics` depend on each other; they are peers.
+
+---
+
+## Support & Extension
+
+### How to Request a Package Extension
+1. Open an issue in Factory Core: `@adrper79-dot/* package name: feature request`
+2. Explain the gap and why it needs to be in Factory (not your app)
+3. Link real app usage (e.g., videoking uses case)
+4. Platform team reviews in weekly factory-core standup
+5. If approved → estimated ship date + milestone
+
+### How to Propose a New Package
+1. Identify the use case (e.g., "we need compliance logging for GDPR")
+2. Check if 2+ apps will consume it within 6 months
+3. Propose in factory-core issue; include dependency map
+4. Platform team adds to roadmap after Phase C stabilization
+
+### Where to Find Help
+- **Factory Core Repo:** https://github.com/adrper79-dot/factory-core
+- **Package READMEs:** `packages/{name}/README.md`
+- **Runbooks:** `docs/runbooks/`
+- **Sample App:** Videoking usage in `_external_reviews/videoking/`
+
+---
+
+**Version:** 1.0  
+**Last reviewed:** April 28, 2026  
+**Next review:** June 15, 2026 (after Phase C stabilization)

@@ -54,7 +54,172 @@ pages:
     required_secrets:
       - CF_API_TOKEN
       - CF_ACCOUNT_ID
+# ─── FACTORY PACKAGES ───────────────────────────────────────────────────────────
+#
+# Shared npm packages published to @adrper79-dot scope.
+# See docs/packages/factory-capabilities-matrix.mdx for full documentation.
+#
+# Status key:
+#   - "Foundation" — Core, zero risk, use in all new apps
+#   - "Active" — Tested in production, use immediately
+#   - "Staging" — Tested, rollout in Phase C
+#   - "Deprecated" — Phase out in favor of alternative
+#
 
+packages:
+  - name: "@adrper79-dot/errors"
+    status: "Foundation"
+    version: "1.0.0"
+    main_use: "Error types, FactoryBaseError, error handling"
+    videoking_used: true
+    depends_on: []
+    
+  - name: "@adrper79-dot/monitoring"
+    status: "Foundation"
+    version: "1.0.0"
+    main_use: "Sentry integration, error tracking, APM"
+    videoking_used: true
+    depends_on: ["errors"]
+    
+  - name: "@adrper79-dot/logger"
+    status: "Foundation"
+    version: "1.0.0"
+    main_use: "JSON structured logging"
+    videoking_used: true
+    depends_on: ["errors", "monitoring"]
+    
+  - name: "@adrper79-dot/auth"
+    status: "Active"
+    version: "1.0.0"
+    main_use: "JWT auth, RBAC, middleware"
+    videoking_used: true
+    depends_on: ["errors", "logger"]
+    
+  - name: "@adrper79-dot/neon"
+    status: "Active"
+    version: "1.0.0"
+    main_use: "Drizzle ORM, Hyperdrive, migrations, RLS"
+    videoking_used: true
+    depends_on: ["errors", "logger"]
+    
+  - name: "@adrper79-dot/stripe"
+    status: "Active"
+    version: "1.0.0"
+    main_use: "Stripe API, subscriptions, webhooks, payouts"
+    videoking_used: true
+    depends_on: ["errors", "logger", "neon"]
+    
+  - name: "@adrper79-dot/llm"
+    status: "Active"
+    version: "1.0.0"
+    main_use: "Multi-provider LLM chain (Anthropic → Grok → Groq)"
+    videoking_used: true
+    depends_on: ["errors", "logger"]
+    
+  - name: "@adrper79-dot/telephony"
+    status: "Active"
+    version: "1.0.0"
+    main_use: "Telnyx, Deepgram STT, ElevenLabs TTS"
+    videoking_used: true
+    depends_on: ["errors", "logger", "llm"]
+    
+  - name: "@adrper79-dot/analytics"
+    status: "Active"
+    version: "1.0.0"
+    main_use: "PostHog + factory_events instrumentation"
+    videoking_used: true
+    depends_on: ["errors", "neon"]
+    
+  - name: "@adrper79-dot/video"
+    status: "Active"
+    version: "1.0.0"
+    main_use: "Cloudflare Stream + R2 wrappers"
+    videoking_used: true
+    depends_on: ["errors"]
+    
+  - name: "@adrper79-dot/schedule"
+    status: "Active"
+    version: "1.0.0"
+    main_use: "Video production calendar + priority scoring"
+    videoking_used: true
+    depends_on: ["errors", "neon", "video"]
+    
+  - name: "@adrper79-dot/deploy"
+    status: "Foundation"
+    version: "1.0.0"
+    main_use: "Deployment scripts (no runtime deps)"
+    videoking_used: false
+    depends_on: []
+    
+  - name: "@adrper79-dot/testing"
+    status: "Foundation"
+    version: "1.0.0"
+    main_use: "Mock factories, vitest config"
+    videoking_used: true
+    depends_on: []
+    
+  - name: "@adrper79-dot/email"
+    status: "Staging"
+    version: "0.1.0"
+    main_use: "Resend email delivery"
+    videoking_used: false
+    depends_on: ["errors", "logger"]
+    
+  - name: "@adrper79-dot/compliance"
+    status: "Staging"
+    version: "0.1.0"
+    main_use: "GDPR, HIPAA, audit logging"
+    videoking_used: false
+    depends_on: ["neon"]
+    
+  - name: "@adrper79-dot/admin"
+    status: "Staging"
+    version: "0.1.0"
+    main_use: "Admin dashboard capabilities"
+    videoking_used: false
+    depends_on: ["auth", "analytics"]
+    
+  - name: "@adrper79-dot/crm"
+    status: "Staging"
+    version: "0.1.0"
+    main_use: "Customer relationship data layer"
+    videoking_used: false
+    depends_on: ["neon", "analytics"]
+    
+  - name: "@adrper79-dot/content"
+    status: "Staging"
+    version: "0.1.0"
+    main_use: "Content management + LLM copy"
+    videoking_used: false
+    depends_on: ["neon", "copy"]
+    
+  - name: "@adrper79-dot/copy"
+    status: "Staging"
+    version: "0.1.0"
+    main_use: "LLM-based copy generation"
+    videoking_used: false
+    depends_on: ["llm"]
+    
+  - name: "@adrper79-dot/seo"
+    status: "Foundation"
+    version: "1.0.0"
+    main_use: "SEO utilities (schema, sitemap)"
+    videoking_used: false
+    depends_on: []
+    
+  - name: "@adrper79-dot/social"
+    status: "Staging"
+    version: "0.1.0"
+    main_use: "Social media integration"
+    videoking_used: false
+    depends_on: ["content"]
+    
+  - name: "@adrper79-dot/studio-core"
+    status: "Foundation"
+    version: "0.1.0"
+    main_use: "Studio/builder core (shared UI)"
+    videoking_used: false
+    depends_on: []
 # ─── RENAME PROCEDURE ──────────────────────────────────────────────────────────
 #
 # To rename a worker (e.g. prime-self → prime-self-v2):
@@ -69,3 +234,49 @@ pages:
 #   Step 8: Update this registry (name + url fields)
 #
 # ─── DO NOT SKIP STEPS ─────────────────────────────────────────────────────────
+
+# ─── IMPLEMENTATION TRACKS ──────────────────────────────────────────────────────
+#
+# The Factory implementation is organized into 7 coordinated tracks.
+# See docs/WORLD_CLASS_IMPLEMENTATION_DASHBOARD.md for full strategy.
+#
+# Track Registry (from T7 - Documentation & Knowledge Management):
+#
+#   T1: Product + UX Operating System
+#       Owner: Product Lead + Design Lead
+#       Status: Phase A (Align)
+#       Purpose: Define product quality rubric, design system, UX standards
+#
+#   T2: Core App Engineering Excellence
+#       Owner: Core App Tech Lead
+#       Status: Phase B (Baseline)
+#       Purpose: Apply Definition of Done, maintain test coverage, implement observability
+#
+#   T3: Monetization + Operator Maturity
+#       Owner: Product Lead + Payments Lead
+#       Status: Phase B (Baseline)
+#       Purpose: Design operator workflows, Stripe integration, regression tests
+#
+#   T4: Factory Platform Enablement
+#       Owner: Platform Lead
+#       Status: Phase C (Build)
+#       Purpose: Implement package dependency order, enable new apps to bootstrap
+#
+#   T5: Reliability, Security, Observability
+#       Owner: Platform Lead + Ops
+#       Status: Phase C (Build)
+#       Purpose: Define SLOs, operationalize incident response, implement security scanning
+#
+#   T6: Delivery Process & Release Governance
+#       Owner: EM / Tech Lead
+#       Status: Phase A (Align)
+#       Purpose: Define Ready/Done, PR gates, deployment procedures, measure cycle time
+#
+#   T7: Documentation & Knowledge Management
+#       Owner: Tech Writer + EM
+#       Status: Phase A (Align)
+#       Purpose: Master index, ownership assignments, doc freshness audit, keep docs sync'd
+#
+# SEE ALSO:
+#   - docs/WORLD_CLASS_IMPLEMENTATION_DASHBOARD.md (full strategy and phases)
+#   - docs/IMPLEMENTATION_MASTER_INDEX.md (doc navigation hub)

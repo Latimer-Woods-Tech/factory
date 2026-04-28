@@ -1,0 +1,337 @@
+# Design Standards & Product Quality Framework
+
+## Mission
+
+This document establishes shared design principles and a measurable quality rubric that Factory applies to all applications and that videoking applies internally. The rubric ensures every feature, UI, and API meets a standard bar before shipping.
+
+---
+
+## Core Design Principles
+
+These principles guide all design, product, and engineering decisions across Factory and videoking.
+
+### 1. **Clarity**
+**What it means:** Users—whether viewers, creators, or operators—should understand what they can do and what will happen next without hesitation.
+
+**In practice:**
+- Copy is plain English; avoid jargon and acronyms unless the audience specializes in them
+- CTAs use action verbs: "Upload Video," "Start Stream," "Claim Earnings" (not "OK," "Proceed," "Go")
+- Error messages tell users what went wrong and how to fix it (not just "Error 422")
+- Navigation and information architecture mirror user mental models, not engineering taxonomy
+- WCAG 2.2 AA compliance: color is never the only way to convey information; text meets 4.5:1 contrast
+
+### 2. **Accessibility**
+**What it means:** No creator, viewer, or operator should be locked out based on disability, device, or connectivity.
+
+**In practice:**
+- WCAG 2.2 AA baseline for all public and creator UI
+- Keyboard navigation throughout (Tab, Enter, Escape, arrow keys)
+- Screen readers (ARIA labels, semantic HTML, live regions for updates)
+- Respects prefers-reduce-motion, prefers-color-scheme, zoom up to 200%
+- Video captions and transcripts always included in Creator Dashboard
+- Mobile-first design; all flows work on 375px viewport
+- No JavaScript required for core navigation (progressive enhancement)
+
+### 3. **Trust**
+**What it means:** Users can rely on the platform to handle their data, payments, and reputation responsibly.
+
+**In practice:**
+- Authentication is clear and requires consent (no silent signups)
+- Creators see exactly what earnings are pending and why (no black boxes)
+- Payment processing shows confirmations and receipts
+- Moderation transparency: users see why content was flagged/removed and who can appeal
+- Billing statements are itemized; subscriptions show renewal dates upfront
+- Data usage (analytics tracking) is disclosed in Plain English, not legalese
+- Stripe and payment partners are clearly named; users know who they're trusting
+
+### 4. **Consistency**
+**What it means:** Users develop mental models once and apply them everywhere—same buttons, flows, terminology across all surfaces.
+
+**In practice:**
+- Design tokens (color palette, typography, spacing) enforced in code and UI libraries
+- Navigation patterns (tabs, modals, sidebars) are identical across web and PWA
+- Terminology is standardized across product (e.g., "Creator Earnings" not "Revenue" vs "Payouts")
+- Event schemas in analytics are consistent; `video:play` always has the same payload structure
+- API response shapes are predictable (same error format, same pagination pattern)
+- Button styles, form states, empty states follow the same rules everywhere
+
+### 5. **Performance**
+**What it means:** The platform responds instantly. Viewers don't wait; creators get real-time feedback; operators see data immediately.
+
+**In practice:**
+- First Contentful Paint (FCP) < 1.5s on 4G
+- Largest Contentful Paint (LCP) < 2.5s on 4G
+- Cumulative Layout Shift (CLS) < 0.1
+- Interaction to Next Paint (INP) < 200ms
+- Video playback starts within 3s for cached content
+- API response time (p95) < 500ms; timeout < 5s
+- Creator Dashboard loads earnings within 2s
+- Progressive loading: show skeleton/partial data, then full data
+
+### 6. **Responsiveness to Feedback**
+**What it means:** The platform learns from users—analytics, support tickets, and error data drive rapid iteration.
+
+**In practice:**
+- Errors are tracked to Sentry with context (user, flow, steps to reproduce)
+- Analytics events feed PostHog funnels; drop-offs trigger investigation
+- Creator support tickets are logged; top issues get design fixes, not just support responses
+- A/B tests measure every major change; rollbacks happen within hours if metrics degrade
+- Operator runbooks document known issues and workarounds; issues → fixes → documentation
+- Beta feedback loops: creators test new features in staging; feedback informs launch
+
+### 7. **Premium Feel**
+**What it means:** The experience feels competent, intentional, and respectful of the user's time and attention.
+
+**In practice:**
+- Micro-interactions (transitions, loading states, hover states) are smooth and purposeful, not gratuitous
+- Empty states are helpful, not blank (e.g., "No videos uploaded yet — upload your first video to get started")
+- Loading indicators never show for <300ms (avoid flash)
+- Modal dialogs are intentional (not popup spam); confirmations only when destructive
+- Notifications are timely and dismissible; no auto-playing sound/video on load
+- Typography and whitespace create hierarchy and reduce cognitive load
+- Dark mode is supported; respects user preference
+
+---
+
+## Product Quality Rubric
+
+Use this rubric to evaluate every feature, endpoint, and UI before marking it "ready to ship." A feature is **ship-ready** when it scores ≥ 4 (Excellent or Good) on **all six dimensions**. If any dimension scores ≤ 2, it must be fixed or rejected.
+
+### Scoring Scale
+- **5 = Excellent**: Best-in-class; exceeds the principle in every way
+- **4 = Good**: Meets the principle fully; no gaps
+- **3 = Acceptable**: Meets most of the principle; minor gaps are documented
+- **2 = Needs Work**: Significant gaps; fails in one or two areas
+- **1 = Failing**: Does not attempt the principle; must be fixed
+
+---
+
+### Dimension 1: UX Clarity
+
+**Definition:** Users understand the purpose, context, and next steps without confusion.
+
+| Score | Descriptor | What to Look For |
+|-------|-----------|-----------------|
+| **5** | Crystal clear | CTAs are specific action verbs; flow is obvious; no user testing reveals confusion |
+| **4** | Clear | Most users understand without help; CTAs are explicit; error messages are specific |
+| **3** | Mostly clear | Some users need help; CTAs could be more specific; errors are generic but workable |
+| **2** | Confusing | Many users testing show confusion; CTAs are vague; errors are unclear |
+| **1** | Incomprehensible | Purpose is unclear; users have no idea what happens next; errors are cryptic |
+
+**Questions to ask:**
+- Can a new user complete this flow without asking for help?
+- Does every CTA say what will happen (e.g., "Upload and Save" not just "Save")?
+- Do error messages tell the user how to fix the problem?
+- Is the information architecture logical?
+
+**Minimum requirement:** Score ≥ 4
+
+---
+
+### Dimension 2: Accessibility (WCAG 2.2 AA Baseline)
+
+**Definition:** All users, regardless of ability or device, can use the feature.
+
+| Score | Descriptor | What to Look For |
+|-------|-----------|-----------------|
+| **5** | Fully accessible | Exceeds WCAG 2.2 AA; tested with users (screenreader, keyboard, low vision); no tech debt |
+| **4** | Accessible | WCAG 2.2 AA compliant; automated tests pass; manual spot-checks pass |
+| **3** | Mostly accessible | WCAG 2.2 AA compliant; some manual fixes needed; minor tech debt documented |
+| **2** | Partially accessible | Some WCAG failures; requires fixes before launch |
+| **1** | Inaccessible | Multiple WCAG 2.2 AA failures; not launchable |
+
+**Questions to ask:**
+- Does it pass Axe / WAVE automated accessibility checks?
+- Can a keyboard user navigate and interact without a mouse?
+- Does a screen reader speak the UI correctly (headings, form labels, ARIA)?
+- Is there sufficient color contrast (4.5:1 for text, 3:1 for graphics)?
+- Does it work on mobile (375px viewport) and at 200% zoom?
+- Do videos have captions and transcripts?
+
+**Minimum requirement:** Score ≥ 4 (WCAG 2.2 AA compliant)
+
+---
+
+### Dimension 3: Performance
+
+**Definition:** The feature loads and responds fast; no waiting.
+
+| Score | Descriptor | What to Look For |
+|-------|-----------|-----------------|
+| **5** | Blazing fast | Meets all Web Vitals; p95 < 300ms; instant feedback to user actions |
+| **4** | Fast | Meets Web Vitals targets (FCP < 1.5s, LCP < 2.5s, INP < 200ms) |
+| **3** | Acceptable | Slightly misses one metric; performance roadmap documented; no user-facing jank |
+| **2** | Slow | Misses multiple metrics; users notice delay; tech debt logged |
+| **1** | Unacceptable | Significantly slow; users abandon; not launchable |
+
+**Questions to ask:**
+- What are the Web Vitals (FCP, LCP, CLS, INP) in production?
+- Does the API respond in < 500ms (p95)?
+- Does imagery defer off-screen content (no giant hero image on first load)?
+- Are third-party scripts (ads, analytics) deferred?
+- Does it render without JavaScript?
+- Is there lazy loading / progressive loading?
+
+**Minimum requirement:** Score ≥ 4
+
+---
+
+### Dimension 4: Consistency
+
+**Definition:** The feature uses the same patterns, terminology, and design language as the rest of the platform.
+
+| Score | Descriptor | What to Look For |
+|-------|-----------|-----------------|
+| **5** | Perfectly consistent | Reuses existing patterns; no new variations; uses design tokens; terminology aligned |
+| **4** | Consistent | Follows platform patterns; minimal one-off styling; terminology is standard |
+| **3** | Mostly consistent | One or two variations introduced; terminology mostly aligned; minor polish needed |
+| **2** | Inconsistent | Multiple new patterns; terminology differs; UI looks disconnected |
+| **1** | Completely inconsistent | Looks like a different product; incompatible with existing systems |
+
+**Questions to ask:**
+- Does it use existing button styles / form patterns?
+- Is the color palette from design tokens?
+- Is typography consistent (font, sizes, weights)?
+- Are modals/dialogs styled like existing ones?
+- Is terminology (e.g., "Earnings" vs "Revenue") aligned with the rest of the product?
+- Is spacing and layout consistent?
+
+**Minimum requirement:** Score ≥ 4
+
+---
+
+### Dimension 5: Error Handling & State Management
+
+**Definition:** The feature handles errors gracefully, provides clear feedback, and keeps the UI in a predictable state.
+
+| Score | Descriptor | What to Look For |
+|-------|-----------|-----------------|
+| **5** | Bulletproof | All error paths tested; recovery is automatic or one-click; state is always valid |
+| **4** | Robust | All error cases covered; clear error messages; recovery is obvious |
+| **3** | Acceptable | Most errors handled; some edge cases may show generic messages; workarounds documented |
+| **2** | Fragile | Some errors unhandled; users can get stuck; state can become inconsistent |
+| **1** | Broken | Common errors crash or hang; state is out of sync; not launchable |
+
+**Questions to ask:**
+- What happens if the API call fails (timeout, 500, 4xx)?
+- Does the UI show a retry option?
+- Does the error message tell the user what to do?
+- Can the user recover (undo, go back, try again)?
+- Is loading state clear (not a blank screen)?
+- Are there safeguards (e.g., disable submit while loading)?
+- Does state persist across refreshes / network hiccups?
+
+**Minimum requirement:** Score ≥ 4
+
+---
+
+### Dimension 6: Mobile Optimization
+
+**Definition:** The feature works flawlessly on small screens, touch, and slow connections.
+
+| Score | Descriptor | What to Look For |
+|-------|-----------|-----------------|
+| **5** | Mobile-first perfect | Touch targets ≥ 48px; responsive layout; works on 2G; PWA ready; high mobile CVR |
+| **4** | Mobile-ready | All layouts work at 375px; touch targets are adequate; 4G performance is good |
+| **3** | Mobile-acceptable | Some refinements needed; layout works but not optimized; occasional mobile issues |
+| **2** | Mobile-problematic | Layout breaks; tiny touch targets; 3G feels slow; mobile CVR notably lower |
+| **1** | Mobile-incompatible | Feature doesn't work on mobile; not launchable on phone |
+
+**Questions to ask:**
+- Is the layout responsive at 375px (mobile viewport)?
+- Are touch targets ≥ 48px × 48px?
+- Do modals / longforms scroll properly on small screens?
+- Is horizontal scrolling avoided (or only for content, not navigation)?
+- Does video player work on mobile (touch play, full-screen)?
+- Does the form work on mobile keyboards (no hidden fields)?
+- What is the mobile conversion rate vs desktop?
+
+**Minimum requirement:** Score ≥ 4
+
+---
+
+## Pre-Merge PR Review Checklist
+
+Use this checklist for every PR before merging. The PR must pass **all required checks** and score ≥ 80% on **optional checks** to be approved.
+
+### Required Checks (must pass)
+
+- [ ] **No TypeScript errors** — `pnpm typecheck` produces zero errors
+- [ ] **No ESLint warnings** — `pnpm lint` runs with `--max-warnings 0`
+- [ ] **Tests pass** — `pnpm test` passes; new code has ≥ 90% line/function coverage, ≥ 85% branch coverage
+- [ ] **Code builds** — `pnpm build` succeeds; no warnings in build output
+- [ ] **Accessibility** — Feature passes Axe automated checks; keyboard navigation works; screen reader is tested (at least spot-check)
+- [ ] **Security** — No hardcoded secrets, credentials in config files, or sensitive data in logs
+- [ ] **Documentation** — JSDoc on exported functions and types; include examples for complex APIs
+- [ ] **Commit message** — Follows format: `<type>(<scope>): <description>` (e.g., `feat(stripe): add payout batch creation`)
+
+### Optional Checks (≥ 80% must pass to ensure quality)
+
+- [ ] **Performance** — Measured Web Vitals or load times; meets or explains variance from targets
+- [ ] **Error handling** — Error cases tested; DLQ / Sentry integration for failures
+- [ ] **Mobile responsive** — Tested on 375px viewport and touch devices
+- [ ] **Design consistency** — Uses existing design tokens; no custom one-off styles
+- [ ] **Regression tests** — Spot-check existing related flows; verify no unintended side effects
+- [ ] **Logging** — Debug logs included for tricky flows; operators can diagnose issues
+- [ ] **Runbook update** — If ops runbook applies, it's updated for this change
+- [ ] **Database migration** — If schema changes, migration is reversible and tested on a copy of production data
+- [ ] **Feature flag** — If risky, feature is behind a flag; can be toggled in staging
+- [ ] **Staging verification** — PR author or reviewer has tested on staging environment
+
+---
+
+## Quality Gates Before Deployment
+
+### DEV → STAGING
+- [ ] All required checks pass
+- [ ] ≥ 80% optional checks pass
+- [ ] No High/Critical security issues in dependency scan
+- [ ] TypeScript strict mode: zero errors
+- [ ] Test coverage: ≥ 90% lines, ≥ 85% branches (new code)
+
+### STAGING → PRODUCTION
+- [ ] All quality gates from DEV → STAGING pass
+- [ ] Smoke tests pass in staging (health check, key flows)
+- [ ] Performance metrics stable or improved vs baseline
+- [ ] No known bugs in DLQ or error tracking system
+- [ ] Operator runbooks reviewed and updated
+- [ ] Feature flag configuration for rollout plan
+- [ ] README / docs updated
+- [ ] Deployment checklist signed off by tech lead
+
+---
+
+## Measuring Success
+
+### Weekly Quality Review
+1. **Bug escape rate:** How many bugs reached production? (target: ≤ 1 per 10k LOC)
+2. **Test coverage trend:** Is coverage staying ≥ 90% lines / 85% branches?
+3. **Performance trend:** Are Web Vitals stable or improving?
+4. **Accessibility issues:** What WCAG failures were found? (target: zero new failures)
+5. **DLQ growth:** Is the dead-letter queue growing? (indicates unhandled errors)
+
+### Quarterly Design Review
+1. **Usability testing:** Do real users complete flows without help?
+2. **Competitor analysis:** Are we keeping pace with industry standard UX?
+3. **Mobile metrics:** What is mobile CVR vs desktop? Any gap?
+4. **NPS score:** Are users satisfied? (target: ≥ 40)
+5. **Accessibility audit:** Are we compliant with WCAG 2.2 AA? Any new barriers?
+
+---
+
+## References
+
+- **WCAG 2.2 AA:** https://www.w3.org/WAI/WCAG22/quickref/
+- **Web Vitals:** https://web.dev/vitals/
+- **Design Tokens:** [Link to design token documentation]
+- **Error Handling Patterns:** [Link to Factory error document]
+- **Accessibility Checklist:** https://www.a11ychecklist.com/
+
+---
+
+## Version History
+
+| Date | Author | Change |
+|------|--------|--------|
+| 2026-04-28 | Baseline | Initial design standards and quality rubric for Factory + videoking |
+

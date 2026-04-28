@@ -1,0 +1,573 @@
+export const metadata = {
+  title: "Stripe Package Consumption Guide",
+  description: "Subscriptions, webhooks, and creator payouts",
+};
+
+# @adrper79-dot/stripe — Payments Consumption Guide
+
+**Last Updated:** April 28, 2026  
+**Target Audience:** Engineers building payments flows  
+**Quick Start Time:** 2 hours
+
+---
+
+## Overview
+
+The `@adrper79-dot/stripe` package provides:
+- **Stripe client** — Pre-configured with Factory-standard API version
+- **Webhook handler** — Validates & routes Stripe webhook events
+- **Subscription helpers** — State machine for subscription lifecycle
+- **Creator Connect** — Stripe Connect for creator payouts
+
+### Why Factory Stripe?
+- **Zero friction:** Configured for Cloudflare Workers (fetch HTTP client)
+- **Idempotent webhooks:** Protects against duplicate webhook processing
+- **Multi-tier subscriptions:** Citizen (free), VIP (premium), etc.
+- **Videoking-proven:** 40k+ active subscribers, payouts to 500+ creators
+
+---
+
+## Installation & Setup
+
+### 1. Install the package
+```bash
+npm install @adrper79-dot/stripe
+```
+
+### 2. Set Stripe secrets in environment
+
+**In `wrangler.jsonc`:**
+```json
+{
+  "env": {
+    "production": {
+      "secrets": [
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        "STRIPE_PUBLISHABLE_KEY"
+      ]
+    }
+  }
+}
+```
+
+**In `.dev.vars`:**
+```
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_test_...
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+```
+
+Get these from Stripe Dashboard → Developers → API Keys.
+
+### 3. Create Stripe client in your Worker
+
+```typescript
+import { createStripeClient } from '@adrper79-dot/stripe';
+
+const stripe = createStripeClient(env.STRIPE_SECRET_KEY);
+
+// Use in routes
+app.post('/api/checkout', async (c) => {
+  const session = await stripe.checkout.sessions.create({
+    // ...
+  });
+  
+  return c.json({ sessionId: session.id });
+});
+```
+
+---
+
+## Core Concepts
+
+### Subscription Tiers
+
+Videoking uses two tiers:
+
+| Tier | Price | Features | Renewal |
+|------|-------|----------|---------|
+| **Citizen** | Free | Basic viewing, no ads | N/A |
+| **VIP** | $9.99/mo | Ad-free, early access, creator tips | Monthly |
+
+### Subscription Lifecycle
+
+```
+No subscription
+  ↓
+[Viewer clicks "Go VIP"]
+  ↓
+Stripe Checkout Session
+  ↓
+customer.subscription.created event
+  ↓
+subscription {
+  status: 'active',
+  tier: 'vip',
+  currentPeriodEnd: <30 days later>,
+}
+  ↓
+[On renewal or if Viewer cancels]
+  ↓
+invoice.payment_succeeded or customer.subscription.deleted
+  ↓
+subscription updated or removed
+```
+
+### SubscriptionStatus Type
+
+```typescript
+interface SubscriptionStatus {
+  customerId: string;       // Stripe customer ID
+  status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'none';
+  tier: string;             // 'vip', 'citizen', etc.
+  currentPeriodEnd: Date;   // Renewal date
+  cancelAtPeriodEnd: boolean; // True if user requested cancel but retaining access until renewal
+}
+```
+
+---
+
+## Checkout & Subscriptions
+
+### Create Checkout Session
+
+```typescript
+import { createStripeClient } from '@adrper79-dot/stripe';
+
+const stripe = createStripeClient(env.STRIPE_SECRET_KEY);
+
+app.post('/api/checkout/create', async (c) => {
+  const { tierId } = await c.req.json();
+  const user = c.get('user'); // From auth middleware
+
+  // Fetch price from Stripe (or store in DB)
+  const priceMap = {
+    'vip': 'price_vip_monthly_usd',
+  };
+
+  const session = await stripe.checkout.sessions.create({
+    mode: 'subscription',
+    customer_email: user.email,
+    client_reference_id: user.sub, // Link to user ID
+    line_items: [
+      {
+        price: priceMap[tierId],
+        quantity: 1,
+      },
+    ],
+    success_url: `${env.APP_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${env.APP_URL}/checkout/cancel`,
+  });
+
+  return c.json({ sessionId: session.id, url: session.url });
+});
+```
+
+### Webhook Handler
+
+```typescript
+import { stripeWebhookHandler } from '@adrper79-dot/stripe';
+
+app.post('/webhooks/stripe', stripeWebhookHandler({
+  webhookSecret: env.STRIPE_WEBHOOK_SECRET,
+  stripeClient: stripe,
+  handlers: {
+    'created': async (status) => {
+      // Subscription created → grant access
+      await db.update(subscriptions).set({
+        status: status.status,
+        tier: status.tier,
+        currentPeriodEnd: status.currentPeriodEnd,
+      }).where(eq(subscriptions.customerId, status.customerId));
+
+      await analytics.track('subscription.created', {
+        customerId: status.customerId,
+        tier: status.tier,
+      });
+    },
+    'upgraded': async (status) => {
+      // Downgrade to upgrade (e.g., free → premium)
+      await db.update(subscriptions).set({
+        tier: status.tier,
+      }).where(eq(subscriptions.customerId, status.customerId));
+
+      await analytics.businessEvent('revenue.subscription_upgraded', {
+        customerId: status.customerId,
+        newTier: status.tier,
+      });
+    },
+    'canceled': async (status) => {
+      // Subscription canceled → revoke access
+      await db.delete(subscriptions)
+        .where(eq(subscriptions.customerId, status.customerId));
+
+      await analytics.track('subscription.canceled', {
+        customerId: status.customerId,
+      });
+    },
+    'past_due': async (status) => {
+      // Payment failed → notify user
+      logger.warn('Subscription payment failed', {
+        customerId: status.customerId,
+      });
+
+      await analytics.businessEvent('compliance.payment_failed', {
+        customerId: status.customerId,
+      });
+    },
+  },
+}));
+```
+
+---
+
+## Customer Management
+
+### Create or Fetch Customer
+
+```typescript
+async function getOrCreateStripeCustomer(userId, email, stripe) {
+  // Check if we already have a Stripe customer
+  let customers = await stripe.customers.list({
+    email: email,
+    limit: 1,
+  });
+
+  if (customers.data.length > 0) {
+    return customers.data[0];
+  }
+
+  // Create new customer
+  return await stripe.customers.create({
+    email: email,
+    metadata: {
+      userId: userId,
+    },
+  });
+}
+```
+
+### Retrieve Current Subscription
+
+```typescript
+async function getSubscriptionStatus(customerId, stripe) {
+  const subs = await stripe.subscriptions.list({
+    customer: customerId,
+    limit: 1,
+  });
+
+  if (subs.data.length === 0) {
+    return { status: 'none' };
+  }
+
+  const sub = subs.data[0];
+  return {
+    customerId: sub.customer,
+    status: sub.status, // 'active' | 'trialing' | 'past_due' | 'canceled'
+    tier: sub.metadata.tier,
+    currentPeriodEnd: new Date(sub.current_period_end * 1000),
+    cancelAtPeriodEnd: sub.cancel_at_period_end,
+  };
+}
+```
+
+---
+
+## Creator Payouts via Stripe Connect
+
+### Create Connected Account for Creator
+
+```typescript
+// Creator clicks "Enable Payouts"
+app.post('/api/creator/enable-payouts', 
+  rbacMiddleware(['member', 'admin']),
+  async (c) => {
+    const creator = c.get('user');
+
+    // Create Stripe Connect account
+    const account = await stripe.accounts.create({
+      type: 'express',
+      email: creator.email,
+      metadata: {
+        creatorId: creator.sub,
+      },
+    });
+
+    // Store connected account ID
+    await db.update(creators).set({
+      stripeConnectedAccountId: account.id,
+    }).where(eq(creators.id, creator.sub));
+
+    // Generate onboarding link
+    const onboardingLink = await stripe.accountLinks.create({
+      account: account.id,
+      type: 'account_onboarding',
+      refresh_url: `${env.APP_URL}/creator/payouts/refresh`,
+      return_url: `${env.APP_URL}/creator/payouts/success`,
+    });
+
+    return c.json({ onboardingUrl: onboardingLink.url });
+  }
+);
+```
+
+### Execute Payout Batch
+
+From the `@adrper79-dot/schedule` package, execute daily payouts:
+
+```typescript
+async function executePayout(creatorId, amount, connectedAccountId, stripe) {
+  // Transfer earnings to creator's connected account
+  const transfer = await stripe.transfers.create({
+    amount: Math.round(amount * 100), // Convert to cents
+    currency: 'usd',
+    destination: connectedAccountId,
+    description: `Daily earnings for creator ${creatorId}`,
+    metadata: {
+      creatorId,
+      batchDate: new Date().toISOString(),
+    },
+  });
+
+  return transfer;
+}
+```
+
+### Webhook: charge.transfer (Payout Confirmation)
+
+```typescript
+// Inside stripeWebhookHandler
+handlers: {
+  'transfer': async (transfer) => {
+    const creatorId = transfer.metadata.creatorId;
+
+    // Mark earnings as paid
+    await db.update(earnings).set({
+      status: 'transferred',
+      stripeTransferId: transfer.id,
+    }).where(and(
+      eq(earnings.creatorId, creatorId),
+      eq(earnings.periodDate, transfer.metadata.batchDate),
+    ));
+
+    logger.info('Payout transferred', {
+      creatorId,
+      amount: transfer.amount,
+      transferId: transfer.id,
+    });
+  },
+}
+```
+
+---
+
+## Videoking Real Usage
+
+### Subscription Checkout
+
+```typescript
+// POST /api/checkout/create
+// Body: { tierId: 'vip' }
+
+const session = await stripe.checkout.sessions.create({
+  mode: 'subscription',
+  customer_email: viewer.email,
+  client_reference_id: viewer.id,
+  line_items: [{
+    price: 'price_vip_monthly_usd', // $9.99/month
+    quantity: 1,
+  }],
+  success_url: 'https://itsjusus.com/checkout/success',
+  cancel_url: 'https://itsjusus.com/checkout/cancel',
+});
+
+// Frontend stores sessionId and redirects to Stripe Checkout
+```
+
+### Webhook: Subscription Created
+
+```typescript
+// Stripe sends: event.type = 'customer.subscription.created'
+handlers: {
+  'created': async (status) => {
+    // Grant VIP access
+    await db.insert(subscriptions).values({
+      customerId: status.customerId,
+      status: 'active',
+      tier: 'vip',
+      currentPeriodEnd: status.currentPeriodEnd,
+    });
+
+    // Log to PostHog
+    await analytics.businessEvent('revenue.subscription_created', {
+      customerId: status.customerId,
+      tier: 'vip',
+      amount: 9.99,
+      currency: 'USD',
+    });
+  },
+}
+```
+
+### Payout Daily Cron
+
+```typescript
+// Cron Worker: fires at 02:00 UTC daily
+async function handlePayoutCron(env) {
+  const db = createDb(env.DB);
+  const stripe = createStripeClient(env.STRIPE_SECRET_KEY);
+
+  // Get creators with pending earnings
+  const creatorEarnings = await db
+    .select()
+    .from(earnings)
+    .where(eq(earnings.status, 'pending'));
+
+  for (const earning of creatorEarnings) {
+    const creator = await db.query.creators.findFirst({
+      where: eq(creators.id, earning.creatorId),
+    });
+
+    if (!creator.stripeConnectedAccountId) {
+      logger.warn('Creator has no connected account', { creatorId: earning.creatorId });
+      continue;
+    }
+
+    try {
+      const transfer = await stripe.transfers.create({
+        amount: Math.round(earning.amount * 100),
+        currency: 'usd',
+        destination: creator.stripeConnectedAccountId,
+        description: `Daily earnings`,
+        metadata: { creatorId: earning.creatorId, periodDate: earning.periodDate },
+      });
+
+      // Mark as transferred (webhook will confirm)
+      await db.update(earnings).set({
+        status: 'transferred',
+        stripeTransferId: transfer.id,
+      }).where(eq(earnings.id, earning.id));
+    } catch (error) {
+      // Record to DLQ for manual retry
+      await db.insert(deadLetterQueue).values({
+        eventType: 'payout.failed',
+        payload: earning,
+        errorMessage: error.message,
+        status: 'pending',
+      });
+
+      logger.error('Payout transfer failed', { creatorId: earning.creatorId, error });
+    }
+  }
+}
+```
+
+---
+
+## Error Handling
+
+Stripe methods throw `StripeAPIError`. Always catch and log:
+
+```typescript
+import { InternalError, ErrorCodes } from '@adrper79-dot/errors';
+import Stripe from 'stripe';
+
+try {
+  const session = await stripe.checkout.sessions.create({ ... });
+} catch (error) {
+  if (error instanceof Stripe.errors.StripeAPIError) {
+    logger.error('Stripe API error', {
+      code: error.code,
+      message: error.message,
+      param: error.param,
+    });
+
+    if (error.code === 'resource_missing') {
+      throw new NotFoundError('Price not found', { code: ErrorCodes.NOT_FOUND });
+    }
+
+    throw new InternalError('Stripe API failure', {
+      code: ErrorCodes.INTERNAL_ERROR,
+      context: { stripeCode: error.code },
+    });
+  }
+
+  throw error;
+}
+```
+
+---
+
+## Testing
+
+### Mock Stripe for Tests
+
+```typescript
+import Stripe from 'stripe';
+import { vi } from 'vitest';
+
+describe('Subscription API', () => {
+  it('creates checkout session', async () => {
+    const mockStripe = {
+      checkout: {
+        sessions: {
+          create: vi.fn().mockResolvedValue({
+            id: 'cs_test_123',
+            url: 'https://checkout.stripe.com/...',
+          }),
+        },
+      },
+    };
+
+    const res = await checkoutCreate(mockStripe, { tierId: 'vip' });
+    expect(res.sessionId).toBe('cs_test_123');
+  });
+});
+```
+
+---
+
+## Troubleshooting
+
+### ❌ "No such webhook endpoint"
+**Cause:** Webhook endpoint not registered in Stripe Dashboard  
+**Fix:** In Stripe Dashboard → Developers → Webhooks, add endpoint `https://your-worker.dev/webhooks/stripe`
+
+### ❌ "Webhook signature verification failed"
+**Cause:** `STRIPE_WEBHOOK_SECRET` mismatch or webhook secret incorrect  
+**Fix:** Copy exact secret from Stripe Dashboard Webhooks page
+
+### ❌ "customer_email is required"
+**Cause:** Missing email when creating checkout session  
+**Fix:** Ensure user is authenticated and email is available
+
+### ❌ "Price not found" on checkout create
+**Cause:** Wrong price ID or not published in Stripe  
+**Fix:** Check Stripe Dashboard → Products; price ID matches
+
+---
+
+## Best Practices
+
+1. **Always use idempotency keys** for transfers — Prevents double-payouts if webhook retries
+2. **Store Stripe IDs in DB** — Never recalculate; always store `customerId`, `subscriptionId`, etc.
+3. **Log webhook events** — Track all Stripe events for debugging
+4. **Test webhook handling** — Use Stripe CLI for local testing
+5. **Monitor charge disputes** — Add handler for `charge.dispute.*` events
+6. **Update credit card failures** — Notify users if payment fails; auto-retry 3 times
+
+---
+
+## Related Docs
+
+- [Factory Capabilities Matrix](factory-capabilities-matrix.mdx)
+- [Analytics Consumption Guide](analytics-consumption-guide.mdx) — Log business events
+- [Definition of Ready & Done](../runbooks/definition-of-ready-done.md) — Payment testing checklist
+- Stripe Docs: https://stripe.com/docs/api
+
+---
+
+**Version:** 1.0  
+**Maintained by:** Platform team  
+**Last reviewed:** April 28, 2026

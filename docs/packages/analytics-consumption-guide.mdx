@@ -1,0 +1,472 @@
+export const metadata = {
+  title: "Analytics Package Consumption Guide",
+  description: "PostHog + factory_events instrumentation patterns",
+};
+
+# @adrper79-dot/analytics — Analytics Consumption Guide
+
+**Last Updated:** April 28, 2026  
+**Target Audience:** Backend engineers building user interactions  
+**Quick Start Time:** 1.5 hours
+
+---
+
+## Overview
+
+The `@adrper79-dot/analytics` package provides:
+- **Dual-write instrumentation** — PostHog (product analytics) + `factory_events` (compliance & revenue)
+- **User event tracking** — `.track()`, `.identify()`, `.page()`
+- **Business event logging** — `.businessEvent()` (revenue, compliance only)
+- **Automatic filtering** — Business events never sent to PostHog (data privacy)
+
+### Why Factory Analytics?
+- **Revenue-safe:** Business events stored locally, never to third-party SaaS
+- **Funnel-ready:** Aligned with user journeys from Phase A (Align)
+- **Multi-tenant:** Scoped to tenant automatically
+- **Videoking-proven:** 200+ daily events tracked; 40k+ viewers in PostHog funnels
+
+---
+
+## Installation & Setup
+
+### 1. Install the package
+```bash
+npm install @adrper79-dot/analytics
+```
+
+### 2. Set PostHog key in environment
+
+**In `wrangler.jsonc`:**
+```json
+{
+  "env": {
+    "production": {
+      "secrets": ["POSTHOG_API_KEY"]
+    }
+  }
+}
+```
+
+**In `.dev.vars`:**
+```
+POSTHOG_API_KEY=phc_...
+```
+
+Get from PostHog Dashboard → Settings → API Keys.
+
+### 3. Initialize analytics in your Worker
+
+```typescript
+import { initAnalytics } from '@adrper79-dot/analytics';
+import { createDb } from '@adrper79-dot/neon';
+
+const db = createDb(env.DB);
+
+const analytics = initAnalytics({
+  postHogKey: env.POSTHOG_API_KEY,
+  db: db,
+  appId: 'videoking', // Your app ID
+});
+
+app.get('/api/events/test', async (c) => {
+  await analytics.track('test_event', { test: true });
+  return c.json({ ok: true });
+});
+
+export default app;
+```
+
+---
+
+## Core Concepts
+
+### Event Destinations
+
+```typescript
+// Product event (both PostHog + factory_events)
+// Use for user engagement, feature tracking, funnels
+await analytics.track('video.watched', {
+  videoId: video.id,
+  duration: 120,
+  platform: 'web',
+}, userId);
+
+// Business event (factory_events only, never PostHog)
+// Use for revenue, subscription, compliance, sensitive data
+await analytics.businessEvent('revenue.subscription_created', {
+  customerId: customer.id,
+  tier: 'vip',
+  amount: 9.99,
+  currency: 'USD',
+}, userId);
+```
+
+### Event Types
+
+| Event Prefix | Destination | Use Case | Example |
+|--------------|-------------|----------|---------|
+| `user.*` | Both | User actions | `user.signup`, `user.login` |
+| `content.*` | Both | Content interaction | `content.viewed`, `content.created` |
+| `video.*` | Both | Video engagement | `video.watched`, `video.skipped` |
+| `subscription.*` | BusinessEvent | Subscription lifecycle | `subscription.created`, `subscription.canceled` |
+| `revenue.*` | BusinessEvent | Payments | `revenue.payment_processed`, `revenue.refund` |
+| `compliance.*` | BusinessEvent | Legal/audit | `compliance.gdpr_request`, `compliance.data_deleted` |
+| `billing.*` | BusinessEvent | Billing events | `billing.invoice_generated` |
+
+---
+
+## Tracking Patterns
+
+### User Signup
+
+```typescript
+app.post('/auth/signup', async (c) => {
+  const { email, password } = await c.req.json();
+
+  // Create user
+  const user = await db.insert(users).values({
+    email,
+    passwordHash: hashPassword(password),
+  }).returning();
+
+  // Track signup
+  await analytics.track('user.signup', {
+    source: 'web',
+    email: email.domain, // Don't send full email to PostHog
+  }, user.id);
+
+  // Identify user in PostHog
+  await analytics.identify(user.id, {
+    email: email.domain,
+    createdAt: new Date().toISOString(),
+  });
+
+  // Revenue: user acquisition (optional)
+  await analytics.businessEvent('revenue.user_acquired', {
+    userId: user.id,
+    source: 'web',
+  });
+
+  // Create token and respond
+  const token = await createToken({...}, env.JWT_SECRET);
+  return c.json({ token, user: { id: user.id, email: user.email } });
+});
+```
+
+### Subscription Created
+
+```typescript
+// Stripe webhook: customer.subscription.created
+app.post('/webhooks/stripe', stripeWebhookHandler({
+  handlers: {
+    'created': async (status) => {
+      // Store subscription in DB
+      await db.insert(subscriptions).values({
+        customerId: status.customerId,
+        status: 'active',
+        tier: status.tier,
+      });
+
+      // Track subscription event (business event = revenue)
+      await analytics.businessEvent('revenue.subscription_created', {
+        customerId: status.customerId,
+        tier: status.tier,
+        amount: 9.99,
+        currency: 'USD',
+        renewalDate: status.currentPeriodEnd.toISOString(),
+      }, status.customerId);
+
+      // Also track in PostHog for funnels
+      await analytics.track('subscription.created', {
+        tier: status.tier,
+        amount: 9.99,
+      }, status.customerId);
+    },
+  },
+}));
+```
+
+### Content Interaction
+
+```typescript
+app.post('/api/video/:videoId/watch', async (c) => {
+  const user = c.get('user');
+  const videoId = c.req.param('videoId');
+  const { duration } = await c.req.json(); // Seconds watched
+
+  // Record watch session in DB
+  const session = await db.insert(watchSessions).values({
+    userId: user.sub,
+    videoId,
+    duration,
+    watchedAt: new Date(),
+  }).returning();
+
+  // Track in analytics
+  await analytics.track('video.watched', {
+    videoId,
+    duration,
+    completionRatio: duration / video.totalDuration,
+    platform: 'web',
+  }, user.sub);
+
+  return c.json({ session });
+});
+```
+
+### Page Views (Frontend Integration)
+
+From your Next.js frontend:
+
+```typescript
+// pages/creator/[creatorId]/index.tsx
+import { useEffect } from 'react';
+
+export default function CreatorProfile({ creator }) {
+  useEffect(() => {
+    // Track page view (called from browser)
+    fetch('http://api.itsjusus.com/api/events/page', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'creator.profile_viewed',
+        creatorId: creator.id,
+      }),
+    });
+  }, [creator.id]);
+
+  return <div>{creator.name}</div>;
+}
+```
+
+Backend handler:
+
+```typescript
+app.post('/api/events/page', authMiddleware(...), async (c) => {
+  const user = c.get('user');
+  const { name, ...properties } = await c.req.json();
+
+  await analytics.page(name, properties, user.sub);
+  return c.json({ ok: true });
+});
+```
+
+---
+
+## Videoking Real Usage
+
+### Event Pipeline
+
+```typescript
+// Key Videoking user journey (from Phase A)
+
+// 1. Landing → Signup
+await analytics.track('landing_page_viewed', {
+  utm_source: 'organic',
+  device: 'mobile',
+}, undefined); // Unauthenticated user
+
+// 2. Signup
+await analytics.track('user.signup', {
+  source: 'landing_cta',
+}, newViewer.id);
+
+// 3. Browse content
+await analytics.track('content.browsed', {
+  category: 'short_form_video',
+  count: 10,
+}, viewerId);
+
+// 4. Watch first video
+await analytics.track('video.watched', {
+  videoId,
+  duration: 120, // seconds
+  completionRatio: 1.0,
+}, viewerId);
+
+// 5. Subscribe (VIP)
+await analytics.businessEvent('revenue.subscription_created', {
+  customerId,
+  tier: 'vip',
+  amount: 9.99,
+  source: 'watch_cta',
+}, viewerId);
+
+await analytics.track('subscription.created', {
+  tier: 'vip',
+}, viewerId);
+
+// 6. Continue watching (retained)
+await analytics.track('video.watched', {
+  videoId: nextVideoId,
+  duration: 150,
+}, viewerId);
+
+// Eventually: Churn (canceled)
+await analytics.businessEvent('revenue.subscription_canceled', {
+  customerId,
+  tier: 'vip',
+  reason: 'low_engagement',
+}, viewerId);
+```
+
+### Funnel Setup in PostHog
+
+Videoking funnels (built from tracked events):
+
+```
+"Signup to VIP" funnel:
+  Step 1: user.signup (100%)
+  Step 2: video.watched (45%)
+  Step 3: subscription.created (8%)
+  Conversion: 8% of signups become paying users
+
+"VIP Churn" funnel:
+  Step 1: subscription.created (100%)
+  Step 2: video.watched (80%) [within 30 days]
+  Step 3: video.watched (60%) [within 60 days]
+  Dropoff: 40% churn rate between Day 30–60
+```
+
+### Revenue Dashboard
+
+In PostHog, create custom properties dashboard:
+
+```
+Total Revenue: SUM(businessEvent where event='revenue.subscription_created'.amount)
+  → $50,000 MRR
+
+Active Subscriptions: COUNT(DISTINCT customerId where status='active')
+  → 5,000 active VIP users
+
+Churn Rate: churn events / active users
+  → 5% monthly churn
+
+Creator Payouts: SUM(businessEvent where event='revenue.payout'.amount)
+  → $25,000 paid to creators
+```
+
+---
+
+## Database Schema: factory_events
+
+The `factory_events` table stores all business events:
+
+```sql
+CREATE TABLE factory_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  app_id TEXT NOT NULL,           -- 'videoking', 'prime-self', etc.
+  event_type TEXT NOT NULL,       -- 'revenue.subscription_created', etc.
+  user_id TEXT,                   -- Optional user context
+  tenant_id TEXT,                 -- Multi-tenant org
+  properties JSONB,               -- Custom properties
+  created_at TIMESTAMP DEFAULT now(),
+  
+  INDEX: (app_id, event_type, created_at)
+  INDEX: (tenant_id, created_at)
+);
+```
+
+Query example:
+
+```typescript
+// Get total revenue (last 30 days)
+const result = await db.execute(sql`
+  SELECT SUM((properties->>'amount')::numeric) as total
+  FROM factory_events
+  WHERE app_id = 'videoking'
+    AND event_type LIKE 'revenue.%'
+    AND created_at > now() - interval '30 days'
+`);
+
+console.log('MRR:', result.rows[0].total);
+```
+
+---
+
+## Error Handling
+
+Always wrap analytics calls in try-catch:
+
+```typescript
+try {
+  await analytics.track('video.watched', { videoId }, userId);
+} catch (error) {
+  // Analytics failure should not crash the app
+  logger.warn('Analytics tracking failed', { error: error.message });
+  // Continue processing
+}
+```
+
+Analytics failures are logged but don't block user requests.
+
+---
+
+## Testing
+
+### Mock Analytics
+
+```typescript
+import { vi } from 'vitest';
+
+describe('Subscription API', () => {
+  it('sends subscription event to analytics', async () => {
+    const mockAnalytics = {
+      track: vi.fn(),
+      businessEvent: vi.fn(),
+    };
+
+    await handleSubscriptionCreated(mockAnalytics, subscription);
+
+    expect(mockAnalytics.businessEvent).toHaveBeenCalledWith(
+      'revenue.subscription_created',
+      expect.objectContaining({
+        customerId: subscription.customerId,
+        tier: 'vip',
+      }),
+      subscription.customerId
+    );
+  });
+});
+```
+
+---
+
+## Troubleshooting
+
+### ❌ "PostHog events not appearing"
+**Cause:** Wrong `POSTHOG_API_KEY` or app_id mismatch  
+**Fix:** Check PostHog Dashboard → Settings → API keys; ensure `appId` matches
+
+### ❌ "Business events appearing in PostHog"
+**Cause:** Should never happen (factory_events only)  
+**Fix:** Check event name prefix; should not start with `revenue.*`, `billing.*`, `compliance.*`
+
+### ❌ "factory_events table grows too fast"
+**Cause:** Too many tracked events or debug logging  
+**Fix:** Archive old events; reduce sample rate for low-priority events
+
+---
+
+## Best Practices
+
+1. **Event naming:** Use snake_case and dot notation (`subscription.created`, not `SubscriptionCreated`)
+2. **Properties:** Keep objects flat (no nested objects); use clear keys
+3. **PII:** Never send emails, phone numbers, or full names to PostHog
+4. **Idempotency:** Track same event when user retries; PostHog deduplicates
+5. **Async:** Don't await analytics calls; fire-and-forget for performance
+6. **Monitoring:** Alert if % of events to factory_events drops (indicates bug)
+
+---
+
+## Related Docs
+
+- [Factory Capabilities Matrix](factory-capabilities-matrix.mdx)
+- [User Journeys & Telemetry](journeys.mdx) — CriticalPaths, instrumentation requirements
+- [Definition of Ready & Done](../runbooks/definition-of-ready-done.md) — Analytics testing checklist
+- PostHog Docs: https://posthog.com/docs
+
+---
+
+**Version:** 1.0  
+**Maintained by:** Platform team  
+**Last reviewed:** April 28, 2026

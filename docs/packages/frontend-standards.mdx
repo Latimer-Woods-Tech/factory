@@ -1,0 +1,823 @@
+export const metadata = {
+  title: "Factory Frontend Quality Standards",
+  description: "TypeScript, component design, testing, accessibility, performance for Next.js apps",
+};
+
+# Factory Frontend Quality Standards
+
+**Last Updated:** April 28, 2026  
+**Version:** 1.0  
+**Scope:** All Factory frontend apps (Next.js on Cloudflare Pages)  
+**Audience:** Frontend engineers, product engineers, design systems leads
+
+---
+
+## Executive Summary
+
+Factory frontend apps must meet the same rigor as backend services. This guide specifies:
+- **TypeScript strict mode** — No `any` in public components
+- **Component patterns** — Layout, presentation, container; clear prop contracts
+- **Testing strategy** — Unit tests (components), integration tests (user journeys), visual tests (regressions)
+- **Accessibility** — WCAG 2.2 AA baseline
+- **Performance** — Web Vitals targets aligned with design system (Phase A)
+- **Tooling** — ESLint, Prettier, Vitest, visual snapshot tools
+
+All frontend PRs must pass these gates before merge. **This is non-negotiable for production apps.**
+
+---
+
+## TypeScript Standards
+
+### Strict Mode Required
+
+All frontend code must compile with `tsconfig.json` using:
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true
+  }
+}
+```
+
+### No `any` in Public Exports
+
+❌ **Bad:**
+```typescript
+// components/VideoPlayer.tsx
+export function VideoPlayer({ video }: any) {
+  return <div>{video.title}</div>;
+}
+```
+
+✅ **Good:**
+```typescript
+// components/VideoPlayer.tsx
+interface VideoPlayerProps {
+  video: {
+    id: string;
+    title: string;
+    posterUrl?: string;
+    duration: number;
+  };
+  onPlay?: (time: number) => void;
+}
+
+export function VideoPlayer({ video, onPlay }: VideoPlayerProps) {
+  return <div>{video.title}</div>;
+}
+```
+
+### Interfaces > Types for Exports
+
+Use `interface` for component props and external contracts. Use `type` internally:
+
+```typescript
+// ✅ Public contract: use interface
+export interface ButtonProps {
+  variant: 'primary' | 'secondary';
+  disabled?: boolean;
+  onClick: () => void;
+}
+
+// ✅ Internal: type is OK
+type ButtonState = 'idle' | 'loading' | 'error';
+
+export function Button({ variant, disabled, onClick }: ButtonProps) {
+  const [state, setState] = React.useState<ButtonState>('idle');
+  // ...
+}
+```
+
+---
+
+## Component Design Patterns
+
+### 1. Layout Components
+
+**Purpose:** Page structure, grids, sections  
+**Rule:** Layout components accept children but own layout logic  
+**Example:** `<PageSection>`, `<Container>`, `<Grid>`
+
+```typescript
+interface PageSectionProps {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}
+
+export function PageSection({ title, subtitle, children }: PageSectionProps) {
+  return (
+    <section className="py-12 px-4">
+      <h1 className="text-4xl font-bold">{title}</h1>
+      {subtitle && <p className="text-gray-600 mt-2">{subtitle}</p>}
+      <div className="mt-8">{children}</div>
+    </section>
+  );
+}
+```
+
+### 2. Presentation Components (Dumb)
+
+**Purpose:** Render UI without state or side effects  
+**Rule:** Accept all data via props; zero state logic  
+**Example:** `<Video Card>`, `<UserBadge>`, `<Badge>`
+
+```typescript
+interface VideoCardProps {
+  id: string;
+  title: string;
+  posterUrl: string;
+  creator: {
+    name: string;
+    avatarUrl: string;
+  };
+  viewCount: number;
+  onSelect: (videoId: string) => void;
+}
+
+export function VideoCard({
+  id,
+  title,
+  posterUrl,
+  creator,
+  viewCount,
+  onSelect,
+}: VideoCardProps) {
+  return (
+    <article
+      onClick={() => onSelect(id)}
+      className="cursor-pointer hover:opacity-80"
+    >
+      <img src={posterUrl} alt={title} className="w-full h-32 object-cover" />
+      <h3 className="font-semibold mt-2">{title}</h3>
+      <div className="flex items-center gap-2 mt-1">
+        <img src={creator.avatarUrl} alt={creator.name} className="w-6 h-6 rounded-full" />
+        <span className="text-sm text-gray-600">{creator.name}</span>
+      </div>
+      <span className="text-xs text-gray-500">{viewCount} views</span>
+    </article>
+  );
+}
+```
+
+### 3. Container Components (Smart)
+
+**Purpose:** Fetch data, manage state, orchestrate child components  
+**Rule:** Manage state; handle API calls; pass data down to presentation children  
+**Example:** `<VideoGrid>`, `<CreatorProfilePage>`
+
+```typescript
+interface VideoGridContainerProps {
+  creatorId: string;
+}
+
+export function VideoGridContainer({ creatorId }: VideoGridContainerProps) {
+  const [videos, setVideos] = React.useState<Video[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    async function fetchVideos() {
+      try {
+        const response = await fetch(`/api/creators/${creatorId}/videos`);
+        const data = await response.json();
+        setVideos(data);
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchVideos();
+  }, [creatorId]);
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      {videos.map((video) => (
+        <VideoCard
+          key={video.id}
+          video={video}
+          onSelect={(id) => router.push(`/video/${id}`)}
+        />
+      ))}
+    </div>
+  );
+}
+```
+
+### 4. Hooks for Shared Logic
+
+**Purpose:** Reuse stateful logic across components  
+**Rule:** Custom hooks prefix with `use`; no side effects in render  
+**Example:** `useFetch`, `useInfiniteScroll`, `useAuth`
+
+```typescript
+interface UseFetchOptions<T> {
+  url: string;
+  enabled?: boolean;
+  onError?: (error: Error) => void;
+}
+
+export function useFetch<T>(options: UseFetchOptions<T>) {
+  const [data, setData] = React.useState<T | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<Error | null>(null);
+
+  React.useEffect(() => {
+    if (options.enabled === false) return;
+
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        const response = await fetch(options.url, {
+          signal: controller.signal,
+        });
+        const result = await response.json();
+        setData(result);
+        setLoading(false);
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        setError(error);
+        options.onError?.(error);
+        setLoading(false);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [options.url, options.enabled]);
+
+  return { data, loading, error };
+}
+```
+
+---
+
+## Testing Strategy
+
+### 1. Unit Tests (Component Isolation)
+
+**What:** Test individual components in isolation  
+**Tool:** Vitest + React Testing Library  
+**Target:** ≥90% line coverage, ≥85% branch coverage
+
+```typescript
+// components/__tests__/VideoCard.test.ts
+import { render, screen } from '@testing-library/react';
+import { VideoCard } from '../VideoCard';
+
+describe('VideoCard', () => {
+  it('renders video title and creator name', () => {
+    const props = {
+      id: 'video_1',
+      title: 'Amazing Video',
+      posterUrl: 'https://example.com/poster.jpg',
+      creator: { name: 'John Creator', avatarUrl: 'https://example.com/avatar.jpg' },
+      viewCount: 1000,
+      onSelect: vi.fn(),
+    };
+
+    render(<VideoCard {...props} />);
+
+    expect(screen.getByText('Amazing Video')).toBeInTheDocument();
+    expect(screen.getByText('John Creator')).toBeInTheDocument();
+    expect(screen.getByText('1000 views')).toBeInTheDocument();
+  });
+
+  it('calls onSelect when clicked', () => {
+    const onSelect = vi.fn();
+    const props = {
+      id: 'video_1',
+      title: 'Test Video',
+      posterUrl: 'https://example.com/poster.jpg',
+      creator: { name: 'Creator', avatarUrl: 'https://example.com/avatar.jpg' },
+      viewCount: 100,
+      onSelect,
+    };
+
+    const { container } = render(<VideoCard {...props} />);
+    
+    container.querySelector('article')?.click();
+    expect(onSelect).toHaveBeenCalledWith('video_1');
+  });
+});
+```
+
+### 2. Integration Tests (User Journeys)
+
+**What:** Test user flows across multiple components  
+**Tool:** Vitest + React Testing Library + MSW (mock API)  
+**Target:** Critical paths from Phase A (signup → watch → subscribe)
+
+```typescript
+// __tests__/integration/signup-flow.test.ts
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { setupServer } from 'msw/node';
+import { http, HttpResponse } from 'msw';
+import { SignupPage } from '../../pages/signup';
+
+const server = setupServer(
+  http.post('http://localhost/api/auth/signup', () => {
+    return HttpResponse.json({
+      token: 'test_token_123',
+      user: { id: 'user_1', email: 'test@example.com' },
+    });
+  })
+);
+
+beforeAll(() => server.listen());
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+
+describe('Signup Flow', () => {
+  it('user can sign up and get authenticated', async () => {
+    const user = userEvent.setup();
+
+    render(<SignupPage />);
+
+    const emailInput = screen.getByLabelText(/email/i);
+    const passwordInput = screen.getByLabelText(/password/i);
+    const submitButton = screen.getByRole('button', { name: /sign up/i });
+
+    await user.type(emailInput, 'test@example.com');
+    await user.type(passwordInput, 'SecurePassword123');
+    await user.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/welcome/i)).toBeInTheDocument();
+    });
+  });
+});
+```
+
+### 3. Visual Regression Tests
+
+**What:** Catch unintended UI changes  
+**Tool:** Chromatic or Percy (visual snapshot)  
+**Target:** Screenshot all variants of major components
+
+```typescript
+// components/__tests__/Button.stories.ts (Storybook)
+import type { Meta, StoryObj } from '@storybook/react';
+import { Button } from '../Button';
+
+const meta: Meta<typeof Button> = {
+  component: Button,
+};
+
+export default meta;
+type Story = StoryObj<typeof Button>;
+
+export const Primary: Story = {
+  args: {
+    variant: 'primary',
+    children: 'Click me',
+    onClick: () => {},
+  },
+};
+
+export const Secondary: Story = {
+  args: {
+    variant: 'secondary',
+    children: 'Secondary Button',
+    onClick: () => {},
+  },
+};
+
+export const Disabled: Story = {
+  args: {
+    variant: 'primary',
+    disabled: true,
+    children: 'Disabled',
+    onClick: () => {},
+  },
+};
+
+// Chromatic automatically captures screenshots on PR
+// If Button.css changes the color, Chromatic will diff the screenshot
+```
+
+---
+
+## Accessibility (WCAG 2.2 AA)
+
+### Required: ARIA Attributes
+
+```typescript
+// ✅ Good: Semantic HTML + ARIA
+export function VideoPlayer({ video }: { video: Video }) {
+  const [isPlaying, setIsPlaying] = React.useState(false);
+
+  return (
+    <div role="region" aria-label="Video player">
+      <video
+        controls
+        aria-label={video.title}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+      >
+        <source src={video.url} type="video/mp4" />
+        <track kind="captions" src={video.ccUrl} />
+      </video>
+      <button
+        aria-pressed={isPlaying}
+        aria-label={isPlaying ? 'Pause video' : 'Play video'}
+      >
+        {isPlaying ? '⏸' : '▶'}
+      </button>
+    </div>
+  );
+}
+```
+
+### Required: Keyboard Navigation
+
+```typescript
+// ✅ Good: All interactive elements keyboard-accessible
+export function Menu({ items }: { items: MenuItem[] }) {
+  const [activeIndex, setActiveIndex] = React.useState(0);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      setActiveIndex((i) => (i + 1) % items.length);
+    } else if (e.key === 'ArrowUp') {
+      setActiveIndex((i) => (i - 1 + items.length) % items.length);
+    } else if (e.key === 'Enter') {
+      items[activeIndex].onClick?.();
+    }
+  };
+
+  return (
+    <ul role="menu" onKeyDown={handleKeyDown}>
+      {items.map((item, i) => (
+        <li
+          key={item.id}
+          role="menuitem"
+          tabIndex={i === activeIndex ? 0 : -1}
+          onClick={item.onClick}
+        >
+          {item.label}
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+### Checklist per Component
+
+Before PR, run axe DevTools (Chrome extension):
+
+- [ ] No color-only information (use text labels too)
+- [ ] All form inputs have labels
+- [ ] Images have alt text
+- [ ] Interactive elements have `:focus` state
+- [ ] No missing headings hierarchy (h1→h2→h3, not h1→h3)
+- [ ] Video has captions (for Videoking player)
+- [ ] Buttons are not styled as links or vice versa
+- [ ] Focus order matches visual order
+
+---
+
+## Performance: Web Vitals Targets
+
+From design system (Phase A), target these metrics:
+
+| Metric | Status | Target | Alert Threshold |
+|--------|--------|--------|-----------------|
+| **Largest Contentful Paint (LCP)** | <= 2.5s | 2.0s | > 3.0s |
+| **First Input Delay (FID)** | < 100ms | 50ms | > 150ms |
+| **Interaction to Next Paint (INP)** | < 200ms | 100ms | > 300ms |
+| **Cumulative Layout Shift (CLS)** | < 0.1 | 0.05 | > 0.15 |
+
+### Code Splitting Strategy
+
+Split code by route to reduce initial bundle:
+
+```typescript
+// ✅ Good: Lazy-load routes
+import dynamic from 'next/dynamic';
+
+const CreatorProfile = dynamic(() =>
+  import('../pages/creator/[id]').then((m) => m.CreatorProfile),
+  { loading: () => <div>Loading...</div> }
+);
+
+export function App() {
+  return (
+    <Router>
+      <Route path="/creator/:id" element={<CreatorProfile />} />
+    </Router>
+  );
+}
+```
+
+### Bundle Analysis
+
+In `package.json`:
+
+```json
+{
+  "scripts": {
+    "build:analyze": "ANALYZE=true next build",
+    "lighthouse": "npx lighthouse https://localhost:3000 --view"
+  }
+}
+```
+
+Run before major releases:
+
+```bash
+npm run build:analyze
+# See which packages used most bytes
+
+npm run lighthouse
+# Score should be ≥90 for Performance, Accessibility, Best Practices
+```
+
+---
+
+## State Management
+
+### Guidelines
+
+1. **React Context** — For shared UI state (theme, user session)
+2. **Zustand** — For global app state (user preferences, filters)
+3. **React Query / SWR** — For server state (API data, caching)
+4. **useState / useReducer** — For local component state
+
+### Good Patterns
+
+```typescript
+// ✅ Good: Context for UI state (theme)
+const ThemeContext = React.createContext<Theme>('light');
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = React.useState<Theme>('light');
+
+  return (
+    <ThemeContext.Provider value={theme}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+// ✅ Good: Zustand for app state (user preferences)
+import { create } from 'zustand';
+
+export const useUserStore = create((set) => ({
+  language: 'en',
+  setLanguage: (lang: string) => set({ language: lang }),
+}));
+
+// ✅ Good: React Query for server state (videos)
+import { useQuery } from '@tanstack/react-query';
+
+export function useCreatorVideos(creatorId: string) {
+  return useQuery({
+    queryKey: ['creator', creatorId, 'videos'],
+    queryFn: async () => {
+      const res = await fetch(`/api/creators/${creatorId}/videos`);
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+```
+
+---
+
+## Error Handling
+
+### Error Boundaries
+
+```typescript
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    // Log to Sentry
+    console.error('React error:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        this.props.fallback || (
+          <div className="p-4 bg-red-100 border border-red-400 rounded">
+            <h2 className="font-bold">Something went wrong</h2>
+            <p className="text-sm">{this.state.error?.message}</p>
+          </div>
+        )
+      );
+    }
+
+    return this.props.children;
+  }
+}
+```
+
+### User-Facing Error Messages
+
+```typescript
+// ✅ Good: Clear, actionable error message
+<div className="p-4 bg-red-50 border border-red-200 rounded">
+  <h3 className="font-semibold text-red-900">Payment failed</h3>
+  <p className="text-sm text-red-700">Your card was declined. Try a different card.</p>
+  <button className="mt-2 px-3 py-1 bg-red-600 text-white rounded">
+    Try again
+  </button>
+</div>
+```
+
+---
+
+## CSS & Styling
+
+### Token-Based Design
+
+Use Tailwind CSS with custom tokens:
+
+```typescript
+// tailwind.config.js
+export default {
+  theme: {
+    extend: {
+      colors: {
+        'brand-primary': '#FF6B35',
+        'brand-secondary': '#0072E5',
+        'text-primary': '#1A1A1A',
+        'text-secondary': '#666666',
+      },
+      spacing: {
+        'gutter': '1rem',
+        'gutter-lg': '2rem',
+      },
+    },
+  },
+};
+```
+
+### Dark Mode Support
+
+```typescript
+// ✅ Good: Dark mode with Tailwind
+<div className="bg-white dark:bg-gray-900 text-black dark:text-white">
+  Content
+</div>
+```
+
+### Responsive Design
+
+```typescript
+// ✅ Good: Mobile-first breakpoints
+<div className="text-sm md:text-base lg:text-lg">
+  Responsive text
+</div>
+```
+
+---
+
+## Tooling & CI
+
+### ESLint Config
+
+Create `.eslintrc.json`:
+
+```json
+{
+  "extends": [
+    "next/core-web-vitals",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:react-hooks/recommended"
+  ],
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-unused-vars": "error",
+    "react-hooks/rules-of-hooks": "error"
+  }
+}
+```
+
+### Prettier Config
+
+Create `.prettierrc.json`:
+
+```json
+{
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "es5",
+  "printWidth": 100
+}
+```
+
+### Package.json Scripts
+
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage --run",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "type-check": "tsc --noEmit"
+  }
+}
+```
+
+### GitHub Actions: Frontend CI
+
+```yaml
+# .github/workflows/frontend-ci.yml
+name: Frontend CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npm run type-check
+      - run: npm run lint
+      - run: npm run test -- --run --coverage
+      - run: npm run build
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+```
+
+---
+
+## Deployment Checklist
+
+Before shipping to production:
+
+- [ ] TypeScript strict: `npm run type-check` passes
+- [ ] ESLint: `npm run lint` has zero warnings (`--max-warnings 0`)
+- [ ] Tests: `npm run test:coverage` shows ≥90% lines, ≥85% branches
+- [ ] Build: `npm run build` completes with zero warnings
+- [ ] Bundle: `npm run build:analyze` shows no unexpected package blowup
+- [ ] Performance: Lighthouse score ≥90 for Performance
+- [ ] Accessibility: axe DevTools finds zero violations
+- [ ] Dark mode: All components tested in dark/light
+- [ ] Mobile: Responsive design tested on iPhone SE (375px width)
+- [ ] Staging: Deployed to staging.app and tested by QA
+
+---
+
+## Related Docs
+
+- [Design Standards & Rubrics](design-standards.mdx) — Visual language, component patterns
+- [Engineering Quality Rubric](videoking-engineering-baseline.mdx) — Backend standards
+- [Definition of Ready & Done](../runbooks/definition-of-ready-done.md) — Frontend PR checklist
+- [Frontend Contribution Guide](frontend-contribution-guide.md) — Setup, common issues
+
+---
+
+**Version:** 1.0  
+**Maintained by:** Design + Frontend leads  
+**Last reviewed:** April 28, 2026  
+**Next review:** June 15, 2026

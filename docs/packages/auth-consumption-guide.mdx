@@ -1,0 +1,516 @@
+export const metadata = {
+  title: "Auth Package Consumption Guide",
+  description: "JWT, RBAC, and middleware patterns for Factory apps",
+};
+
+# @adrper79-dot/auth — JWT & RBAC Consumption Guide
+
+**Last Updated:** April 28, 2026  
+**Target Audience:** Backend engineers building protected endpoints  
+**Quick Start Time:** 30–45 minutes
+
+---
+
+## Overview
+
+The `@adrper79-dot/auth` package provides:
+- **JWT token creation & validation** — Self-managed with Web Crypto API (no `jsonwebtoken` dependency)
+- **Role-Based Access Control (RBAC)** — Four built-in roles: `owner`, `admin`, `member`, `viewer`
+- **Middleware** — Hono-native auth + RBAC middleware
+- **Tenant isolation** — Token payload includes `tenantId` for multi-tenant support
+
+### Why Factory Auth?
+- **Platform-safe:** Uses Web Crypto; runs in Cloudflare Workers
+- **Zero-dependency:** No npm bloat; minimal surface area
+- **Multi-tenant ready:** Built-in tenant context
+- **Videoking-proven:** Used on all 40+ API endpoints
+
+---
+
+## Installation & Setup
+
+### 1. Install the package
+```bash
+npm install @adrper79-dot/auth
+```
+
+### 2. Set JWT_SECRET in your environment
+
+**In `wrangler.jsonc`:**
+```json
+{
+  "env": {
+    "production": {
+      "secrets": ["JWT_SECRET"]
+    }
+  }
+}
+```
+
+**In `.dev.vars`:**
+```
+JWT_SECRET=dev-secret-at-least-32-chars-for-hs256
+```
+
+**Generate a production secret:**
+```bash
+# On Linux/Mac:
+openssl rand -base64 32
+
+# Result: m7hK9p0eN2vL4qR8sT6xY1aB3cD5fG7H9iJ=
+```
+
+### 3. Initialize auth middleware in your Worker
+
+```typescript
+import { Hono } from 'hono';
+import { authMiddleware, rbacMiddleware } from '@adrper79-dot/auth';
+
+const app = new Hono();
+
+// Apply auth middleware to all routes (or specific groups)
+app.use('/api/*', authMiddleware(c => c.env.JWT_SECRET));
+
+// Export your app
+export default app;
+```
+
+---
+
+## Core Concepts
+
+### Token Payload
+
+```typescript
+interface TokenPayload {
+  sub: string;          // User ID (e.g., "creator_123")
+  tenantId: string;     // Organization/workspace ID (e.g., "org_456")
+  role: 'owner' | 'admin' | 'member' | 'viewer';  // User role
+  iat: number;          // Issued at (Unix timestamp)
+  exp: number;          // Expires at (Unix timestamp, e.g., now + 7 days)
+}
+```
+
+### Roles & Permissions
+
+| Role | Description | Can Do |
+|------|-------------|---------|
+| `owner` | Workspace owner | Everything + delete workspace |
+| `admin` | Administrator | Everything except workspace deletion; manage users |
+| `member` | Regular user | Create content, access shared resources |
+| `viewer` | Read-only | View content only; no edit/delete |
+
+**RBAC hierarchy:** `owner` > `admin` > `member` > `viewer`
+
+---
+
+## Token Lifecycle
+
+### Creating Tokens (Login)
+
+On a `/auth/login` endpoint:
+
+```typescript
+import { createToken } from '@adrper79-dot/auth';
+
+app.post('/auth/login', async (c) => {
+  const { email, password } = await c.req.json();
+
+  // Validate email/password against your user store
+  const user = await db.query.users.findFirst({
+    where: eq(users.email, email),
+  });
+
+  if (!user || !verifyPassword(password, user.passwordHash)) {
+    return c.json({ error: 'Invalid credentials' }, 401);
+  }
+
+  // Create token: expires in 7 days
+  const token = await createToken(
+    {
+      sub: user.id,
+      tenantId: user.tenantId,
+      role: user.role,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60, // 7 days
+    },
+    c.env.JWT_SECRET
+  );
+
+  return c.json({ token, user: { id: user.id, email: user.email, role: user.role } });
+});
+```
+
+**Videoking Example:**
+```typescript
+// POST /auth/login
+// Body: { email, password }
+// Response: { token, user: { id, email, role, tenantId } }
+
+const token = await createToken({
+  sub: creator.id,
+  tenantId: creator.workspaceId,
+  role: creator.role, // 'member' by default
+  iat: Math.floor(Date.now() / 1000),
+  exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
+}, env.JWT_SECRET);
+```
+
+### Verifying Tokens
+
+The `authMiddleware` automatically:
+1. Extracts token from `Authorization: Bearer <token>` header
+2. Verifies the signature
+3. Checks expiry
+4. Stores payload in Hono context (`c.get('user')`)
+
+```typescript
+app.get('/api/me', authMiddleware(c => c.env.JWT_SECRET), async (c) => {
+  const user = c.get('user'); // TokenPayload
+  return c.json({
+    id: user.sub,
+    tenantId: user.tenantId,
+    role: user.role,
+  });
+});
+```
+
+### Refreshing Tokens
+
+Implement refresh logic manually (not in auth package):
+
+```typescript
+app.post('/auth/refresh', async (c) => {
+  const { refreshToken } = await c.req.json();
+
+  // Validate refresh token against your store (e.g., database, Redis)
+  const session = await db.query.sessions.findFirst({
+    where: eq(sessions.refreshToken, refreshToken),
+  });
+
+  if (!session || new Date() > session.expiresAt) {
+    return c.json({ error: 'Refresh token expired' }, 401);
+  }
+
+  // Create new access token
+  const newAccessToken = await createToken(
+    {
+      sub: session.userId,
+      tenantId: session.tenantId,
+      role: session.role,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
+    },
+    c.env.JWT_SECRET
+  );
+
+  return c.json({ token: newAccessToken });
+});
+```
+
+---
+
+## RBAC Middleware
+
+### Basic Usage
+
+Restrict an endpoint to a single role:
+
+```typescript
+import { rbacMiddleware } from '@adrper79-dot/auth';
+
+app.post('/api/admin/create-user', 
+  authMiddleware(c => c.env.JWT_SECRET),
+  rbacMiddleware(['admin', 'owner']),
+  async (c) => {
+    // Only admin or owner reach here
+    const newUser = await db.insert(users).values({...}).returning();
+    return c.json(newUser);
+  }
+);
+```
+
+### Permission Levels
+
+```typescript
+// Endpoint requiring owner-level permissions
+app.delete('/api/admin/workspace', 
+  authMiddleware(c => c.env.JWT_SECRET),
+  rbacMiddleware(['owner']),
+  async (c) => {
+    const tenantId = c.get('user').tenantId;
+    await db.delete(workspaces).where(eq(workspaces.id, tenantId));
+    return c.json({ success: true });
+  }
+);
+
+// Endpoint available to creator and above
+app.post('/api/content/publish', 
+  authMiddleware(c => c.env.JWT_SECRET),
+  rbacMiddleware(['admin', 'owner', 'member']), // NOT 'viewer'
+  async (c) => {
+    // Creator can publish
+  }
+);
+
+// Endpoint available to everyone (just needs valid token)
+app.get('/api/content/:id', 
+  authMiddleware(c => c.env.JWT_SECRET),
+  // No rbacMiddleware — all roles OK
+  async (c) => {
+    const content = await db.query.content.findFirst({...});
+    return c.json(content);
+  }
+);
+```
+
+### Custom RBAC Logic
+
+For more complex rules, check the user object directly:
+
+```typescript
+app.post('/api/creator/:creatorId/monetize',
+  authMiddleware(c => c.env.JWT_SECRET),
+  async (c) => {
+    const user = c.get('user');
+    const creatorId = c.req.param('creatorId');
+
+    // Only the creator or admin can monetize
+    if (user.sub !== creatorId && user.role !== 'admin') {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+
+    // Proceed with monetization
+    await db.update(creators)
+      .set({ isMonetized: true })
+      .where(eq(creators.id, creatorId));
+
+    return c.json({ success: true });
+  }
+);
+```
+
+---
+
+## Videoking Real Usage
+
+### Auth Middleware Setup
+
+```typescript
+// workers/index.ts (Videoking API Worker)
+import { Hono } from 'hono';
+import { authMiddleware, rbacMiddleware } from '@adrper79-dot/auth';
+
+const app = new Hono();
+
+// Apply auth to all /api routes
+app.use('/api/*', authMiddleware(c => c.env.JWT_SECRET));
+
+// Login endpoint (public, no auth required)
+app.post('/auth/login', async (c) => {
+  const { email, password } = await c.req.json();
+  // ... validation & token creation
+});
+
+// User profile
+app.get('/api/me', async (c) => {
+  const user = c.get('user');
+  return c.json({ id: user.sub, tenantId: user.tenantId, role: user.role });
+});
+
+// Creator endpoints (member + admin only)
+app.post('/api/creator/upload', 
+  rbacMiddleware(['member', 'admin', 'owner']),
+  async (c) => {
+    const creator = c.get('user');
+    // Handle video upload
+  }
+);
+
+// Admin endpoints (admin + owner only)
+app.get('/api/admin/dead-letter-queue',
+  rbacMiddleware(['admin', 'owner']),
+  async (c) => {
+    // Return pending DLQ messages
+  }
+);
+
+app.post('/api/admin/dead-letter-queue/:id/recover',
+  rbacMiddleware(['admin', 'owner']),
+  async (c) => {
+    // Recover a failed webhook
+  }
+);
+
+// Payout admin (owner only)
+app.post('/api/admin/payouts/batch',
+  rbacMiddleware(['owner']),
+  async (c) => {
+    // Create payout batch — serious operation, owner only
+  }
+);
+
+export default app;
+```
+
+### Videoking Token Structure
+
+```typescript
+// Login response at Videoking
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "creator_abc123",
+    "email": "creator@example.com",
+    "tenantId": "workspace_xyz789",
+    "role": "member" // or "admin" if moderator
+  }
+}
+
+// Decoded token payload
+{
+  "sub": "creator_abc123",
+  "tenantId": "workspace_xyz789",
+  "role": "member",
+  "iat": 1714396800,
+  "exp": 1715001600  // 7 days later
+}
+```
+
+---
+
+## Error Handling
+
+### AuthError
+
+Thrown when token is invalid, expired, or missing:
+
+```typescript
+import { AuthError } from '@adrper79-dot/errors';
+
+try {
+  const payload = await verifyToken(token, secret);
+} catch (err) {
+  if (err instanceof AuthError) {
+    console.error(err.code); // 'AUTH_TOKEN_EXPIRED', 'AUTH_TOKEN_INVALID', etc.
+    return c.json({ error: err.message }, err.status);
+  }
+  throw err;
+}
+```
+
+### ForbiddenError
+
+Thrown when auth passes but RBAC fails:
+
+```typescript
+import { ForbiddenError } from '@adrper79-dot/errors';
+
+if (user.role !== 'owner') {
+  throw new ForbiddenError('Only workspace owner can delete', {
+    code: ErrorCodes.AUTH_FORBIDDEN,
+  });
+}
+```
+
+---
+
+## Testing
+
+### Mock Auth for Tests
+
+Use `@adrper79-dot/testing`:
+
+```typescript
+import { mockAuthMiddleware } from '@adrper79-dot/testing';
+
+describe('Creator API', () => {
+  it('allows member to upload', async () => {
+    const app = new Hono();
+    app.use('/api/*', mockAuthMiddleware({
+      sub: 'creator_123',
+      tenantId: 'workspace_456',
+      role: 'member',
+    }));
+
+    app.post('/api/creator/upload', async (c) => {
+      const user = c.get('user');
+      expect(user.role).toBe('member');
+      return c.json({ ok: true });
+    });
+
+    const res = await app.request(
+      new Request('http://localhost/api/creator/upload', { method: 'POST' })
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it('rejects viewer from upload', async () => {
+    const app = new Hono();
+    app.use('/api/*', mockAuthMiddleware({
+      sub: 'viewer_123',
+      tenantId: 'workspace_456',
+      role: 'viewer',
+    }));
+
+    app.post('/api/creator/upload',
+      rbacMiddleware(['member', 'admin', 'owner']),
+      async (c) => {
+        return c.json({ ok: true });
+      }
+    );
+
+    const res = await app.request(
+      new Request('http://localhost/api/creator/upload', { method: 'POST' })
+    );
+    expect(res.status).toBe(403);
+  });
+});
+```
+
+---
+
+## Troubleshooting
+
+### ❌ "Invalid token signature"
+**Cause:** Different `JWT_SECRET` used to sign vs. verify (e.g., staging vs. production)  
+**Fix:** Ensure `JWT_SECRET` is the same in your worker and your login service
+
+### ❌ "Token undefined" in `c.get('user')`
+**Cause:** Forgot to apply `authMiddleware` before your route  
+**Fix:** Add `authMiddleware(c => c.env.JWT_SECRET)` before your endpoint
+
+### ❌ "Forbidden" (403) on endpoint you should access
+**Cause:** RBAC role mismatch (e.g., logged in as `viewer` but endpoint requires `member`)  
+**Fix:** Check token role and rbacMiddleware allowed roles
+
+### ❌ "Token expired" 30 seconds after login
+**Cause:** Expiry set too short or clock skew between server and client  
+**Fix:** Check expiry calculation: `exp` should be `iat + (seconds to expiry)`, e.g., `iat + 604800` for 7 days
+
+---
+
+## Best Practices
+
+1. **Always sign out on logout** — Delete refresh token from DB; client must discard access token
+2. **Use HTTPS only** — Never send tokens over unencrypted HTTP
+3. **Short expiry for access tokens** — 7 days is good; 30 days is risky
+4. **Refresh tokens separate** — Store in database or Redis; validate on refresh request
+5. **Tenant isolation** — Always check `c.get('user').tenantId` matches the resource being accessed
+6. **Test role boundaries** — Unit test each endpoint with all 4 roles to catch leaks
+7. **Log auth events** — Track failed login attempts, role escalations, token refresh calls
+
+---
+
+## Related Docs
+
+- [Factory Capabilities Matrix](factory-capabilities-matrix.mdx) — Full package overview
+- [Frontend Contribution Guide](../runbooks/frontend-contribution-guide.md) — HTTP client setup for tokens
+- [Definition of Ready & Done](../runbooks/definition-of-ready-done.md) — Auth testing checklist
+- Videoking source: `_external_reviews/videoking/apps/worker/` (routes with auth middleware)
+
+---
+
+**Version:** 1.0  
+**Maintained by:** Platform team  
+**Last reviewed:** April 28, 2026

@@ -1,7 +1,8 @@
 # Factory Core: Project Status & Ready State
 
-**Date:** April 25, 2026  
-**Status:** Phase 5 Complete | Phase 6 Automation Framework Ready for Execution  
+**Last Updated:** April 28, 2026  
+**Date:** April 28, 2026  
+**Status:** Phase 5 Complete | Phase 6 Infrastructure Setup Ready | Gates & Docs Established  
 **Audience:** All team members, deployment engineers, app developers
 
 ---
@@ -9,6 +10,8 @@
 ## Executive Summary
 
 The Factory Core infrastructure library is **feature-complete** with all 19 reusable packages implemented and published at `v0.2.0`. Phase 6 infrastructure provisioning has been fully **automated** with the `phase-6-orchestrator.mjs` script.
+
+The implementation plan for taking the platform and core application from "ready" to **world-class** now lives in [WORLD_CLASS_IMPLEMENTATION_DASHBOARD.md](./WORLD_CLASS_IMPLEMENTATION_DASHBOARD.md). That dashboard is the source of truth for cross-functional execution planning across Factory support and the core application.
 
 The system is ready for:
 1. **Infrastructure Setup (Phase 6)** — execution pending credentials

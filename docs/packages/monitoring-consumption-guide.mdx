@@ -1,0 +1,417 @@
+export const metadata = {
+  title: "Monitoring Package Consumption Guide",
+  description: "Sentry integration, error tracking, APM",
+};
+
+# @adrper79-dot/monitoring — Monitoring Consumption Guide
+
+**Last Updated:** April 28, 2026  
+**Target Audience:** Backend engineers setting up error tracking  
+**Quick Start Time:** 45 minutes
+
+---
+
+## Overview
+
+The `@adrper79-dot/monitoring` package provides:
+- **Sentry integration** — Automatic error capture (unhandled exceptions)
+- **APM (Application Performance Monitoring)** — Trace slow requests
+- **Error context** — Attach userId, tenantId, requestId to errors
+- **Performance transactions** — Track worker initialization, queries, API calls
+
+### Why Factory Monitoring?
+- **Platform-safe:** Uses `@sentry/cloudflare`; runs in Cloudflare Workers
+- **Auto-capture:** Unhandled errors automatically sent to Sentry
+- **Production visibility:** Alerts when error rate spikes
+- **Videoking-proven:** 40+ error types tracked; 5-min response SLA
+
+---
+
+## Installation & Setup
+
+### 1. Install the package
+```bash
+npm install @adrper79-dot/monitoring
+```
+
+### 2. Create Sentry project
+
+1. Go to sentry.io → Create Organization (if needed)
+2. Create Project → Select "Workers"
+3. Copy the **DSN** (looks like `https://xxx@yyy.ingest.sentry.io/zzz`)
+
+### 3. Set Sentry DSN in environment
+
+**In `wrangler.jsonc`:**
+```json
+{
+  "env": {
+    "production": {
+      "secrets": ["SENTRY_DSN"]
+    }
+  }
+}
+```
+
+**In `.dev.vars`:**
+```
+SENTRY_DSN=https://key@sentry.io/projectid
+```
+
+### 4. Initialize Sentry middleware
+
+```typescript
+import { Hono } from 'hono';
+import { initSentry } from '@adrper79-dot/monitoring';
+
+const app = new Hono();
+
+export default initSentry({
+  dsn: env.SENTRY_DSN,
+  environment: env.ENVIRONMENT || 'development',
+  release: env.WORKER_VERSION || '1.0.0',
+  tracesSampleRate: 0.1, // Sample 10% of all requests
+})(app);
+
+// Now the app has error monitoring enabled
+```
+
+---
+
+## Core Concepts
+
+### Error Automatic Capture
+
+Any unhandled error is sent to Sentry:
+
+```typescript
+app.get('/api/users/:id', async (c) => {
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, parseInt(c.req.param('id'))),
+  });
+
+  if (!user) {
+    // This error is automatically captured by Sentry (via error middleware)
+    throw new NotFoundError('User not found');
+  }
+
+  return c.json(user);
+});
+
+// If user ID is "abc" (not a number), parseInt returns NaN
+// → findFirst fails with type error
+// → Sentry captures it automatically
+// → Error appears in Sentry dashboard with stack trace
+```
+
+### Error Context
+
+Enrich errors with user/request metadata:
+
+```typescript
+import { captureException, captureMessage } from '@adrper79-dot/monitoring';
+
+app.post('/api/checkout', authMiddleware(...), async (c) => {
+  const user = c.get('user');
+  const requestId = c.get('requestId');
+
+  try {
+    const session = await stripe.checkout.sessions.create({...});
+    return c.json(session);
+  } catch (error) {
+    // Capture with context
+    captureException(error, {
+      userId: user.sub,
+      tenantId: user.tenantId,
+      requestId: requestId,
+      extra: {
+        tier: 'vip',
+      },
+    });
+
+    throw error;
+  }
+});
+```
+
+### Performance Transactions
+
+Track slow requests:
+
+```typescript
+import { captureMessage } from '@adrper79-dot/monitoring';
+
+app.get('/api/analytics/report', async (c) => {
+  const start = Date.now();
+
+  // Slow query
+  const report = await db.execute(sql`
+    SELECT COUNT(*) as total_events
+    FROM factory_events
+    WHERE created_at > now() - interval '30 days'
+  `);
+
+  const duration = Date.now() - start;
+
+  if (duration > 5000) {
+    captureMessage(
+      `Slow analytics query: ${duration}ms`,
+      'warning'
+    );
+  }
+
+  return c.json(report);
+});
+```
+
+---
+
+## Videoking Real Usage
+
+### Comprehensive Error Monitoring
+
+```typescript
+import { initSentry, captureException } from '@adrper79-dot/monitoring';
+
+const app = new Hono();
+
+// 1. Initialize Sentry
+export default initSentry({
+  dsn: env.SENTRY_DSN,
+  environment: env.ENVIRONMENT,
+  release: env.WORKER_VERSION,
+  tracesSampleRate: env.ENVIRONMENT === 'production' ? 0.1 : 1.0,
+})(app);
+
+// 2. Auth middleware
+app.use('/api/*', authMiddleware(c => c.env.JWT_SECRET));
+
+// 3. DLQ webhook handler
+app.post('/webhooks/stripe', async (c) => {
+  const user = c.get('user');
+  
+  try {
+    const event = await stripeWebhookHandler(c, {
+      webhookSecret: env.STRIPE_WEBHOOK_SECRET,
+      stripeClient: stripe,
+      handlers: {
+        'transfer': async (transfer) => {
+          // Process payout
+        },
+      },
+    });
+
+    return c.json({ received: true });
+  } catch (error) {
+    // 4. Capture webhook failure with context
+    captureException(error, {
+      userId: user?.sub,
+      tenantId: user?.tenantId,
+      requestId: c.get('requestId'),
+      extra: {
+        eventType: 'stripe_webhook',
+        webhookId: c.req.header('stripe-signature'),
+      },
+    });
+
+    // 5. Record to DLQ for operator recovery
+    await db.insert(deadLetterQueue).values({
+      eventType: 'webhook.stripe',
+      payload: error,
+      errorMessage: error.message,
+      errorStackTrace: error.stack,
+      status: 'pending',
+      attemptCount: 1,
+    });
+
+    return c.json({ error: 'Webhook processing failed' }, 500);
+  }
+});
+
+// 6. Admin: see errors in Sentry
+// → Sentry dashboard shows all webhook failures
+// → Error context includes requestId for log tracing
+// → Stack trace shows exact line that failed
+```
+
+### Alert Rules (in Sentry)
+
+```
+Alert 1: Error Rate Spike
+  Condition: Error count > 10 in 5 minutes
+  Action: Slack notification to #incidents
+
+Alert 2: Critical Errors (DLQ, Payment)
+  Condition: Error contains "DLQ" OR "Stripe"
+  Action: Page on-call engineer
+
+Alert 3: New Errors
+  Condition: First time seeing this error
+  Action: Slack notification to #platform
+```
+
+---
+
+## Performance Monitoring
+
+### Trace Slow Database Queries
+
+```typescript
+import { captureMessage } from '@adrper79-dot/monitoring';
+
+app.get('/api/creator/:creatorId/earnings', async (c) => {
+  const creatorId = c.req.param('creatorId');
+  
+  const start = Date.now();
+  const earnings = await db.execute(sql`
+    SELECT SUM(amount) as total
+    FROM earnings
+    WHERE creator_id = ${creatorId}
+  `);
+  const duration = Date.now() - start;
+
+  if (duration > 1000) {
+    captureMessage(
+      `Slow earnings query for creator ${creatorId}: ${duration}ms`,
+      'warning'
+    );
+  }
+
+  return c.json(earnings);
+});
+```
+
+### Track Payment Processing Duration
+
+```typescript
+app.post('/api/checkout', async (c) => {
+  const start = Date.now();
+
+  const session = await stripe.checkout.sessions.create({...});
+
+  const duration = Date.now() - start;
+  
+  if (duration > 2000) {
+    captureMessage(
+      `Slow Stripe checkout: ${duration}ms`,
+      'warning'
+    );
+  }
+
+  return c.json(session);
+});
+```
+
+---
+
+## Error Classification
+
+Use error context to classify severity:
+
+```typescript
+try {
+  const user = await findUser(userId);
+} catch (error) {
+  if (error instanceof NotFoundError) {
+    // Low severity: user not found (expected)
+    captureException(error, {
+      userId,
+      extra: { severity: 'low' },
+    });
+  } else if (error instanceof AuthError) {
+    // Medium: auth failure (investigate)
+    captureException(error, {
+      userId,
+      extra: { severity: 'medium' },
+    });
+  } else {
+    // High: unexpected error (page on-call)
+    captureException(error, {
+      userId,
+      extra: { severity: 'high' },
+    });
+  }
+}
+```
+
+**Sentry rule:**
+```
+Alert if error.context.severity = 'high'
+→ Page on-call engineer
+```
+
+---
+
+## Testing
+
+### Mock Sentry
+
+```typescript
+import { vi } from 'vitest';
+
+describe('Error Handling', () => {
+  it('captures exceptions to Sentry', async () => {
+    const mockCaptureException = vi.fn();
+
+    // Mock the error capture
+    const error = new Error('Test error');
+    mockCaptureException(error, {
+      userId: 'user_123',
+    });
+
+    expect(mockCaptureException).toHaveBeenCalledWith(
+      error,
+      expect.objectContaining({
+        userId: 'user_123',
+      })
+    );
+  });
+});
+```
+
+---
+
+## Troubleshooting
+
+### ❌ "Errors not appearing in Sentry"
+**Cause:** Wrong DSN or `initSentry` not wrapping app  
+**Fix:** Check `SENTRY_DSN` in secrets; ensure `export default initSentry(...)(app)`
+
+### ❌ "Too many errors in Sentry (noise)"
+**Cause:** Sampling rate too high or logging expected errors  
+**Fix:** Reduce `tracesSampleRate` to 0.1; don't capture user-input validation errors
+
+### ❌ "Sensitive data in Sentry"
+**Cause:** Capturing email, phone, credit card in error context  
+**Fix:** Use PII filter; redact in extra context before sending
+
+### ❌ "Slow performance transactions"
+**Cause:** Database queries, Stripe API calls timing out  
+**Fix:** Add query indexes; cache frequent lookups; alert if duration > threshold
+
+---
+
+## Best Practices
+
+1. **Always initialize first** — `initSentry` should be the first middleware
+2. **Enrich context** — Attach userId, tenantId, requestId to every error
+3. **Classify errors** — Use `severity` tag to avoid alert fatigue
+4. **Alert on emergencies** — Page on-call for payment errors, DLQ backlog
+5. **Monitor, don't block** — Never let Sentry failure crash your app
+6. **Review weekly** — Check Sentry dashboard for new error patterns
+7. **Sample production** — Use lower rate (0.1) in production to control costs
+
+---
+
+## Related Docs
+
+- [Factory Capabilities Matrix](factory-capabilities-matrix.mdx)
+- [Lessons Learned](../runbooks/lessons-learned.md) — Error handling patterns
+- [Definition of Ready & Done](../runbooks/definition-of-ready-done.md) — Error testing checklist
+- Sentry Docs: https://docs.sentry.io/
+
+---
+
+**Version:** 1.0  
+**Maintained by:** Platform team  
+**Last reviewed:** April 28, 2026
