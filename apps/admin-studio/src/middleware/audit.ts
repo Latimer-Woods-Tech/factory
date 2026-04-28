@@ -2,10 +2,14 @@
  * Audit middleware — captures every mutating request into studio_audit_log.
  *
  * Skips GET/HEAD/OPTIONS. Redacts secrets from payload before insert.
+ * Phase B: persists via @adrper79-dot/neon. Insert failures are logged
+ * but never block the response (defence-in-depth: audit infra outage
+ * must not 5xx user traffic).
  */
 import type { MiddlewareHandler } from 'hono';
 import type { AppEnv } from '../types.js';
 import { redactSecrets, type AuditEntry } from '@adrper79-dot/studio-core';
+import { insertAuditEntry } from '../lib/audit-store.js';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -43,7 +47,6 @@ export function auditMiddleware(): MiddlewareHandler<AppEnv> {
       resultDetail = { error: (err as Error).message };
       throw err;
     } finally {
-      // Fire-and-forget; don't block response on audit insert.
       const entry: AuditEntry = {
         id: crypto.randomUUID(),
         occurredAt: new Date().toISOString(),
@@ -62,9 +65,19 @@ export function auditMiddleware(): MiddlewareHandler<AppEnv> {
         requestId: c.var.requestId ?? crypto.randomUUID(),
       };
 
-      // TODO: insert into studio_audit_log via @adrper79-dot/neon
-      // For Phase A we just log to console; DB wiring lands in Phase B.
+      // Always echo to console so logs are searchable even if DB is down.
       console.log('[AUDIT]', JSON.stringify(entry));
+
+      // Best-effort DB insert. Use waitUntil when available so we don't
+      // hold the response open. Hono exposes the executionCtx via c.executionCtx.
+      const writePromise = insertAuditEntry(c.env.DB, entry);
+      const exec = c.executionCtx;
+      if (exec && typeof exec.waitUntil === 'function') {
+        exec.waitUntil(writePromise);
+      } else {
+        // Fall back to await — we still swallow inside insertAuditEntry.
+        await writePromise;
+      }
     }
   };
 }

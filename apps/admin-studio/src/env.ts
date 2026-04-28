@@ -23,4 +23,17 @@ export interface Env {
   GROQ_API_KEY?: string;
   /** Sentry DSN for error reporting */
   SENTRY_DSN?: string;
+
+  // ── Phase B: observability proxy secrets (all optional) ─────────────────
+  /** Cloudflare API token (Workers Scripts:Read) for deploy-version reads */
+  CLOUDFLARE_API_TOKEN?: string;
+  CLOUDFLARE_ACCOUNT_ID?: string;
+  /** Sentry user-auth token used to read recent issues */
+  SENTRY_AUTH_TOKEN?: string;
+  SENTRY_ORG?: string;
+  SENTRY_PROJECT?: string;
+  /** PostHog personal API key for HogQL queries */
+  POSTHOG_API_KEY?: string;
+  POSTHOG_PROJECT_ID?: string;
+  POSTHOG_HOST?: string;
 }

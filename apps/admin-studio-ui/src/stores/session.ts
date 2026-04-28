@@ -65,7 +65,9 @@ interface DecodedPayload {
 
 function decodeJwt(token: string): DecodedPayload | null {
   try {
-    const [, payloadB64] = token.split('.');
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    const payloadB64 = parts[1]!;
     const json = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'));
     return JSON.parse(json) as DecodedPayload;
   } catch {

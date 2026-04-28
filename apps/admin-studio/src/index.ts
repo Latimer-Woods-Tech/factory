@@ -16,6 +16,13 @@ import me from './routes/me.js';
 import tests from './routes/tests.js';
 import deploy from './routes/deploy.js';
 import ai from './routes/ai.js';
+import audit from './routes/audit.js';
+import apps from './routes/apps.js';
+import observability from './routes/observability.js';
+import creatorOnboarding from './routes/creator-onboarding.js';
+import creators from './routes/creators.js';
+import payouts from './routes/payouts.js';
+import stripeConnectWebhooks from './routes/webhooks-stripe-connect.js';
 
 const app = new Hono<AppEnv>();
 
@@ -40,16 +47,30 @@ app.get('/health', (c) => {
 
 app.route('/auth', auth);
 
+// ── Webhooks (public, Stripe-signed) ──────────────────────────────────────
+app.route('/webhooks/stripe-connect', stripeConnectWebhooks);
+
 // ── Authenticated routes (env context required) ───────────────────────────
 app.use('/me/*', envContextMiddleware());
 app.use('/tests/*', envContextMiddleware(), auditMiddleware());
 app.use('/deploys/*', envContextMiddleware(), auditMiddleware());
 app.use('/ai/*', envContextMiddleware(), auditMiddleware());
+app.use('/audit/*', envContextMiddleware());
+app.use('/apps/*', envContextMiddleware());
+app.use('/observability/*', envContextMiddleware());
+app.use('/api/creator/*', envContextMiddleware());
+app.use('/api/admin/*', envContextMiddleware(), auditMiddleware());
 
 app.route('/me', me);
 app.route('/tests', tests);
 app.route('/deploys', deploy);
 app.route('/ai', ai);
+app.route('/audit', audit);
+app.route('/apps', apps);
+app.route('/observability', observability);
+app.route('/api/creator/onboarding', creatorOnboarding);
+app.route('/api/admin/creators', creators);
+app.route('/api/admin/payouts', payouts);
 
 // ── Error handler ─────────────────────────────────────────────────────────
 app.onError((err, c) => {
