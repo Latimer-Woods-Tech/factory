@@ -24,7 +24,9 @@ import {
 async function verifyJwt(token: string, secret: string): Promise<EnvJWTPayload> {
   const parts = token.split('.');
   if (parts.length !== 3) throw new Error('Malformed JWT');
-  const [headerB64, payloadB64, signatureB64] = parts;
+  const headerB64 = parts[0]!;
+  const payloadB64 = parts[1]!;
+  const signatureB64 = parts[2]!;
 
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -39,7 +41,7 @@ async function verifyJwt(token: string, secret: string): Promise<EnvJWTPayload> 
   const ok = await crypto.subtle.verify(
     'HMAC',
     key,
-    sig,
+    sig as BufferSource,
     enc.encode(`${headerB64}.${payloadB64}`),
   );
   if (!ok) throw new Error('Invalid signature');
