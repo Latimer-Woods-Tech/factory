@@ -25,7 +25,9 @@ jobs:
       - name: Install dependencies
         run: |
           cd apps/video-cron
-          npm ci
+          echo "@adrper79-dot:registry=https://npm.pkg.github.com" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
+          npm install
 
       - name: Update wrangler.jsonc with Hyperdrive ID
         run: |
