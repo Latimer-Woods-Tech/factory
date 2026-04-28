@@ -1,0 +1,554 @@
+# Monetization Funnel Dashboard Template
+# For Grafana (with PostgreSQL) or PostHog
+# Import into your BI tool and adjust data source connections
+
+dashboard:
+  title: "VideoKing Monetization Funnel"
+  description: "Real-time monitoring of subscription conversion, retention, churn, and payout SLA"
+  tags:
+    - videoking
+    - monetization
+    - revenue
+    - conversion
+  timezone: "UTC"
+  schemaVersion: 38
+  version: 1
+  refresh: "1m"
+  time:
+    from: "now-30d"
+    to: "now"
+
+  panels:
+    # =============================
+    # ROW 1: KEY METRICS
+    # =============================
+    - id: 1
+      title: "Weekly Revenue (USD)"
+      type: "stat"
+      gridPos:
+        h: 4
+        w: 6
+        x: 0
+        y: 0
+      targets:
+        - format: "table"
+          rawSql: true
+          rawQuery: true
+          sql: |
+            SELECT
+              DATE_TRUNC('week', event_timestamp) as week,
+              ROUND(SUM(amount_cents) / 100.0, 2) as value
+            FROM factory_events
+            WHERE event_name IN ('subscription_payment_succeeded', 'unlock_payment_succeeded')
+              AND status = 'success'
+              AND event_timestamp >= NOW() - INTERVAL '1 week'
+            GROUP BY week
+            ORDER BY week DESC
+            LIMIT 1
+      options:
+        colorMode: "value"
+        graphMode: "area"
+        orientation: "auto"
+        textMode: "auto"
+        thresholds:
+          mode: "absolute"
+          steps:
+            - color: "red"
+              value: null
+            - color: "green"
+              value: 1000
+
+    - id: 2
+      title: "ARPU This Week (USD)"
+      type: "stat"
+      gridPos:
+        h: 4
+        w: 6
+        x: 6
+        y: 0
+      targets:
+        - sql: |
+            SELECT
+              ROUND((SUM(amount_cents) / 100.0) / COUNT(DISTINCT user_id), 2) as value
+            FROM factory_events
+            WHERE event_name IN ('subscription_payment_succeeded', 'unlock_payment_succeeded')
+              AND status = 'success'
+              AND event_timestamp >= DATE_TRUNC('week', NOW())
+      options:
+        colorMode: "value"
+        thresholds:
+          mode: "absolute"
+          steps:
+            - color: "red"
+              value: null
+            - color: "green"
+              value: 5.00
+
+    - id: 3
+      title: "Churn Rate This Week (%)"
+      type: "stat"
+      gridPos:
+        h: 4
+        w: 6
+        x: 12
+        y: 0
+      targets:
+        - sql: |
+            WITH weekly_subs AS (
+              SELECT COUNT(DISTINCT user_id) as active_subs
+              FROM factory_events
+              WHERE event_name = 'subscription_payment_succeeded'
+                AND event_timestamp >= DATE_TRUNC('week', NOW()) - INTERVAL '7 days'
+            ),
+            weekly_churn AS (
+              SELECT COUNT(DISTINCT user_id) as churn_count
+              FROM factory_events
+              WHERE event_name = 'subscription_cancelled'
+                AND event_timestamp >= DATE_TRUNC('week', NOW())
+            )
+            SELECT ROUND(100.0 * c.churn_count / NULLIF(s.active_subs, 0), 2) as value
+            FROM weekly_subs s, weekly_churn c
+      options:
+        colorMode: "value"
+        thresholds:
+          mode: "absolute"
+          steps:
+            - color: "green"
+              value: null
+            - color: "orange"
+              value: 5.0
+            - color: "red"
+              value: 10.0
+
+    - id: 4
+      title: "Payout SLA (<7 days)"
+      type: "stat"
+      gridPos:
+        h: 4
+        w: 6
+        x: 18
+        y: 0
+      targets:
+        - sql: |
+            WITH earnings_dates AS (
+              SELECT creator_id, correlation_id, event_timestamp as earnings_date
+              FROM factory_events
+              WHERE event_name = 'creator_earnings_recorded' AND event_timestamp >= NOW() - INTERVAL '30 days'
+            ),
+            payout_dates AS (
+              SELECT creator_id, correlation_id, event_timestamp as payout_date
+              FROM factory_events
+              WHERE event_name = 'payout_completed' AND event_timestamp >= NOW() - INTERVAL '30 days'
+            )
+            SELECT ROUND(
+              100.0 * COUNT(DISTINCT CASE WHEN EXTRACT(DAY FROM (pd.payout_date - ed.earnings_date)) <= 7 
+                THEN pd.correlation_id END) / NULLIF(COUNT(*), 0), 1
+            ) as value
+            FROM earnings_dates ed
+            LEFT JOIN payout_dates pd ON ed.creator_id = pd.creator_id AND ed.correlation_id = pd.correlation_id
+      options:
+        colorMode: "value"
+        unit: "percent"
+        thresholds:
+          mode: "absolute"
+          steps:
+            - color: "red"
+              value: null
+            - color: "orange"
+              value: 80.0
+            - color: "green"
+              value: 95.0
+
+    # =============================
+    # ROW 2: SUBSCRIPTION FUNNEL
+    # =============================
+    - id: 5
+      title: "Subscription Funnel Conversion"
+      type: "stat"
+      gridPos:
+        h: 8
+        w: 12
+        x: 0
+        y: 4
+      targets:
+        - sql: |
+            SELECT
+              'Requested' as stage,
+              COUNT(DISTINCT correlation_id) as count,
+              100.0 as pct
+            FROM factory_events
+            WHERE event_name = 'subscription_requested' AND event_timestamp >= NOW() - INTERVAL '7 days'
+            UNION ALL
+            SELECT
+              'Checkout Started',
+              COUNT(DISTINCT correlation_id),
+              ROUND(100.0 * COUNT(DISTINCT correlation_id) / (
+                SELECT COUNT(DISTINCT correlation_id) FROM factory_events
+                WHERE event_name = 'subscription_requested' AND event_timestamp >= NOW() - INTERVAL '7 days'
+              ), 1)
+            FROM factory_events
+            WHERE event_name = 'subscription_checkout_started' AND event_timestamp >= NOW() - INTERVAL '7 days'
+            UNION ALL
+            SELECT
+              'Payment Succeeded',
+              COUNT(DISTINCT correlation_id),
+              ROUND(100.0 * COUNT(DISTINCT correlation_id) / (
+                SELECT COUNT(DISTINCT correlation_id) FROM factory_events
+                WHERE event_name = 'subscription_requested' AND event_timestamp >= NOW() - INTERVAL '7 days'
+              ), 1)
+            FROM factory_events
+            WHERE event_name = 'subscription_payment_succeeded' AND event_timestamp >= NOW() - INTERVAL '7 days'
+            ORDER BY 1
+      options:
+        showLegend: "bottom"
+        legend:
+          displayMode: "table"
+          placement: "bottom"
+          values:
+            - value
+            - percent
+
+    - id: 6
+      title: "Subscription Funnel - Trend (7 days)"
+      type: "timeseries"
+      gridPos:
+        h: 8
+        w: 12
+        x: 12
+        y: 4
+      targets:
+        - sql: |
+            SELECT
+              DATE(event_timestamp) as time,
+              COUNT(DISTINCT CASE WHEN event_name = 'subscription_requested' THEN correlation_id END) as "Requested",
+              COUNT(DISTINCT CASE WHEN event_name = 'subscription_checkout_started' THEN correlation_id END) as "Checkout Started",
+              COUNT(DISTINCT CASE WHEN event_name = 'subscription_payment_succeeded' THEN correlation_id END) as "Succeeded"
+            FROM factory_events
+            WHERE event_name IN ('subscription_requested', 'subscription_checkout_started', 'subscription_payment_succeeded')
+              AND event_timestamp >= NOW() - INTERVAL '7 days'
+            GROUP BY DATE(event_timestamp)
+            ORDER BY date DESC
+      options:
+        showLegend: "bottom"
+        tooltip:
+          mode: "multi"
+
+    # =============================
+    # ROW 3: RETENTION & CHURN
+    # =============================
+    - id: 7
+      title: "Cohort Retention (Day 5, 30, 90)"
+      type: "stat"
+      gridPos:
+        h: 8
+        w: 12
+        x: 0
+        y: 12
+      targets:
+        - sql: |
+            WITH subscription_cohorts AS (
+              SELECT DATE_TRUNC('week', event_timestamp) as cohort_week, user_id,
+                MIN(event_timestamp) as first_subscription_date
+              FROM factory_events
+              WHERE event_name = 'subscription_payment_succeeded'
+                AND DATE_TRUNC('week', event_timestamp) >= NOW() - INTERVAL '90 days'
+              GROUP BY DATE_TRUNC('week', event_timestamp), user_id
+            ),
+            renewal_events AS (
+              SELECT sc.cohort_week, sc.user_id, sc.first_subscription_date,
+                (fe.event_timestamp - sc.first_subscription_date)::INT as days_since_first
+              FROM subscription_cohorts sc
+              LEFT JOIN factory_events fe ON sc.user_id = fe.user_id
+                AND fe.event_name IN ('subscription_renewed', 'subscription_payment_succeeded')
+                AND fe.event_timestamp > sc.first_subscription_date
+            )
+            SELECT
+              'Day 5' as retention_window,
+              ROUND(100.0 * COUNT(DISTINCT CASE WHEN days_since_first BETWEEN 1 AND 5 THEN user_id END) /
+                NULLIF(COUNT(DISTINCT user_id), 0), 1) as pct
+            FROM renewal_events
+            WHERE cohort_week = (SELECT MAX(cohort_week) FROM subscription_cohorts)
+            UNION ALL
+            SELECT 'Day 30', ROUND(100.0 * COUNT(DISTINCT CASE WHEN days_since_first BETWEEN 1 AND 30 THEN user_id END) /
+              NULLIF(COUNT(DISTINCT user_id), 0), 1)
+            FROM renewal_events
+            WHERE cohort_week = (SELECT MAX(cohort_week) FROM subscription_cohorts)
+            UNION ALL
+            SELECT 'Day 90', ROUND(100.0 * COUNT(DISTINCT CASE WHEN days_since_first BETWEEN 1 AND 90 THEN user_id END) /
+              NULLIF(COUNT(DISTINCT user_id), 0), 1)
+            FROM renewal_events
+            WHERE cohort_week = (SELECT MAX(cohort_week) FROM subscription_cohorts)
+
+    - id: 8
+      title: "Top 5 Churn Reasons"
+      type: "piechart"
+      gridPos:
+        h: 8
+        w: 12
+        x: 12
+        y: 12
+      targets:
+        - sql: |
+            SELECT
+              reason_if_failed,
+              COUNT(*) as count
+            FROM factory_events
+            WHERE event_name = 'subscription_cancelled' AND event_timestamp >= NOW() - INTERVAL '30 days'
+            GROUP BY reason_if_failed
+            ORDER BY count DESC
+            LIMIT 5
+      options:
+        showLegend: "right"
+        displayLabels:
+          - "name"
+          - "percent"
+        tooltip:
+          mode: "single"
+
+    # =============================
+    # ROW 4: FAILED PAYMENTS & RECOVERY
+    # =============================
+    - id: 9
+      title: "Failed Payments - Recovery Rate"
+      type: "stat"
+      gridPos:
+        h: 8
+        w: 12
+        x: 0
+        y: 20
+      targets:
+        - sql: |
+            WITH failed_users AS (
+              SELECT user_id, correlation_id, event_timestamp as failure_time, reason_if_failed
+              FROM factory_events
+              WHERE event_name = 'subscription_payment_failed' AND event_timestamp >= NOW() - INTERVAL '30 days'
+            ),
+            retry_events AS (
+              SELECT fu.user_id,
+                COUNT(DISTINCT CASE WHEN fe.event_name = 'subscription_payment_succeeded'
+                  AND fe.event_timestamp > fu.failure_time THEN fe.correlation_id END) as successful_retries
+              FROM failed_users fu
+              LEFT JOIN factory_events fe ON fu.user_id = fe.user_id
+                AND fe.event_name IN ('subscription_payment_succeeded', 'subscription_payment_failed')
+                AND fe.event_timestamp BETWEEN fu.failure_time AND fu.failure_time + INTERVAL '7 days'
+              GROUP BY fu.user_id
+            )
+            SELECT ROUND(
+              100.0 * COUNT(DISTINCT CASE WHEN successful_retries > 0 THEN user_id END) /
+              NULLIF(COUNT(DISTINCT user_id), 0), 1
+            ) as value
+            FROM retry_events
+      options:
+        colorMode: "value"
+        unit: "percent"
+        thresholds:
+          mode: "absolute"
+          steps:
+            - color: "red"
+              value: null
+            - color: "orange"
+              value: 30.0
+            - color: "green"
+              value: 50.0
+
+    - id: 10
+      title: "Failed Payments by Reason (Last 7 days)"
+      type: "barchart"
+      gridPos:
+        h: 8
+        w: 12
+        x: 12
+        y: 20
+      targets:
+        - sql: |
+            SELECT reason_if_failed, COUNT(*) as count
+            FROM factory_events
+            WHERE event_name IN ('subscription_payment_failed', 'unlock_payment_failed')
+              AND event_timestamp >= NOW() - INTERVAL '7 days'
+            GROUP BY reason_if_failed
+            ORDER BY count DESC
+            LIMIT 10
+      options:
+        legend:
+          displayMode: "none"
+
+    # =============================
+    # ROW 5: PAYOUT METRICS
+    # =============================
+    - id: 11
+      title: "Payout Completion Time (Days)"
+      type: "stat"
+      gridPos:
+        h: 8
+        w: 12
+        x: 0
+        y: 28
+      targets:
+        - sql: |
+            WITH earnings_dates AS (
+              SELECT creator_id, correlation_id, event_timestamp as earnings_date
+              FROM factory_events
+              WHERE event_name = 'creator_earnings_recorded' AND event_timestamp >= NOW() - INTERVAL '90 days'
+            ),
+            payout_dates AS (
+              SELECT creator_id, correlation_id, event_timestamp as payout_date
+              FROM factory_events
+              WHERE event_name = 'payout_completed' AND event_timestamp >= NOW() - INTERVAL '90 days'
+            )
+            SELECT ROUND(
+              AVG(EXTRACT(DAY FROM (pd.payout_date - ed.earnings_date))), 1
+            ) as value
+            FROM earnings_dates ed
+            LEFT JOIN payout_dates pd ON ed.creator_id = pd.creator_id AND ed.correlation_id = pd.correlation_id
+
+    - id: 12
+      title: "Creator Earnings - Top 10 (Last 7 days)"
+      type: "table"
+      gridPos:
+        h: 8
+        w: 12
+        x: 12
+        y: 28
+      targets:
+        - sql: |
+            SELECT
+              creator_id,
+              COUNT(*) as earnings_events,
+              ROUND(SUM(amount_cents) / 100.0, 2) as total_earnings_usd
+            FROM factory_events
+            WHERE event_name = 'creator_earnings_recorded'
+              AND event_timestamp >= NOW() - INTERVAL '7 days'
+            GROUP BY creator_id
+            ORDER BY total_earnings_usd DESC
+            LIMIT 10
+
+    # =============================
+    # ROW 6: ALERTS & THRESHOLDS
+    # =============================
+    - id: 13
+      title: "Alert: Funnel Conversion <Target"
+      type: "alert"
+      gridPos:
+        h: 4
+        w: 12
+        x: 0
+        y: 36
+      description: |
+        Trigger: If subscription payment success rate drops below 20% (target is 25%)
+        Action: Page product lead for immediate investigation
+        Condition: Compares last 24h vs. 7-day average
+      options:
+        thresholds:
+          mode: "absolute"
+          steps:
+            - color: "red"
+              value: null
+            - color: "green"
+              value: 0.20
+
+    - id: 14
+      title: "Alert: Failed Payouts >0.5% of Attempted"
+      type: "alert"
+      gridPos:
+        h: 4
+        w: 12
+        x: 12
+        y: 36
+      description: |
+        Trigger: If payout failure rate exceeds 0.5% (indicates systemic issues)
+        Action: Page ops lead; investigate DLQ
+      options:
+        thresholds:
+          mode: "absolute"
+          steps:
+            - color: "red"
+              value: null
+            - color: "orange"
+              value: 0.005
+            - color: "green"
+              value: 0.001
+
+    - id: 15
+      title: "Alert: Payout Lag >14 days (Any Creator)"
+      type: "alert"
+      gridPos:
+        h: 4
+        w: 12
+        x: 0
+        y: 40
+      description: |
+        Trigger: If any creator's payout takes >14 days from earnings recorded
+        Action: Investigate specific transfer + notify creator
+      options:
+        thresholds:
+          mode: "absolute"
+          steps:
+            - color: "orange"
+              value: 14
+            - color: "red"
+              value: 21
+
+    # =============================
+    # ROW 7: WEEK-OVER-WEEK TRENDS
+    # =============================
+    - id: 16
+      title: "Revenue Trend (4-Week View)"
+      type: "timeseries"
+      gridPos:
+        h: 8
+        w: 24
+        x: 0
+        y: 44
+      targets:
+        - sql: |
+            SELECT
+              DATE_TRUNC('week', event_timestamp) as week,
+              ROUND(SUM(amount_cents) / 100.0, 2) as "Revenue (USD)"
+            FROM factory_events
+            WHERE event_name IN ('subscription_payment_succeeded', 'unlock_payment_succeeded')
+              AND status = 'success'
+              AND event_timestamp >= NOW() - INTERVAL '4 weeks'
+            GROUP BY DATE_TRUNC('week', event_timestamp)
+            ORDER BY week DESC
+      options:
+        showLegend: "bottom"
+        tooltip:
+          mode: "multi"
+        lineInterpolation: "linear"
+
+---
+# Alerting Rules
+
+alerts:
+  - name: "Low Funnel Conversion"
+    condition: |
+      SELECT
+        ROUND(100.0 * COUNT(DISTINCT CASE WHEN event_name = 'subscription_payment_succeeded' THEN correlation_id END) /
+        NULLIF(COUNT(DISTINCT CASE WHEN event_name = 'subscription_requested' THEN correlation_id END), 0), 2) as conversion_pct
+      FROM factory_events
+      WHERE event_timestamp >= NOW() - INTERVAL '1 day'
+    threshold: "< 20"
+    severity: "critical"
+    notify: "product-lead@videoking.com"
+
+  - name: "High Failed Payouts"
+    condition: |
+      SELECT
+        ROUND(100.0 * COUNT(DISTINCT CASE WHEN event_name = 'payout_completed' AND status = 'failed' THEN correlation_id END) /
+        NULLIF(COUNT(DISTINCT CASE WHEN event_name = 'payout_completed' THEN correlation_id END), 0), 3) as failure_pct
+      FROM factory_events
+      WHERE event_timestamp >= NOW() - INTERVAL '1 day'
+    threshold: "> 0.5"
+    severity: "high"
+    notify: "ops-lead@videoking.com"
+
+  - name: "Churn Spike"
+    condition: |
+      SELECT
+        COUNT(*) as churn_count
+      FROM factory_events
+      WHERE event_name = 'subscription_cancelled'
+        AND event_timestamp >= NOW() - INTERVAL '1 day'
+    threshold: "> 50"
+    severity: "medium"
+    notify: "product-lead@videoking.com"
