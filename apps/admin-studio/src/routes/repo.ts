@@ -34,6 +34,24 @@ const repo = new Hono<AppEnv>();
 
 const PROTECTED_BRANCHES = new Set(['main']);
 
+/** Hard caps on writes — prevent abuse and accidental huge payloads. */
+const MAX_FILE_BYTES = 1_048_576; // 1 MiB
+const MAX_MESSAGE_BYTES = 4_096; // 4 KiB
+const MAX_PR_TITLE_BYTES = 256;
+const MAX_PR_BODY_BYTES = 16_384; // 16 KiB
+
+async function readJson<T>(c: Context<AppEnv>): Promise<T | { __error: string }> {
+  try {
+    return (await c.req.json()) as T;
+  } catch {
+    return { __error: 'invalid JSON body' };
+  }
+}
+
+function isParseError<T>(v: T | { __error: string }): v is { __error: string } {
+  return typeof v === 'object' && v !== null && '__error' in v;
+}
+
 repo.get('/branches', async (c) => {
   if (!c.env.GITHUB_TOKEN) return c.json({ error: 'GITHUB_TOKEN not configured' }, 503);
   try {
@@ -71,7 +89,8 @@ repo.get('/file', async (c) => {
 
 repo.post('/branches', async (c) => {
   if (!c.env.GITHUB_TOKEN) return c.json({ error: 'GITHUB_TOKEN not configured' }, 503);
-  const body = await c.req.json<RepoCreateBranchRequest>();
+  const body = await readJson<RepoCreateBranchRequest>(c);
+  if (isParseError(body)) return c.json({ error: body.__error }, 400);
   if (!body.name || !/^[A-Za-z0-9._/-]{1,128}$/.test(body.name)) {
     return c.json({ error: 'invalid branch name' }, 400);
   }
@@ -88,7 +107,8 @@ repo.post('/branches', async (c) => {
 
 repo.post('/commit', async (c) => {
   if (!c.env.GITHUB_TOKEN) return c.json({ error: 'GITHUB_TOKEN not configured' }, 503);
-  const body = await c.req.json<RepoCommitRequest>();
+  const body = await readJson<RepoCommitRequest>(c);
+  if (isParseError(body)) return c.json({ error: body.__error }, 400);
   if (!body.path || body.path.includes('..')) return c.json({ error: 'invalid path' }, 400);
   if (!body.branch) return c.json({ error: 'branch required' }, 400);
   if (PROTECTED_BRANCHES.has(body.branch)) {
@@ -96,6 +116,14 @@ repo.post('/commit', async (c) => {
   }
   if (!body.message?.trim()) return c.json({ error: 'message required' }, 400);
   if (typeof body.content !== 'string') return c.json({ error: 'content required' }, 400);
+  if (body.message.length > MAX_MESSAGE_BYTES) {
+    return c.json({ error: 'commit message too long', maxBytes: MAX_MESSAGE_BYTES }, 413);
+  }
+  // Approximate UTF-8 byte length via TextEncoder (no Buffer in Workers).
+  const contentBytes = new TextEncoder().encode(body.content).length;
+  if (contentBytes > MAX_FILE_BYTES) {
+    return c.json({ error: 'file too large', bytes: contentBytes, maxBytes: MAX_FILE_BYTES }, 413);
+  }
 
   // Belt-and-braces: also reject branches GitHub reports as protected.
   try {
@@ -129,10 +157,17 @@ repo.post('/commit', async (c) => {
 
 repo.post('/pull-requests', async (c) => {
   if (!c.env.GITHUB_TOKEN) return c.json({ error: 'GITHUB_TOKEN not configured' }, 503);
-  const body = await c.req.json<RepoOpenPRRequest>();
+  const body = await readJson<RepoOpenPRRequest>(c);
+  if (isParseError(body)) return c.json({ error: body.__error }, 400);
   if (!body.head || !body.title) return c.json({ error: 'head + title required' }, 400);
   if (PROTECTED_BRANCHES.has(body.head)) {
     return c.json({ error: 'head must not be a protected branch' }, 400);
+  }
+  if (body.title.length > MAX_PR_TITLE_BYTES) {
+    return c.json({ error: 'title too long', maxBytes: MAX_PR_TITLE_BYTES }, 413);
+  }
+  if (body.body && body.body.length > MAX_PR_BODY_BYTES) {
+    return c.json({ error: 'body too long', maxBytes: MAX_PR_BODY_BYTES }, 413);
   }
   try {
     const pr = await openPullRequest(c.env.GITHUB_TOKEN, body);

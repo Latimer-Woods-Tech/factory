@@ -178,9 +178,21 @@ ai.post('/chat', async (c) => {
 });
 
 ai.post('/proposals', async (c) => {
-  const body = await c.req.json<AIProposalRequest>();
+  let body: AIProposalRequest;
+  try {
+    body = await c.req.json<AIProposalRequest>();
+  } catch {
+    return c.json({ error: 'invalid JSON body' }, 400);
+  }
   if (!body.path || !body.instruction || typeof body.before !== 'string') {
     return c.json({ error: 'path + instruction + before required' }, 400);
+  }
+  // Cap user-controlled inputs to keep prompts bounded.
+  if (body.instruction.length > 4_000) {
+    return c.json({ error: 'instruction too long', maxBytes: 4_000 }, 413);
+  }
+  if (body.before.length > 256_000) {
+    return c.json({ error: 'file too large for proposal', maxBytes: 256_000 }, 413);
   }
   if (!c.env.ANTHROPIC_API_KEY) {
     return c.json({ error: 'ANTHROPIC_API_KEY not configured' }, 503);

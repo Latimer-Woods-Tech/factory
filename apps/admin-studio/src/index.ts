@@ -61,7 +61,9 @@ app.use('/ai/*', envContextMiddleware(), auditMiddleware());
 app.use('/audit/*', envContextMiddleware());
 app.use('/apps/*', envContextMiddleware());
 app.use('/observability/*', envContextMiddleware());
-app.use('/repo/*', envContextMiddleware());
+// Audit middleware skips GET/HEAD/OPTIONS, so reads stay cheap and
+// writes (commit, create-branch, open-PR) are recorded.
+app.use('/repo/*', envContextMiddleware(), auditMiddleware());
 app.use('/api/creator/*', envContextMiddleware());
 app.use('/api/admin/*', envContextMiddleware(), auditMiddleware());
 
