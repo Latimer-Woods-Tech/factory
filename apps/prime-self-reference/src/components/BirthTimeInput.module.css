@@ -1,0 +1,232 @@
+/**
+ * BirthTimeInput Styles
+ * 
+ * Responsive styles for the birth time input component with three dropdown selectors.
+ * Supports dark/light mode via CSS custom properties.
+ */
+
+.birth-time-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-family: inherit;
+}
+
+.birth-time-input fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.birth-time-input legend {
+  padding: 0;
+  margin: 0;
+}
+
+/* Screen reader only text */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Time display container */
+.time-display {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .time-display {
+    gap: 0.5rem;
+  }
+}
+
+/* Separator between time units */
+.time-display__separator {
+  font-weight: 600;
+  color: var(--text-primary, #333);
+  user-select: none;
+  min-width: 0.5rem;
+  text-align: center;
+}
+
+/* Base select styles */
+.time-input__hour,
+.time-input__minute,
+.time-input__period {
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  font-family: inherit;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 4px;
+  background-color: var(--input-bg, #fff);
+  color: var(--text-primary, #333);
+  cursor: pointer;
+  transition: all 150ms ease-in-out;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1.25rem 1.25rem;
+  padding-right: 2rem;
+}
+
+/* Hour select */
+.time-input__hour {
+  min-width: 4.5rem;
+}
+
+/* Minute select */
+.time-input__minute {
+  min-width: 4.5rem;
+}
+
+/* Period select (AM/PM) */
+.time-input__period {
+  min-width: 4rem;
+}
+
+/* Hover state */
+.time-input__hour:hover,
+.time-input__minute:hover,
+.time-input__period:hover {
+  border-color: var(--border-hover, #999);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Focus state */
+.time-input__hour:focus,
+.time-input__minute:focus,
+.time-input__period:focus {
+  outline: none;
+  border-color: var(--primary, #3b82f6);
+  box-shadow: 0 0 0 3px var(--primary-light, rgba(59, 130, 246, 0.2));
+}
+
+/* Disabled state */
+.time-input__hour:disabled,
+.time-input__minute:disabled,
+.time-input__period:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--input-disabled-bg, #f5f5f5);
+}
+
+/* Active/selected in dropdown */
+.time-input__hour option:checked,
+.time-input__minute option:checked,
+.time-input__period option:checked {
+  background-color: var(--primary, #3b82f6);
+  color: white;
+}
+
+/* Error state */
+.birth-time-input.error .time-input__hour,
+.birth-time-input.error .time-input__minute,
+.birth-time-input.error .time-input__period {
+  border-color: var(--error, #ef4444);
+}
+
+.birth-time-input.error .time-input__hour:focus,
+.birth-time-input.error .time-input__minute:focus,
+.birth-time-input.error .time-input__period:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* Error message */
+.birth-time-input__error {
+  margin: 0;
+  padding: 0.5rem 0;
+  font-size: 0.875rem;
+  color: var(--error, #ef4444);
+  font-weight: 500;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .time-input__hour,
+  .time-input__minute,
+  .time-input__period {
+    background-color: var(--input-bg, #1f2937);
+    border-color: var(--border-color, #374151);
+    color: var(--text-primary, #f3f4f6);
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f3f4f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  }
+
+  .time-display__separator {
+    color: var(--text-primary, #f3f4f6);
+  }
+
+  .time-input__hour:hover,
+  .time-input__minute:hover,
+  .time-input__period:hover {
+    border-color: var(--border-hover, #4b5563);
+  }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 480px) {
+  .time-input__hour,
+  .time-input__minute,
+  .time-input__period {
+    padding: 0.625rem 0.5rem;
+    font-size: 0.9375rem;
+    padding-right: 1.75rem;
+  }
+
+  .time-input__hour {
+    min-width: 3.5rem;
+  }
+
+  .time-input__minute {
+    min-width: 3.5rem;
+  }
+
+  .time-input__period {
+    min-width: 3.25rem;
+  }
+}
+
+/* Tablet responsiveness */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .time-input__hour,
+  .time-input__minute,
+  .time-input__period {
+    padding: 0.625rem 0.75rem;
+    font-size: 0.9375rem;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: more) {
+  .time-input__hour,
+  .time-input__minute,
+  .time-input__period {
+    border-width: 2px;
+  }
+
+  .time-input__hour:focus,
+  .time-input__minute:focus,
+  .time-input__period:focus {
+    border-width: 2px;
+    box-shadow: 0 0 0 2px var(--primary-light, rgba(59, 130, 246, 0.3));
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .time-input__hour,
+  .time-input__minute,
+  .time-input__period {
+    transition: none;
+  }
+}
