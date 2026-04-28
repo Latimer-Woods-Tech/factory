@@ -19,7 +19,7 @@ jobs:
         run: echo "PACKAGE=$(echo $GITHUB_REF_NAME | cut -d'/' -f1)" >> $GITHUB_ENV
       - name: Build local dependencies in order
         run: |
-          DEPS=(errors monitoring logger auth neon stripe llm telephony analytics deploy testing email copy content social seo crm compliance admin)
+          DEPS=(errors monitoring logger auth neon stripe llm telephony analytics deploy testing email copy content social seo crm compliance admin video schedule)
           for pkg in "${DEPS[@]}"; do
             if [ "$pkg" = "$PACKAGE" ]; then
               break
