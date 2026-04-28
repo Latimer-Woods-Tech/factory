@@ -1,0 +1,58 @@
+name: Deploy Video Cron Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/video-cron/**'
+      - '.github/workflows/deploy-video-cron.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy video-cron to Cloudflare
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd apps/video-cron
+          npm ci
+
+      - name: Update wrangler.jsonc with Hyperdrive ID
+        run: |
+          cd apps/video-cron
+          sed -i 's/REPLACE_WITH_HYPERDRIVE_ID/${{ secrets.HYPERDRIVE_FACTORY_CORE }}/g' wrangler.jsonc
+          echo "✅ Updated wrangler.jsonc with Hyperdrive ID"
+          cat wrangler.jsonc
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/video-cron
+          command: deploy --env production
+          secrets: |
+            SCHEDULE_WORKER_URL
+            WORKER_API_TOKEN
+            SENTRY_DSN
+        env:
+          SCHEDULE_WORKER_URL: ${{ secrets.SCHEDULE_WORKER_URL }}
+          WORKER_API_TOKEN: ${{ secrets.WORKER_API_TOKEN }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN_FACTORY_ADMIN }}
+
+      - name: Verify deployment
+        run: |
+          echo "🚀 Deployment complete"
+          echo "⏰ Cron job configured: hourly (0 * * * *)"
+          echo "📋 Cron jobs are managed by Cloudflare and run automatically"

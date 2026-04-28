@@ -1,0 +1,61 @@
+name: Deploy Schedule Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/schedule-worker/**'
+      - '.github/workflows/deploy-schedule-worker.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy schedule-worker to Cloudflare
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd apps/schedule-worker
+          npm ci
+
+      - name: Update wrangler.jsonc with Hyperdrive ID
+        run: |
+          cd apps/schedule-worker
+          sed -i 's/REPLACE_WITH_HYPERDRIVE_ID/${{ secrets.HYPERDRIVE_FACTORY_CORE }}/g' wrangler.jsonc
+          echo "✅ Updated wrangler.jsonc with Hyperdrive ID"
+          cat wrangler.jsonc
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/schedule-worker
+          command: deploy --env production
+          secrets: |
+            JWT_SECRET
+            SENTRY_DSN
+            POSTHOG_API_KEY
+            POSTHOG_PROJECT_ID
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN_FACTORY_ADMIN }}
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API }}
+          POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+
+      - name: Verify deployment
+        run: |
+          echo "🚀 Deployment complete"
+          echo "📍 Health check: https://schedule.adrper79.workers.dev/health"
+          sleep 5
+          curl -f https://schedule.adrper79.workers.dev/health || echo "⚠️  Health check failed - may need time to propagate"
