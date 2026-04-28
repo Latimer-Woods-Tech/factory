@@ -36,4 +36,10 @@ export interface Env {
   POSTHOG_API_KEY?: string;
   POSTHOG_PROJECT_ID?: string;
   POSTHOG_HOST?: string;
+
+  // ── Phase C: test runner ────────────────────────────────────────────────
+  /** Public origin of the Studio Worker — used as the GH Actions callback. */
+  STUDIO_PUBLIC_URL?: string;
+  /** Shared HMAC secret signed by the GH Action and verified by the Worker. */
+  STUDIO_WEBHOOK_SECRET?: string;
 }

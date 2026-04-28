@@ -68,11 +68,19 @@ function base64UrlToBytes(b64url: string): Uint8Array {
 export function envContextMiddleware(): MiddlewareHandler<AppEnv> {
   return async (c: Context<AppEnv>, next: Next) => {
     const authHeader = c.req.header('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    // EventSource cannot send custom headers, so SSE consumers may pass the
+    // JWT as `?access_token=…` instead. Treat it as equivalent to Bearer.
+    const queryToken = c.req.query('access_token');
+    let token: string | null = null;
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7).trim();
+    } else if (queryToken) {
+      token = queryToken;
+    }
+    if (!token) {
       return c.json({ error: 'Missing bearer token' }, 401);
     }
 
-    const token = authHeader.slice(7).trim();
     let payload: EnvJWTPayload;
     try {
       payload = await verifyJwt(token, c.env.JWT_SECRET);

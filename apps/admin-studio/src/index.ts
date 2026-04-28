@@ -23,6 +23,7 @@ import creatorOnboarding from './routes/creator-onboarding.js';
 import creators from './routes/creators.js';
 import payouts from './routes/payouts.js';
 import stripeConnectWebhooks from './routes/webhooks-stripe-connect.js';
+import studioTestsWebhook from './routes/webhooks-studio-tests.js';
 
 const app = new Hono<AppEnv>();
 
@@ -49,6 +50,7 @@ app.route('/auth', auth);
 
 // ── Webhooks (public, Stripe-signed) ──────────────────────────────────────
 app.route('/webhooks/stripe-connect', stripeConnectWebhooks);
+app.route('/webhooks/studio-tests', studioTestsWebhook);
 
 // ── Authenticated routes (env context required) ───────────────────────────
 app.use('/me/*', envContextMiddleware());
