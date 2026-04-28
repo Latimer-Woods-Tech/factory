@@ -1,0 +1,36 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "admin-studio",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "STUDIO_ENV": "staging",
+    "ALLOWED_ORIGINS": "https://studio.thefactory.dev,https://studio-staging.thefactory.dev"
+  },
+  "env": {
+    "staging": {
+      "name": "admin-studio-staging",
+      "vars": {
+        "STUDIO_ENV": "staging",
+        "ALLOWED_ORIGINS": "https://studio-staging.thefactory.dev,http://localhost:5173"
+      },
+      "hyperdrive": [
+        { "binding": "DB", "id": "REPLACE_WITH_HYPERDRIVE_STAGING_ID" }
+      ]
+    },
+    "production": {
+      "name": "admin-studio-production",
+      "vars": {
+        "STUDIO_ENV": "production",
+        "ALLOWED_ORIGINS": "https://studio.thefactory.dev"
+      },
+      "hyperdrive": [
+        { "binding": "DB", "id": "REPLACE_WITH_HYPERDRIVE_PRODUCTION_ID" }
+      ]
+    }
+  },
+  "observability": {
+    "enabled": true
+  }
+}

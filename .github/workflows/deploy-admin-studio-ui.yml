@@ -1,0 +1,56 @@
+name: Deploy admin-studio-ui (Pages)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/admin-studio-ui/**'
+      - 'packages/studio-core/**'
+      - '.github/workflows/deploy-admin-studio-ui.yml'
+  workflow_dispatch:
+    inputs:
+      env:
+        description: Target environment
+        required: true
+        default: staging
+        type: choice
+        options: [staging, production]
+
+concurrency:
+  group: admin-studio-ui-${{ github.event.inputs.env || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.env || 'staging' }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@adrper79-dot'
+
+      - name: Install
+        run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build studio-core
+        run: npm run build --workspace=@adrper79-dot/studio-core
+
+      - name: Build UI
+        run: npm run build --workspace=@adrper79-dot/admin-studio-ui
+        env:
+          VITE_API_BASE: ${{ github.event.inputs.env == 'production' && 'https://admin-studio-production.adrper79.workers.dev' || 'https://admin-studio-staging.adrper79.workers.dev' }}
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          command: pages deploy apps/admin-studio-ui/dist --project-name=admin-studio-ui --branch=${{ github.event.inputs.env == 'production' && 'main' || 'staging' }}

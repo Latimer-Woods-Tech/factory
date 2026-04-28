@@ -1,0 +1,8 @@
+# local-only secrets — never commit
+JWT_SECRET=replace-me-with-32-bytes-of-random-base64
+GITHUB_TOKEN=ghp_replace_me
+ANTHROPIC_API_KEY=sk-ant-replace-me
+# optional fallbacks
+XAI_API_KEY=
+GROQ_API_KEY=
+SENTRY_DSN=

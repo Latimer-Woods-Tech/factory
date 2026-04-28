@@ -1,0 +1,31 @@
+{
+  "name": "@adrper79-dot/admin-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy:staging": "wrangler deploy --env staging",
+    "deploy:production": "wrangler deploy --env production",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src --max-warnings 0"
+  },
+  "dependencies": {
+    "@adrper79-dot/auth": "file:../../packages/auth",
+    "@adrper79-dot/errors": "file:../../packages/errors",
+    "@adrper79-dot/llm": "file:../../packages/llm",
+    "@adrper79-dot/logger": "file:../../packages/logger",
+    "@adrper79-dot/monitoring": "file:../../packages/monitoring",
+    "@adrper79-dot/neon": "file:../../packages/neon",
+    "@adrper79-dot/studio-core": "file:../../packages/studio-core",
+    "hono": "^4.12.14"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240502.0",
+    "@cloudflare/vitest-pool-workers": "^0.4.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.4.0",
+    "wrangler": "^3.60.0"
+  }
+}
