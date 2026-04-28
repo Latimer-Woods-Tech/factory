@@ -1,40 +1,184 @@
+/**
+ * Phase D — AI chat route.
+ *
+ * `POST /ai/chat` returns a Server-Sent Events stream of `AIChatEvent`s
+ * derived from Anthropic's native SSE. The translator lets the browser
+ * stay provider-agnostic and lets us swap providers without UI changes.
+ *
+ * Mode-specific system prompts encode Factory's standing orders so the
+ * model never suggests `process.env`, Express, or `node:crypto`.
+ *
+ * `POST /ai/proposals` is a Phase D.2 placeholder — it will return diff
+ * proposals once the editor + commit-to-branch flow lands.
+ */
 import { Hono } from 'hono';
+import { stream as anthropicStream } from '@adrper79-dot/llm';
+import type { AIChatEvent, AIChatRequest } from '@adrper79-dot/studio-core';
 import type { AppEnv } from '../types.js';
 
 const ai = new Hono<AppEnv>();
 
-/**
- * POST /ai/chat — server-sent-events stream of LLM tokens.
- *
- * Body: { prompt: string, mode: 'generate' | 'explain' | 'refactor', context?: string[] }
- *
- * Phase A: simple JSON response. Phase E switches to SSE + tool-use loop.
- */
-ai.post('/chat', async (c) => {
-  const body = await c.req.json<{
-    prompt: string;
-    mode: 'generate' | 'explain' | 'refactor';
-    context?: string[];
-  }>();
+const SYSTEM_PROMPTS: Record<AIChatRequest['mode'], string> = {
+  generate: [
+    'You are a senior staff engineer for Factory, a Cloudflare-Workers-native monorepo.',
+    'When generating code:',
+    '- Use Hono for HTTP routing (never Express, Fastify, or Next.js).',
+    '- Use Drizzle ORM over Hyperdrive (env.DB) for Postgres.',
+    '- Use the Web Crypto API for JWT (never jsonwebtoken or node:crypto).',
+    '- Read secrets from c.env / env, never from process.env.',
+    '- Use ESM imports only; no require, no Buffer, no fs/path.',
+    '- Always handle fetch errors explicitly.',
+    'Return code in fenced blocks with the language hint.',
+  ].join('\n'),
+  explain: [
+    'You are a code reviewer for Factory.',
+    'Walk the user through the supplied code: what it does, why each non-obvious line exists,',
+    'and any Factory standing orders it depends on (Workers runtime, Hono, Drizzle, Web Crypto JWT).',
+    'Be concise — bullet points over prose.',
+  ].join('\n'),
+  refactor: [
+    'You are a senior staff engineer for Factory.',
+    'Refactor the supplied code to better match Factory standards (Workers, Hono, Drizzle, Web Crypto, ESM).',
+    'Preserve behaviour. Show the diff inline by emitting the full refactored file in one fenced block,',
+    'then a short bullet list explaining each change.',
+  ].join('\n'),
+};
 
-  if (!body.prompt || body.prompt.length > 16_000) {
-    return c.json({ error: 'Prompt missing or too long' }, 400);
+function buildSystem(body: AIChatRequest): string {
+  const base = SYSTEM_PROMPTS[body.mode];
+  if (!body.context?.snippet) return base;
+  const lang = body.context.language ?? 'ts';
+  const path = body.context.path ? ` (${body.context.path})` : '';
+  return `${base}\n\nThe user has the following file open${path}:\n\n\`\`\`${lang}\n${truncate(body.context.snippet, 8000)}\n\`\`\``;
+}
+
+function truncate(s: string, max: number): string {
+  return s.length <= max ? s : s.slice(0, max) + '\n…[truncated]';
+}
+
+/**
+ * Translate Anthropic's native SSE into our normalised `AIChatEvent` stream.
+ *
+ * Anthropic frames look like:
+ *   event: content_block_delta
+ *   data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"…"}}
+ *   event: message_delta
+ *   data: {"type":"message_delta","usage":{"output_tokens":42}}
+ *   event: message_stop
+ *   data: {"type":"message_stop"}
+ */
+function transformAnthropicSse(input: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+  let buffer = '';
+  let inputTokens = 0;
+  let outputTokens = 0;
+
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const reader = input.getReader();
+      const emit = (evt: AIChatEvent) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`));
+      };
+
+      try {
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const frames = buffer.split('\n\n');
+          buffer = frames.pop() ?? '';
+
+          for (const frame of frames) {
+            const dataLine = frame.split('\n').find((l) => l.startsWith('data:'));
+            if (!dataLine) continue;
+            const json = dataLine.slice(5).trim();
+            if (!json) continue;
+            let payload: { type?: string; delta?: { type?: string; text?: string }; usage?: { input_tokens?: number; output_tokens?: number }; message?: { usage?: { input_tokens?: number } }; error?: { message?: string } };
+            try {
+              payload = JSON.parse(json);
+            } catch {
+              continue;
+            }
+            switch (payload.type) {
+              case 'message_start': {
+                if (typeof payload.message?.usage?.input_tokens === 'number') {
+                  inputTokens = payload.message.usage.input_tokens;
+                }
+                break;
+              }
+              case 'content_block_delta': {
+                if (payload.delta?.type === 'text_delta' && typeof payload.delta.text === 'string') {
+                  emit({ type: 'token', delta: payload.delta.text });
+                }
+                break;
+              }
+              case 'message_delta': {
+                if (typeof payload.usage?.output_tokens === 'number') {
+                  outputTokens = payload.usage.output_tokens;
+                }
+                break;
+              }
+              case 'message_stop': {
+                emit({ type: 'done', provider: 'anthropic', tokens: { input: inputTokens, output: outputTokens } });
+                break;
+              }
+              case 'error': {
+                emit({ type: 'error', message: payload.error?.message ?? 'anthropic error' });
+                break;
+              }
+              default:
+                // ignore content_block_start, ping, etc.
+                break;
+            }
+          }
+        }
+      } catch (err) {
+        emit({ type: 'error', message: (err as Error).message });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+}
+
+ai.post('/chat', async (c) => {
+  const body = await c.req.json<AIChatRequest>();
+  if (!body.history?.length) {
+    return c.json({ error: 'history required' }, 400);
+  }
+  if (!c.env.ANTHROPIC_API_KEY) {
+    return c.json({ error: 'ANTHROPIC_API_KEY not configured' }, 503);
   }
 
-  // TODO Phase E: call @adrper79-dot/llm with proper system prompt + repo context.
-  return c.json({
-    response: `[stub] Mode=${body.mode}. Real LLM wiring lands in Phase E.`,
-    model: 'stub',
-    tokensUsed: 0,
+  const system = buildSystem(body);
+  const messages = body.history.map((t) => ({ role: t.role, content: t.content }));
+
+  const upstream = await anthropicStream(
+    messages,
+    { ANTHROPIC_API_KEY: c.env.ANTHROPIC_API_KEY },
+    {
+      system,
+      maxTokens: 2048,
+      temperature: body.mode === 'refactor' ? 0.2 : 0.5,
+    },
+  );
+
+  const out = transformAnthropicSse(upstream);
+
+  return new Response(out, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    },
   });
 });
 
-/**
- * POST /ai/proposals — submit an AI-generated patch as a draft branch + PR.
- * Phase E feature. Stubbed here so the route surface is stable.
- */
 ai.post('/proposals', (c) =>
-  c.json({ error: 'Not implemented in Phase A — see Phase E' }, 501),
+  c.json({ error: 'not implemented', detail: 'Diff proposals land in Phase D.2.' }, 501),
 );
 
 export default ai;

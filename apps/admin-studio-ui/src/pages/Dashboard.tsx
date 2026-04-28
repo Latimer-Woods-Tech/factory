@@ -6,12 +6,14 @@
 import { NavLink, Route, Routes, Navigate } from 'react-router-dom';
 import { OverviewTab } from './tabs/OverviewTab.js';
 import { TestsTab } from './tabs/TestsTab.js';
+import { CodeTab } from './tabs/CodeTab.js';
 import { AiTab } from './tabs/AiTab.js';
 import { AuditTab } from './tabs/AuditTab.js';
 
 const TABS = [
   { to: '/overview', label: 'Overview' },
   { to: '/tests',    label: 'Tests' },
+  { to: '/code',     label: 'Code' },
   { to: '/ai',       label: 'AI Chat' },
   { to: '/audit',    label: 'Audit Log' },
 ];
@@ -43,6 +45,7 @@ export function Dashboard() {
           <Route path="/" element={<Navigate to="/overview" replace />} />
           <Route path="/overview" element={<OverviewTab />} />
           <Route path="/tests" element={<TestsTab />} />
+          <Route path="/code" element={<CodeTab />} />
           <Route path="/ai" element={<AiTab />} />
           <Route path="/audit" element={<AuditTab />} />
         </Routes>
