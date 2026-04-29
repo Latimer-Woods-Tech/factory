@@ -2,6 +2,15 @@ import { InternalError } from '@adrper79-dot/errors';
 import { sql } from '@adrper79-dot/neon';
 import type { FactoryDb } from '@adrper79-dot/neon';
 
+// Event schema contract (W360-021) — re-exported for consumer tests
+export {
+  validateEventShape,
+  assertEventShape,
+  getCriticalEventNames,
+  CRITICAL_EVENT_SCHEMAS,
+} from './event-schemas.js';
+export type { EventSchema, EventValidationResult } from './event-schemas.js';
+
 /**
  * Routing destination for an analytics event.
  */
