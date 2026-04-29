@@ -80,6 +80,8 @@ For the shared video Workers, the Phase 0 smoke set is:
 - `schedule-worker`: `/health`, `/jobs/pending`, `/jobs/:id`, `/jobs`, `/migrate`.
 - `video-cron`: `/health`, `/trigger`.
 
+The repeatable automation for this smoke set is the `Smoke Video Phase 0` GitHub Actions workflow. It verifies public health, anonymous `401` responses, idempotent migration, a synthetic schedule-to-failed audit flow, and the authenticated `video-cron` trigger path.
+
 Do not mark deployment complete until the expected HTTP status codes are observed directly.
 
 ## 3. Deploy to production
