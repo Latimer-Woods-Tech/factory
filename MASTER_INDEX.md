@@ -1,10 +1,12 @@
 # Factory Core — Master Index
 
-**Status:** Phase 5 Complete | Phase 6-7 Automation Ready  
-**Date:** April 27, 2026  
+**Status:** Phase 5 Complete | Phase 6-7 Automation Ready | Open Work Register Active  
+**Date:** April 29, 2026  
 **Audience:** All team members
 
 > **Jump to:** [Infrastructure Engineer](#for-infrastructure-engineer) | [Tech Lead](#for-tech-lead) | [App Agents](#for-app-agents) | [Docs Team](#for-docs-team)
+
+**Canonical execution source:** [WORLD_CLASS_IMPLEMENTATION_DASHBOARD.md](./WORLD_CLASS_IMPLEMENTATION_DASHBOARD.md) now owns the open work register, project/repo inventory, done/undone/unrealized status, and multi-agent coordination process. Root-level `*_SUMMARY.md` / `*_COMPLETE.md` files are historical only.
 
 ---
 

@@ -1,8 +1,8 @@
 # World-Class Implementation Dashboard
 
-**Last Updated:** April 28, 2026 (PHASE B COMPLETE — 28/28 Initiatives)  
+**Last Updated:** April 29, 2026 (CONTROL PLANE + OPEN WORK REGISTER ADDED)  
 **Phase B Progress:** 28/28 (100% Complete) 🎉  
-**Status:** Blueprint Established, Execution Phase Ready  
+**Status:** Canonical execution dashboard, work register, and coordination process  
 **Scope:** Factory support platform + core application delivery model  
 **Reference Core App:** `_external_reviews/videoking` as the current quality and operating baseline
 
@@ -172,6 +172,115 @@ Exit criteria:
 
 ---
 
+## Canonical Operating Model and Open Work Register
+
+This section is the single place to answer: what exists, what is done, what is undone, what is not yet realized, and which agent owns updates.
+
+### Source-of-Truth Rules
+
+| Area | Canonical source | Update rule |
+|---|---|---|
+| Portfolio roadmap and open work | This dashboard | Only the coordinator agent updates roadmap status, open task state, and owner assignments |
+| Worker names, URLs, consumers, and rename safety | `docs/service-registry.yml` | Any worker rename or new hardcoded URL must update the registry in the same change |
+| Admin Studio product plan | `docs/admin-studio/00-MASTER-PLAN.md` | Admin Studio features graduate here only after scope and exit criteria are known |
+| Package dependency and standing constraints | `CLAUDE.md` | Treat as policy; do not duplicate or override elsewhere |
+| Deployment and smoke verification procedures | `docs/runbooks/deployment.md` | Every deploy must end with direct HTTP verification, not only green CI |
+| Session artifacts and one-off summaries | Root `*_SUMMARY.md` / `*_COMPLETE.md` files | Historical only; do not use as the live task board |
+
+### Multi-Agent Coordination Process
+
+1. One coordinator agent owns this dashboard and `MASTER_INDEX.md` / `PROJECT_STATUS.md` status references.
+2. Specialist agents own bounded paths, for example one app, one package, or one workflow.
+3. Specialist agents must not create new root-level summary files as task boards; they should report status back to the coordinator.
+4. Before editing, every agent checks `git status`, recent commits, and this dashboard's ownership table.
+5. Agents must not edit another agent's claimed paths unless the coordinator reassigns ownership.
+6. Completion requires code merge, quality gates, docs update, service registry update if applicable, and direct endpoint verification for deployed services.
+7. The working tree must not include generated dependency folders such as `node_modules/` or `dist/` in commits.
+
+### Project, Repo, and Service Inventory
+
+| Asset | Repo / path | Type | Current role | Status |
+|---|---|---|---|---|
+| Factory Core | `adrper79-dot/factory` | Monorepo | Shared packages, Workers, docs, Admin Studio | Active control repo |
+| wordis-bond | `adrper79-dot/wordis-bond` | App repo | App scaffold target | Created; Phase 7 waits on Phase 6 gates |
+| cypher-healing | `adrper79-dot/cypher-healing` | App repo | App scaffold target | Created; Phase 7 waits on Phase 6 gates |
+| prime-self | `adrper79-dot/prime-self` | App repo / Worker | Reference app and SelfPrime runtime | Created; live Worker referenced in service registry |
+| prime-self-ui | `adrper79-dot/prime-self-ui` | Pages app | SelfPrime landing/front-end consumer | Registry consumer of `prime-self` |
+| ijustus | `adrper79-dot/ijustus` | App repo | App scaffold target | Created; Phase 7 waits on Phase 6 gates |
+| the-calling | `adrper79-dot/the-calling` | App repo | App scaffold target | Created; Phase 7 waits on Phase 6 gates |
+| neighbor-aid | `adrper79-dot/neighbor-aid` | App repo | App scaffold target | Created; Phase 7 waits on Phase 6 gates |
+| admin-studio | `apps/admin-studio` | Worker | Factory browser control plane API | In progress; environment safety and API surface planned/partially implemented |
+| admin-studio-ui | `apps/admin-studio-ui` | Pages/UI | Factory browser control plane UI | In progress; Functions tab and generated build artifacts present locally |
+| studio-core | `packages/studio-core` | Shared package | Admin Studio types, manifests, smoke probes | In progress; uncommitted local changes exist |
+| schedule-worker | `apps/schedule-worker` | Worker | Shared video job API | Deployed; `/health` returned `200` on Apr 29 |
+| video-cron | `apps/video-cron` | Worker | Shared video dispatch cron | Deployed; `/health` returned `200` on Apr 29 |
+| video-studio | `apps/video-studio` | Render templates | Remotion template source | Code complete enough for first render workflow path |
+| videoking | `apps/videoking` / `_external_reviews/videoking` | Reference app | Monetization and video architecture pattern source | Pattern source only; no live `videoking.adrper79.workers.dev` endpoint |
+
+### Open Work Register
+
+| ID | Work item | Owner mode | Current state | Next verification |
+|---|---|---|---|---|
+| OWR-001 | Keep this dashboard as the live task board | Coordinator only | Active | Every status-changing PR updates this section |
+| OWR-002 | Clean multi-agent collision risk | Coordinator + specialist agents | Required; multiple agents have touched overlapping areas | Assign path ownership before further edits |
+| OWR-003 | Review uncommitted Admin Studio / Studio Core local changes | Admin Studio specialist | Required; local changes exist in `apps/admin-studio-ui` and `packages/studio-core` | Decide commit, stash, or discard before master updates |
+| OWR-004 | Exclude generated dependency/build artifacts from commits | Coordinator | Required; local `node_modules/`, `dist/`, and build info are present | Ensure `.gitignore` coverage and do not stage generated files |
+| OWR-005 | Run schedule-worker database migration | Video platform specialist | Pending after Worker deploy | `POST /migrate` with valid `WORKER_API_TOKEN`, then verify logs/status |
+| OWR-006 | Complete R2 bucket and production video storage secrets | Infrastructure specialist | Pending / verify placeholders | Confirm bucket, API keys, public domain, and GitHub secrets are real |
+| OWR-007 | Trigger first `render-video.yml` end-to-end run | Video platform specialist | Pending R2 + migration verification | Workflow completes and returns Cloudflare Stream UID |
+| OWR-008 | Set `LANDING_VIDEO_STREAM_UID` for SelfPrime | SelfPrime specialist | Pending first render | Landing page displays Stream embed and root URL returns `200` |
+| OWR-009 | Phase 6 infrastructure provisioning across app repos | Infrastructure specialist | Ready; execution/credential-dependent | Orchestrator dry run, execution, and per-app `/health` verification |
+| OWR-010 | Phase 7 app scaffolding validation | App agents | Waiting on Phase 6 completion | `phase-7-validate.js --all` passes |
+| OWR-011 | Admin Studio command plane for GUI AI commands | Admin Studio specialist | Planned / partially scaffolded | Command schema, dry-run previews, audit logging, and branch-based PR flow implemented |
+| OWR-012 | Function manifest adoption across apps | Platform + app agents | In progress in Studio Core concepts | Each live app exposes crawlable manifest with owner, auth, reversibility, SLO, and smoke probes |
+
+### Confirmed Done / Undone / Unrealized
+
+#### Done
+
+- Phase B dashboard initiatives are documented as 28/28 complete.
+- Core package publish chain was repaired; `@adrper79-dot/schedule@0.2.1` and `@adrper79-dot/video@0.2.0` are published.
+- `schedule-worker` and `video-cron` deploy workflows have successful runs.
+- Direct HTTP health checks for `schedule-worker` and `video-cron` returned `200` on Apr 29.
+- Worker service registry entries exist for `prime-self`, `schedule-worker`, `video-cron`, and the `videoking` reference entry.
+- Admin Studio master plan exists with environment safety, code, test, deploy, database, content, operations, and AI-assisted workflows.
+
+#### Undone
+
+- Consolidated ownership cleanup is not finished; there are uncommitted local changes and generated artifacts.
+- Schedule-worker migration has not been confirmed complete in this dashboard.
+- R2 production bucket/secrets and first video render have not been confirmed complete here.
+- Phase 6/7 app provisioning and validation are still gated by infrastructure execution.
+- Admin Studio GUI AI commands are not yet a production control surface.
+- App function manifests and smoke probes are not yet fully adopted across every app.
+
+#### Unrealized / Not Yet Designed Deeply Enough
+
+- A durable command schema for Admin Studio AI actions: every GUI AI command needs intent, target repo/path, environment, risk tier, dry-run output, approval policy, audit event, rollback plan, and PR/deploy linkage.
+- A portfolio dependency graph that answers which apps consume which packages, Workers, secrets, queues, databases, R2 buckets, Pages projects, and workflows.
+- A formal task object model that Studio can read/write: work item, owner, scope paths, status, blockers, verification evidence, linked commits, linked workflow runs, and linked endpoints.
+- A cross-repo release train UI that coordinates package publish order, app lockfile updates, staging deploys, production deploys, smoke tests, and rollbacks.
+- A governance rule that all future agents update machine-readable status through Studio or a single dashboard-backed API instead of creating ad hoc markdown summaries.
+
+### Admin Studio Command-Plane Requirements
+
+The Admin Studio should eventually manage this process through GUI AI commands, but only after it implements these standard functions:
+
+| Function | Minimum capability | Safety requirement |
+|---|---|---|
+| Work register | Create, update, assign, block, unblock, and close tasks | Coordinator approval for status changes touching roadmap or production |
+| Repo inventory | List repos, packages, Workers, Pages apps, databases, secrets, workflows, and consumers | Read-only by default; writes go through PRs |
+| AI command intake | Convert natural-language commands into structured action plans | Always show target environment, files, risks, and dry-run diff before execution |
+| Path ownership | Claim/release file globs for specialist agents | Block conflicting writes unless coordinator overrides |
+| Code changes | Branch, edit, test, commit, and open PR | Never commit directly to `main`; use optimistic concurrency and PR review |
+| Test runner | Run selected suites and stream results | Persist run IDs, logs, coverage, and failure analysis |
+| Deploy control | Trigger staging/production deploys and watch logs | Production deploy requires CI green, smoke pass, type-to-confirm, and rollback link |
+| Endpoint verification | Run direct `curl`/HTTP probes against service registry endpoints | CI green is insufficient; record observed HTTP status and timestamp |
+| Audit log | Record every mutating Studio action | Redact secrets; include user, env, target, command, result, and request ID |
+| Rollback | Generate and execute rollback steps | Must show reversibility tier and required approvals before action |
+
+---
+
 ## Implementation Dashboard
 
 ### Phase E Addendum — SelfPrime × VideoKing Synergy
@@ -179,8 +288,8 @@ Exit criteria:
 | ID | Initiative | Why It Matters | Factory Support Contribution | App Contribution | Exit Criteria | Status |
 |---|---|---|---|---|---|---|
 | E0.1 | Reconcile shared video Worker registry | Prevents hidden dependencies and broken rename/deploy flows | Add `schedule-worker` and `video-cron` to the service registry with owners, consumers, endpoints, and secrets | Confirm SelfPrime and admin consumers use registry-approved URLs | Registry entries exist and remain current | ✅ Complete |
-| E0.2 | Verify shared video Worker health | Product rollout must not depend on undeployed or unreachable services | Deploy Workers after Hyperdrive IDs and secrets are configured | Block SelfPrime video UX until shared services return live `200` health checks | Both `/health` URLs return `200` via direct HTTP verification | 🚫 Blocked: credentials + deploy |
-| E0.3 | Harden schedule pipeline for app tenancy | Private SelfPrime data must not leak into shared services | Add app-scoped auth, sanitized context refs, structured logs, and events | SelfPrime sends minimal generation briefs and owns private chart data | Synthetic job completes or fails with audit trail; no raw private chart payload in shared queue | 🔄 In Progress |
+| E0.2 | Verify shared video Worker health | Product rollout must not depend on undeployed or unreachable services | Deploy Workers after Hyperdrive IDs and secrets are configured | Block SelfPrime video UX until shared services return live `200` health checks | Both `/health` URLs return `200` via direct HTTP verification | ✅ Complete: both health checks returned `200` on Apr 29 |
+| E0.3 | Harden schedule pipeline for app tenancy | Private SelfPrime data must not leak into shared services | Add app-scoped auth, sanitized context refs, structured logs, and events | SelfPrime sends minimal generation briefs and owns private chart data | Synthetic job completes or fails with audit trail; no raw private chart payload in shared queue | 🔄 In Progress: deploy complete; migration + synthetic job still pending |
 
 ### T1 — Product + UX Operating System
 
