@@ -13,6 +13,10 @@ export interface Env {
   // ── Secrets (wrangler secret put) ───────────────────────────────────────
   /** Signing key for Studio-issued JWTs */
   JWT_SECRET: string;
+  /** Bootstrap operator email allowed to obtain Studio JWTs. */
+  STUDIO_ADMIN_EMAIL: string;
+  /** Lowercase hex SHA-256 digest of the bootstrap operator password. */
+  STUDIO_ADMIN_PASSWORD_SHA256: string;
   /** Personal access token used to dispatch GH Actions workflows */
   GITHUB_TOKEN: string;
   /** Anthropic API key for AI chat */

@@ -4,6 +4,13 @@ import { isEnvironment, isRole, type EnvJWTPayload } from '@adrper79-dot/studio-
 
 const auth = new Hono<AppEnv>();
 
+interface LoginRequest {
+  email?: unknown;
+  password?: unknown;
+  env?: unknown;
+  app?: unknown;
+}
+
 /**
  * POST /auth/login
  *
@@ -12,17 +19,13 @@ const auth = new Hono<AppEnv>();
  * Returns a JWT carrying the env claim. The client must pick env *before*
  * authenticating — Studio refuses to issue a token without it.
  *
- * Phase A: stub credentials check (replace with real users table in Phase B).
+ * Phase A: bootstrap credentials check against Worker secrets. Phase B replaces
+ * this with `studio_users` and per-user password hashes / session controls.
  */
 auth.post('/login', async (c) => {
-  const body = await c.req.json<{
-    email: string;
-    password: string;
-    env: string;
-    app?: string;
-  }>();
+  const body = await c.req.json<LoginRequest>();
 
-  if (!body.email || !body.password) {
+  if (typeof body.email !== 'string' || typeof body.password !== 'string') {
     return c.json({ error: 'Missing credentials' }, 400);
   }
   if (!isEnvironment(body.env)) {
@@ -37,8 +40,21 @@ auth.post('/login', async (c) => {
     );
   }
 
-  // TODO Phase B: look up user in studio_users, verify Argon2 hash.
-  // Phase A stub: allow any email matching SUDO_EMAIL secret (single bootstrap user).
+  if (!c.env.STUDIO_ADMIN_EMAIL || !c.env.STUDIO_ADMIN_PASSWORD_SHA256) {
+    return c.json({ error: 'Studio bootstrap credentials are not configured' }, 503);
+  }
+
+  const email = body.email.trim().toLowerCase();
+  const configuredEmail = c.env.STUDIO_ADMIN_EMAIL.trim().toLowerCase();
+  const passwordHash = await sha256Hex(body.password);
+  const configuredPasswordHash = c.env.STUDIO_ADMIN_PASSWORD_SHA256.trim().toLowerCase();
+  const validCredentials = email === configuredEmail
+    && constantTimeEqualHex(passwordHash, configuredPasswordHash);
+
+  if (!validCredentials) {
+    return c.json({ error: 'Invalid credentials' }, 401);
+  }
+
   const stubRole = 'owner'; // bootstrap operator
   if (!isRole(stubRole)) {
     return c.json({ error: 'Misconfigured role' }, 500);
@@ -51,12 +67,12 @@ auth.post('/login', async (c) => {
     iat: now,
     exp,
     iss: 'factory-admin-studio',
-    sub: body.email,
+    sub: email,
     env: body.env,
-    app: body.app,
+    app: typeof body.app === 'string' ? body.app : undefined,
     sessionId: crypto.randomUUID(),
-    userId: body.email, // stub: email-as-id; replace with UUID in Phase B
-    userEmail: body.email,
+    userId: email, // bootstrap: email-as-id; replace with UUID in Phase B
+    userEmail: email,
     role: stubRole,
     envLockedAt: Date.now(),
   };
@@ -98,4 +114,26 @@ function base64UrlEncode(bytes: Uint8Array): string {
   let bin = '';
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!);
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function constantTimeEqualHex(actual: string, expected: string): boolean {
+  if (!/^[a-f0-9]{64}$/.test(expected)) {
+    return false;
+  }
+
+  let diff = actual.length ^ expected.length;
+  const maxLength = Math.max(actual.length, expected.length);
+  for (let i = 0; i < maxLength; i++) {
+    const actualCode = actual.charCodeAt(i) || 0;
+    const expectedCode = expected.charCodeAt(i) || 0;
+    diff |= actualCode ^ expectedCode;
+  }
+  return diff === 0;
 }

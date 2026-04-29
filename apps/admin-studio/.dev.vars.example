@@ -1,5 +1,8 @@
 # local-only secrets — never commit
 JWT_SECRET=replace-me-with-32-bytes-of-random-base64
+STUDIO_ADMIN_EMAIL=operator@example.com
+# Generate locally: printf "your-password" | sha256sum
+STUDIO_ADMIN_PASSWORD_SHA256=replace-me-with-lowercase-sha256-hex
 GITHUB_TOKEN=ghp_replace_me
 ANTHROPIC_API_KEY=sk-ant-replace-me
 # optional fallbacks

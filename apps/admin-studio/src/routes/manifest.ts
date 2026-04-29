@@ -48,7 +48,7 @@ const ENTRIES: ReadonlyArray<ManifestEntry> = [
     smoke: [
       {
         label: 'rejects bad creds',
-        body: { email: 'invalid@example.com', password: 'wrong' },
+        body: { email: 'invalid@example.com', password: 'wrong', env: 'production' },
         expectedStatus: 401,
       },
     ],
