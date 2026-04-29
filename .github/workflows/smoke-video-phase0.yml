@@ -32,8 +32,12 @@ jobs:
       - name: Apply idempotent schedule-worker migration
         run: |
           set -euo pipefail
-          curl -fsS -X POST "$SCHEDULE_WORKER_URL/migrate" \
-            -H "Authorization: Bearer $WORKER_API_TOKEN"
+          body_file=$(mktemp)
+          status_code=$(curl -sS -o "$body_file" -w '%{http_code}' -X POST "$SCHEDULE_WORKER_URL/migrate" \
+            -H "Authorization: Bearer $WORKER_API_TOKEN")
+          cat "$body_file"
+          echo
+          test "$status_code" = "200"
 
       - name: Verify synthetic schedule-to-failed audit flow
         run: |
