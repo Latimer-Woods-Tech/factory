@@ -107,6 +107,23 @@ workers:
         line: ~143
         pattern: "D[video-cron]"
 
+  - id: synthetic-monitor
+    name: synthetic-monitor                                # matches apps/synthetic-monitor/wrangler.jsonc `name`
+    repo: adrper79-dot/factory
+    url: https://synthetic-monitor.adrper79.workers.dev    # canonical workers.dev URL
+    custom_domain: null
+    health_endpoint: /health
+    deployment_status: live_health_verified_2026-04-29
+    critical_endpoints:
+      - /health
+      - /checks/run
+    required_bindings: []
+    required_secrets: []
+    required_vars:
+      - ENVIRONMENT
+      - TARGETS_JSON
+    consumers: []
+
   - id: videoking
     name: videoking                                        # NOT a deployed worker — architecture reference only
     repo: adrper79-dot/factory

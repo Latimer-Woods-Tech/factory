@@ -72,6 +72,7 @@ CI green = code compiled. `curl` 200 = it actually works. These are not the same
 19. `@adrper79-dot/admin` (deps: auth, analytics)
 20. `@adrper79-dot/video` (deps: errors) — Cloudflare Stream + R2 wrappers
 21. `@adrper79-dot/schedule` (deps: errors, neon, video) — video production calendar + priority scoring
+22. `@adrper79-dot/validation` (no deps; deterministic output quality gates)
 
 ## Video Production Pipeline
 The automated video engine runs **outside Workers** (needs real Chromium + ffmpeg):

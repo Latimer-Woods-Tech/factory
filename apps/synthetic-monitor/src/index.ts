@@ -1,0 +1,260 @@
+import { Hono } from 'hono';
+import type { Env } from './env.js';
+
+class ValidationError extends Error {
+  public readonly status = 422;
+  public readonly code = 'VALIDATION_ERROR';
+
+  public constructor(message: string) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+/** Supported HTTP methods for synthetic checks. */
+type CheckMethod = 'GET' | 'HEAD';
+
+/** Synthetic endpoint definition. */
+export interface MonitorTarget {
+  id: string;
+  url: string;
+  method?: CheckMethod;
+  expectedStatus?: number;
+  contains?: string;
+  timeoutMs?: number;
+}
+
+/** Result emitted by each synthetic check. */
+export interface MonitorResult {
+  id: string;
+  url: string;
+  method: CheckMethod;
+  expectedStatus: number;
+  status: number | null;
+  ok: boolean;
+  latencyMs: number;
+  checkedAt: string;
+  error?: string;
+}
+
+/** Aggregate synthetic run envelope. */
+export interface MonitorRunResult {
+  status: 'ok' | 'degraded';
+  environment: string;
+  checkedAt: string;
+  results: MonitorResult[];
+}
+
+type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
+const DEFAULT_TIMEOUT_MS = 8_000;
+const DEFAULT_EXPECTED_STATUS = 200;
+
+const DEFAULT_TARGETS: readonly MonitorTarget[] = [
+  { id: 'selfprime.home', url: 'https://selfprime.net/', contains: 'Prime Self' },
+  { id: 'selfprime.pricing', url: 'https://selfprime.net/pricing.html', contains: 'Plans' },
+  { id: 'selfprime.practitioners', url: 'https://selfprime.net/practitioners.html', contains: 'Practitioner' },
+  { id: 'selfprime.api.health', url: 'https://selfprime.net/api/health', contains: 'ok' },
+] as const;
+
+const app = new Hono<{ Bindings: Env }>();
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function parseMethod(value: unknown): CheckMethod {
+  if (value === undefined) {
+    return 'GET';
+  }
+  if (value === 'GET' || value === 'HEAD') {
+    return value;
+  }
+  throw new ValidationError('method must be GET or HEAD');
+}
+
+function parsePositiveInteger(value: unknown, fallback: number, field: string): number {
+  if (value === undefined) {
+    return fallback;
+  }
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) {
+    throw new ValidationError(`${field} must be a positive integer`);
+  }
+  return value;
+}
+
+function validateTarget(value: unknown): MonitorTarget {
+  if (!isRecord(value)) {
+    throw new ValidationError('Each monitor target must be an object');
+  }
+  const { id, url, method, expectedStatus, contains, timeoutMs } = value;
+  if (typeof id !== 'string' || !id.trim()) {
+    throw new ValidationError('target id is required');
+  }
+  if (typeof url !== 'string' || !url.trim()) {
+    throw new ValidationError('target url is required');
+  }
+  const parsedUrl = new URL(url);
+  if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
+    throw new ValidationError('target url must use http or https');
+  }
+  if (contains !== undefined && typeof contains !== 'string') {
+    throw new ValidationError('contains must be a string when provided');
+  }
+  return {
+    id: id.trim(),
+    url: parsedUrl.toString(),
+    method: parseMethod(method),
+    expectedStatus: parsePositiveInteger(expectedStatus, DEFAULT_EXPECTED_STATUS, 'expectedStatus'),
+    contains,
+    timeoutMs: parsePositiveInteger(timeoutMs, DEFAULT_TIMEOUT_MS, 'timeoutMs'),
+  };
+}
+
+/**
+ * Parses monitor targets from Worker configuration with deterministic fallback.
+ *
+ * @param raw - JSON array string from `env.TARGETS_JSON`.
+ */
+export function parseTargets(raw: string | undefined): MonitorTarget[] {
+  if (!raw?.trim() || raw.trim() === '[]') {
+    return [...DEFAULT_TARGETS];
+  }
+  const parsed = JSON.parse(raw) as unknown;
+  if (!Array.isArray(parsed)) {
+    throw new ValidationError('TARGETS_JSON must be a JSON array');
+  }
+  const targets = parsed.map(validateTarget);
+  if (targets.length === 0) {
+    return [...DEFAULT_TARGETS];
+  }
+  return targets;
+}
+
+function elapsedMs(start: number): number {
+  return Math.max(0, Math.round(performance.now() - start));
+}
+
+async function readBodyForAssertion(response: Response, method: CheckMethod): Promise<string> {
+  if (method === 'HEAD') {
+    return '';
+  }
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('text') && !contentType.includes('json') && !contentType.includes('html')) {
+    return '';
+  }
+  return response.text();
+}
+
+/**
+ * Runs one endpoint check with explicit timeout and response validation.
+ *
+ * @param target - Endpoint definition to check.
+ * @param fetchImpl - Fetch implementation, injectable for tests.
+ */
+export async function checkTarget(target: MonitorTarget, fetchImpl: FetchLike = fetch): Promise<MonitorResult> {
+  const method = target.method ?? 'GET';
+  const expectedStatus = target.expectedStatus ?? DEFAULT_EXPECTED_STATUS;
+  const timeoutMs = target.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const controller = new AbortController();
+  const startedAt = performance.now();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetchImpl(target.url, {
+      method,
+      signal: controller.signal,
+      headers: { 'user-agent': 'factory-synthetic-monitor/0.1' },
+    });
+    const body = await readBodyForAssertion(response, method);
+    const missingText = target.contains ? !body.includes(target.contains) : false;
+    const ok = response.status === expectedStatus && !missingText;
+    return {
+      id: target.id,
+      url: target.url,
+      method,
+      expectedStatus,
+      status: response.status,
+      ok,
+      latencyMs: elapsedMs(startedAt),
+      checkedAt: new Date().toISOString(),
+      error: missingText ? `Response did not contain expected text: ${target.contains}` : undefined,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown fetch failure';
+    return {
+      id: target.id,
+      url: target.url,
+      method,
+      expectedStatus,
+      status: null,
+      ok: false,
+      latencyMs: elapsedMs(startedAt),
+      checkedAt: new Date().toISOString(),
+      error: message,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
+ * Runs the full synthetic check suite.
+ *
+ * @param env - Worker bindings.
+ * @param fetchImpl - Fetch implementation, injectable for tests.
+ */
+export async function runSyntheticChecks(env: Env, fetchImpl: FetchLike = fetch): Promise<MonitorRunResult> {
+  const targets = parseTargets(env.TARGETS_JSON);
+  const results = await Promise.all(targets.map((target) => checkTarget(target, fetchImpl)));
+  const status = results.every((result) => result.ok) ? 'ok' : 'degraded';
+  return {
+    status,
+    environment: env.ENVIRONMENT,
+    checkedAt: new Date().toISOString(),
+    results,
+  };
+}
+
+app.get('/health', (c) => c.json({ status: 'ok', worker: 'synthetic-monitor', ts: new Date().toISOString() }));
+
+app.get('/checks/run', async (c) => {
+  const result = await runSyntheticChecks(c.env);
+  return c.json(result, result.status === 'ok' ? 200 : 503);
+});
+
+app.onError((err, c) => {
+  const isValidationError = err instanceof ValidationError;
+  const status: 422 | 500 = isValidationError ? err.status : 500;
+  const response = {
+    data: null,
+    error: {
+      code: isValidationError ? err.code : 'INTERNAL_ERROR',
+      message: err.message,
+      status,
+      retryable: !isValidationError,
+    },
+  };
+  return c.json(response, status);
+});
+
+export default {
+  fetch: app.fetch,
+  async scheduled(_event: ScheduledEvent, env: Env): Promise<void> {
+    const result = await runSyntheticChecks(env);
+    const failed = result.results.filter((entry) => !entry.ok).map((entry) => ({
+      id: entry.id,
+      status: entry.status,
+      error: entry.error,
+      latencyMs: entry.latencyMs,
+    }));
+    console.log(JSON.stringify({
+      event: 'synthetic_monitor.run',
+      status: result.status,
+      environment: result.environment,
+      checkedAt: result.checkedAt,
+      failed,
+      total: result.results.length,
+    }));
+  },
+};

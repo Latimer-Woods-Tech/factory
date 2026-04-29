@@ -538,6 +538,50 @@ it('should process webhook and create payout', async () => {
 
 ---
 
+### `@adrper79-dot/validation`
+
+**Purpose:** Worker-safe output quality validation for AI responses, synthetic monitors, and CI gates  
+**VideoKing Usage:** ❌ **Not Used**
+
+| Concern | Details |
+|---------|---------|
+| Exports used | n/a — added for SelfPrime output validation and future app adoption |
+| Where | CI gates, production synthetic checks, Worker response guards before rendering AI output |
+| App-specific layers | Required sections, required chart facts, brand voice terms, blocked phrases, and pass score |
+| Integration points | Pairs with `@adrper79-dot/llm`, records quality results through `@adrper79-dot/analytics`, reports critical failures through `@adrper79-dot/monitoring` |
+| Privacy posture | Emits rule IDs, scores, and redacted evidence snippets only; apps must not log raw private chart payloads |
+
+**Consumption Pattern (for new apps):**
+```typescript
+import { validateAiOutput } from '@adrper79-dot/validation';
+
+const result = validateAiOutput(generatedReading, {
+  minCharacters: 180,
+  requiredSections: [
+    { id: 'pattern', label: 'Pattern', pattern: /pattern/i },
+    { id: 'practice', label: 'Practice', pattern: /practice/i },
+  ],
+  requiredFacts: [
+    { label: 'energy type', expectedText: 'Builder' },
+  ],
+  brandVoice: {
+    requiredTerms: ['Energy Blueprint'],
+    blockedTerms: ['fortune telling'],
+  },
+});
+
+if (!result.passed) {
+  await analytics.businessEvent('output.validation_failed', {
+    score: result.score,
+    issues: result.issues.map((entry) => entry.rule),
+  });
+}
+```
+
+**Gaps in VideoKing:** ✅ Not applicable — this package is for apps that generate AI/user-facing text.
+
+---
+
 ### `@adrper79-dot/compliance`
 
 **Purpose:** Data retention, GDPR/CCPA compliance, audit logging  
@@ -712,6 +756,7 @@ app.get('/video/:id', async (c) => {
 | stripe | Payment + payout wrappers | ✅ Used | Required (if payments) | P1 |
 | deployment | Deploy automation | ✅ Used | Required | P1 |
 | testing | Mock factories + testbed | ✅ Used | Required | P1 |
+| validation | AI/output quality gates | ❌ Unused | Required if AI output reaches users | P1 |
 | analytics | PostHog event tracking | ✅ Used | Highly Recommended | P1 |
 | video | Stream + R2 storage | ✅ Used | Only if videos | P2 |
 | schedule | DB schema + jobs | ✅ Used | App-specific | P2 |
