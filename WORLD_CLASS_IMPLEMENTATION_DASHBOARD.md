@@ -1,6 +1,6 @@
 # World-Class Implementation Dashboard
 
-**Last Updated:** April 29, 2026 (OWR-005/006/009 DONE · E0.3 DONE · PHASE 3 A11Y GREEN · PHASE 2 SMOKE GREEN · ALL INFRA LIVE)  
+**Last Updated:** April 29, 2026 (REASSESSMENT + ACTIVE PROMPT PACK + LLM DEP FIX + PACKAGE INTEGRATION SMOKE)  
 **Phase B Progress:** 28/28 (100% Complete) 🎉  
 **Status:** Canonical execution dashboard, work register, and coordination process  
 **Scope:** Factory support platform + core application delivery model  
@@ -237,8 +237,37 @@ This section is the single place to answer: what exists, what is done, what is u
 | OWR-010 | Phase 7 app scaffolding validation | App agents | Waiting on Phase 6 completion | `phase-7-validate.js --all` passes |
 | OWR-011 | Admin Studio command plane for GUI AI commands | Admin Studio specialist | Planned / partially scaffolded | Command schema, dry-run previews, audit logging, and branch-based PR flow implemented |
 | OWR-012 | Function manifest adoption across apps | Platform + app agents | In progress in Studio Core concepts | Each live app exposes crawlable manifest with owner, auth, reversibility, SLO, and smoke probes |
+| OWR-017 | Refresh active agent prompts for current execution model | Coordinator | **DONE** Active prompt index and success contracts added; stale Stage 1 prompts marked historical — April 29, 2026 | Future agents start from `prompts/README.md` and `prompts/AGENT_SUCCESS_CONTRACT.md` |
+| OWR-018 | Restore `@adrper79-dot/llm` runtime dependency classification | Package specialist | **DONE locally** `errors` and `logger` restored to runtime dependencies; llm gates passed during lockfile regeneration — April 29, 2026 | Commit package fix and publish audit when ready |
+| OWR-019 | Backfill `@adrper79-dot/llm` changelog and release evidence | Package specialist | **DONE locally** changelog documents `0.2.0`, provider failover, runtime deps, and verification — April 29, 2026 | Commit with OWR-018 and confirm publish readiness |
+| OWR-020 | Add cross-package integration CI | Platform specialist | **DONE locally / workflow pending** package chain build and cross-package smoke passed on Node 24; Actions workflow added — April 29, 2026 | Commit, push, and record first `package-integration.yml` workflow run |
+| OWR-021 | Harden Admin Studio command-plane blockers | Admin Studio specialist | Required; auth, smoke auth, LLM-backed failure analysis, and UI tabs remain partially scaffolded | Real auth, protected smoke runner, code/AI/functions tab evidence, and audit tests pass |
+| OWR-022 | Document workflow coordination and deployment gates | DevOps specialist | **Partially done** workflow coordination doc added; shared deploy-gate implementation still required | Deploy workflows reference common health-gate pattern and dashboard records run IDs/statuses |
+| OWR-023 | Real-credential live-site auth e2e tests (prime-self-ui) | SelfPrime specialist | **DONE** `SMOKE_EMAIL`/`SMOKE_PASSWORD` secrets set; all localhost testing removed; `playwright.config.mjs` targets `selfprime.net` only; URL assertions fixed for Cloudflare clean URLs + `_redirects` chain — April 29, 2026 | Run ID 25123827532 ✅ all 4 tests green (invalid login, valid login + localStorage, dashboard redirect, public nav) |
 
 ### Confirmed Done / Undone / Unrealized
+
+### April 29 Reassessment — Changes Since Prior Deep Dive
+
+| Domain | What improved | Still unresolved | Recommendation | Evidence / verification |
+|---|---|---|---|---|
+| Live video platform | Schedule migration, R2/Stream path, first successful renders, SelfPrime Stream embed, and synthetic monitor are now proven | Failure replay and operator-facing render exception handling still need a durable workflow | Treat video as `verified` for happy path and keep failure recovery as open work | `render-video.yml` runs `25120264469` and `25122396643`; direct health checks returned `200` for `schedule-worker`, `video-cron`, and `synthetic-monitor` on Apr 29 |
+| Prompting / agent success | Active prompts now exist for agent success contract, OWR coordination, Phase E video/revenue work, and Admin Studio command-plane work | Old Stage 1 prompts remain historical and should not drive current implementation | Require future agents to start from `prompts/README.md` and quote the relevant prompt contract in their plan | `prompts/README.md`, `prompts/AGENT_SUCCESS_CONTRACT.md`, `prompts/OWR_COORDINATOR_PROMPT.md`, `prompts/PHASE_E_VIDEO_REVENUE_PROMPT.md`, `prompts/ADMIN_STUDIO_COMMAND_PLANE_PROMPT.md` |
+| Package dependency safety | `@adrper79-dot/llm` runtime dependency misclassification and changelog gap were corrected locally; cross-package smoke CI was added and passed locally | First Actions run still needs to pass after commit | Commit dependency/changelog and integration workflow together, then watch the workflow | `packages/llm/package.json`, `packages/llm/CHANGELOG.md`, `.github/workflows/package-integration.yml`, `scripts/package-integration-smoke.mjs`; llm lint/typecheck/test/build passed during `npm install` prepublish on Apr 29; local package chain build + smoke passed on Apr 29 |
+| Smoke and accessibility | Prime Self smoke/a11y gates, synthetic monitor, and real-credential auth e2e (OWR-023) represent a stronger live-quality loop | Coverage is still uneven across apps; app-level analytics event verification is not a release gate | Make smoke/a11y/event proof mandatory for app launch gates | `apps/prime-self-smoke`, `.github/workflows/smoke-prime-self.yml`, `apps/synthetic-monitor`, `adrper79-dot/prime-self-ui` run 25123827532 |
+| Admin Studio | Control-plane requirements are now clearer and prompt-backed | Production command-plane safety remains incomplete: real auth, RBAC, dry-run, audit, smoke auth, UI tabs, and PR/deploy governance | Sequence Admin Studio work through the command-plane prompt; do not allow production mutation until safety model passes tests | `prompts/ADMIN_STUDIO_COMMAND_PLANE_PROMPT.md`, `apps/admin-studio`, `apps/admin-studio-ui`, `packages/studio-core` |
+| Workflow operations | `render-video.yml` already has job-ID concurrency and successful run evidence | Workflow inventory, deployment dependencies, metric freshness, and recovery playbooks are not centralized | Create workflow coordination doc and pre-deploy health gate pattern | `.github/workflows/render-video.yml`, `.github/workflows/`, `scripts/phase-6-orchestrator.mjs` |
+
+### Reassessment Priority Stack
+
+| Priority | Action | Owner mode | Exit criteria |
+|---|---|---|---|
+| P0 | Commit the `@adrper79-dot/llm` runtime dependency and changelog fix | Package specialist | `llm` quality gates pass; changelog has `0.2.0`; package-lock shows runtime deps |
+| P0 | Enforce the new active prompt contract for all future agents | Coordinator | Every new task plan cites an active prompt and dashboard/OWR item before edits |
+| P1 | Build cross-package integration CI | Platform specialist | Workflow and smoke script exist; CI catches runtime dependency drift and validates package chain composition |
+| P1 | Create workflow coordination/deploy-gate documentation | DevOps specialist | Workflow trigger/order/recovery matrix exists and deploy workflows reference health gates |
+| P1 | Convert Admin Studio command-plane requirements into tests and protected routes | Admin Studio specialist | Real auth, dry-run, audit, smoke auth, RBAC, and rollback evidence exist |
+| P2 | Replace stale historical docs or mark them non-canonical | Coordinator + docs | `PROJECT_STATUS.md`, runbooks, and VideoKing baseline clearly reference the dashboard as current truth |
 
 #### Done
 
@@ -252,11 +281,12 @@ This section is the single place to answer: what exists, what is done, what is u
 #### Undone
 
 - Consolidated ownership cleanup is not finished; there are uncommitted local changes and generated artifacts.
-- Schedule-worker migration has not been confirmed complete in this dashboard.
-- R2 production bucket/secrets and first video render have not been confirmed complete here.
-- Phase 6/7 app provisioning and validation are still gated by infrastructure execution.
+- Render failure recovery, replay, and operator escalation are not yet proven as a full drill.
+- Phase 7 app scaffolding validation remains open after infrastructure confirmation.
 - Admin Studio GUI AI commands are not yet a production control surface.
 - App function manifests and smoke probes are not yet fully adopted across every app.
+- Cross-package integration CI exists and passed locally, but first post-commit Actions run is not yet recorded.
+- Workflow coordination and metric freshness are not yet centrally documented.
 
 #### Unrealized / Not Yet Designed Deeply Enough
 

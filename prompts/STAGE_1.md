@@ -1,3 +1,10 @@
+# HISTORICAL ONLY — DO NOT USE FOR CURRENT EXECUTION
+
+This prompt predates the current Factory execution model and uses stale package scope/name assumptions.
+Use `prompts/README.md` and `prompts/AGENT_SUCCESS_CONTRACT.md` for current work.
+
+---
+
 # FACTORY CORE — STAGE 1: FOUNDATION PACKAGES
 # Claude Code Command: claude --continue --allowedTools Bash,Write,Read
 
