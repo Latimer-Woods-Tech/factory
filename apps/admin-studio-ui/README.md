@@ -23,9 +23,12 @@ npm run preview      # serve dist/
 Deployed via Cloudflare Pages — `dist/` is uploaded by the GitHub Actions workflow at [`.github/workflows/deploy-admin-studio-ui.yml`](../../.github/workflows/deploy-admin-studio-ui.yml).
 
 ```
-staging:    https://studio-staging.thefactory.dev
+staging:    https://staging.admin-studio-ui.pages.dev
 production: https://studio.thefactory.dev
 ```
+
+The staging Pages URL above is the currently verified live staging surface.
+The production custom domain remains the intended production target.
 
 ## Architecture summary
 

@@ -6,14 +6,14 @@
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
     "STUDIO_ENV": "staging",
-    "ALLOWED_ORIGINS": "https://studio.thefactory.dev,https://studio-staging.thefactory.dev"
+    "ALLOWED_ORIGINS": "https://studio.thefactory.dev,https://studio-staging.thefactory.dev,https://staging.admin-studio-ui.pages.dev"
   },
   "env": {
     "staging": {
       "name": "admin-studio-staging",
       "vars": {
         "STUDIO_ENV": "staging",
-        "ALLOWED_ORIGINS": "https://studio-staging.thefactory.dev,http://localhost:5173"
+        "ALLOWED_ORIGINS": "https://studio-staging.thefactory.dev,https://staging.admin-studio-ui.pages.dev,http://localhost:5173"
       },
       "hyperdrive": [
         { "binding": "DB", "id": "efe957f404bb457593e6bd08b733b7c4" }
