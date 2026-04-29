@@ -10,6 +10,8 @@ import { InternalError, ErrorCodes } from '@adrper79-dot/errors';
 export interface FactoryQueryResult<TRow extends Record<string, unknown> = Record<string, unknown>> {
   /** Rows returned by the SQL statement. */
   rows: TRow[];
+  /** Number of rows affected or returned, when reported by the driver. */
+  rowCount: number;
 }
 
 type HyperdriveDrizzleDb = PostgresJsDatabase<Record<string, never>> & {
@@ -43,6 +45,10 @@ export interface RunMigrationsOptions {
   migrationsFolder: string;
 }
 
+interface PostgresJsMigratorModule {
+  migrate(db: PostgresJsDatabase<Record<string, never>>, config: RunMigrationsOptions): Promise<void>;
+}
+
 /**
  * Creates a Drizzle client bound to a Cloudflare Hyperdrive connection.
  *
@@ -65,7 +71,8 @@ export function createDb(hyperdrive: HyperdriveBinding): FactoryDb {
       query: SQLWrapper | string,
     ): Promise<FactoryQueryResult<TRow>> {
       const result = await execute<TRow>(query);
-      return { rows: Array.from(result) as TRow[] };
+      const rows = Array.from(result) as TRow[];
+      return { rows, rowCount: result.count ?? rows.length };
     },
   }) as FactoryDb;
 }
@@ -106,6 +113,7 @@ export async function runMigrations(
   db: FactoryDb,
   options: RunMigrationsOptions,
 ): Promise<void> {
-  const { migrate } = await import('drizzle-orm/postgres-js/migrator');
-  await migrate(db as unknown as PostgresJsDatabase<Record<string, never>>, { migrationsFolder: options.migrationsFolder });
+  const migratorModule = 'drizzle-orm/postgres-js/migrator';
+  const migrator = await import(migratorModule) as PostgresJsMigratorModule;
+  await migrator.migrate(db as unknown as PostgresJsDatabase<Record<string, never>>, { migrationsFolder: options.migrationsFolder });
 }
