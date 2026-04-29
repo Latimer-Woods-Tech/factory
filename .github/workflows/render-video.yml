@@ -187,8 +187,11 @@ jobs:
             --endpoint-url "https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com" \
             --region "auto"
 
-          # R2 public URL (using account-based domain)
-          NARRATION_URL="https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com/${R2_BUCKET_NAME}/${NARRATION_KEY}"
+          # Generate a presigned URL (1 hour) so Remotion can fetch the private object
+          NARRATION_URL=$(aws s3 presign "s3://${R2_BUCKET_NAME}/${NARRATION_KEY}" \
+            --endpoint-url "https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com" \
+            --region "auto" \
+            --expires-in 3600)
           echo "narration_url=$NARRATION_URL" >> "$GITHUB_OUTPUT"
           echo "narration_key=$NARRATION_KEY" >> "$GITHUB_OUTPUT"
         env:
