@@ -88,20 +88,23 @@ jobs:
         id: generate_script
         run: |
           SCRIPT=$(node --input-type=module << 'SCRIPT_EOF'
-          const resp = await fetch('https://api.anthropic.com/v1/messages', {
+          const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
-              'x-api-key': process.env.ANTHROPIC_API_KEY,
-              'anthropic-version': '2023-06-01',
+              'Authorization': 'Bearer ' + process.env.GROQ_API_KEY,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'claude-3-5-haiku-20241022',
+              model: 'llama-3.3-70b-versatile',
               max_tokens: 300,
               messages: [
                 {
+                  role: 'system',
+                  content: 'You are a concise copywriter. Write a punchy, direct narration script for a 15-second video. Output only the script text, no labels.',
+                },
+                {
                   role: 'user',
-                  content: `You are a concise copywriter. Write a punchy, direct 15-second narration script for a ${process.env.COMPOSITION_TYPE} video about: ${process.env.TOPIC}. App voice: ${process.env.APP_ID}. Be specific and compelling. Output only the script text, no labels.`,
+                  content: `Write a 15-second narration script for a ${process.env.COMPOSITION_TYPE} video about: ${process.env.TOPIC}. App voice: ${process.env.APP_ID}. Be specific and compelling.`,
                 },
               ],
             }),
@@ -111,14 +114,14 @@ jobs:
             throw new Error('LLM call failed: ' + resp.status + ' — ' + errBody);
           }
           const data = await resp.json();
-          const text = data.content?.[0]?.text ?? '';
+          const text = data.choices?.[0]?.message?.content ?? '';
           // Output as single line for GitHub Actions
           process.stdout.write(text.replace(/\n/g, ' '));
           SCRIPT_EOF
           )
           echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           TOPIC: ${{ github.event.inputs.topic }}
           APP_ID: ${{ github.event.inputs.app_id }}
           COMPOSITION_TYPE: ${{ github.event.inputs.composition_id }}
