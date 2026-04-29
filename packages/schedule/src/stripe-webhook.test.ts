@@ -10,25 +10,28 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { handleStripeWebhook } from './stripe-webhook.js';
 import {
+  handleStripeWebhook,
   evaluateEntitlementPolicy,
   getEntitlementPolicy,
   debitCreditsForRender,
   grantCredits,
   refundCredits,
   getTotalAvailableCredits,
-} from './studio-entitlements.js';
-import type { StudioEntitlement } from './studio-entitlements.js';
+  type StudioEntitlement,
+} from '@adrper79-dot/neon';
 
-// ---------------------------------------------------------------------------
 // Mock @adrper79-dot/neon
 // ---------------------------------------------------------------------------
 
-vi.mock('@adrper79-dot/neon', () => ({
-  sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values }),
-  createDb: vi.fn(() => mockDb),
-}));
+vi.mock('@adrper79-dot/neon', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@adrper79-dot/neon')>();
+  return {
+    ...actual,
+    sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values }),
+    createDb: vi.fn(() => mockDb),
+  };
+});
 
 // We need a module-level db mock ref so tests can configure rows
 let mockDb: ReturnType<typeof makeDb>;
@@ -86,7 +89,7 @@ describe('handleStripeWebhook', () => {
     mockDb = makeDb();
     const result = await handleStripeWebhook('{}', 't=1,v1=badhex', {} as never, WEBHOOK_SECRET);
     expect(result.statusCode).toBe(401);
-    expect(JSON.parse(result.body)).toMatchObject({ error: 'Invalid Stripe signature' });
+    expect(JSON.parse(result.body)).toMatchObject({ error: 'Signature verification failed' });
   });
 
   it('returns 400 when body is not valid JSON (after passing sig check)', async () => {
@@ -104,26 +107,23 @@ describe('handleStripeWebhook', () => {
     const sig = await buildStripeSignature(body, WEBHOOK_SECRET);
     const result = await handleStripeWebhook(body, sig, {} as never, WEBHOOK_SECRET);
     expect(result.statusCode).toBe(200);
-    expect(JSON.parse(result.body)).toMatchObject({ acknowledged: true });
+    expect(JSON.parse(result.body)).toMatchObject({ status: 'acknowledged' });
   });
 
   it('handles customer.subscription.created and returns 200', async () => {
-    // Row order: [customerResult, planResult, insert subscription, refresh entitlements, insert credits]
+    // Row order: [isEventProcessed check (should return false), SELECT customers, SELECT plans, INSERT subscription, SELECT for refresh, UPDATE entitlements, INSERT credit_ledger, recordProcessedEvent]
     mockDb = makeDb([
+      [],                                                            // isEventProcessed SELECT (no existing event)
       [{ id: 'cust-01' }],                                          // SELECT FROM studio_customers
       [{ id: 'plan-01', included_credits: '10', billing_mode: 'monthly_subscription' }], // SELECT FROM studio_plans
       [],                                                            // INSERT subscription ON CONFLICT
-      [],                                                            // SELECT for refreshEntitlements
+      [],                                                            // SELECT for refreshEntitlements balance
+      [],                                                            // SELECT for customer suspension
+      [],                                                            // SELECT for active subscription
       [],                                                            // UPDATE entitlements
       [],                                                            // INSERT credit_ledger
-      [],                                                            // recordProcessedEvent no-op
+      [],                                                            // recordProcessedEvent INSERT
     ]);
-
-    const hyperdriveMock = {} as never;
-
-    // Patch createDb to return our mock db
-    const { createDb } = await import('@adrper79-dot/neon');
-    vi.mocked(createDb).mockReturnValue(mockDb as never);
 
     const subscription = {
       id: 'sub_001',
@@ -141,10 +141,10 @@ describe('handleStripeWebhook', () => {
       data: { object: subscription },
     });
     const sig = await buildStripeSignature(body, WEBHOOK_SECRET);
-    const result = await handleStripeWebhook(body, sig, hyperdriveMock, WEBHOOK_SECRET);
+    const result = await handleStripeWebhook(body, sig, mockDb as never, WEBHOOK_SECRET);
 
     expect(result.statusCode).toBe(200);
-    expect(JSON.parse(result.body)).toMatchObject({ acknowledged: true });
+    expect(JSON.parse(result.body)).toMatchObject({ status: 'acknowledged' });
   });
 
   it('handles customer.subscription.updated and returns 200', async () => {
@@ -173,7 +173,7 @@ describe('handleStripeWebhook', () => {
       },
     });
     const sig = await buildStripeSignature(body, WEBHOOK_SECRET, '1714000001');
-    const result = await handleStripeWebhook(body, sig, {} as never, WEBHOOK_SECRET);
+    const result = await handleStripeWebhook(body, sig, mockDb as never, WEBHOOK_SECRET);
     expect(result.statusCode).toBe(200);
   });
 
@@ -203,7 +203,7 @@ describe('handleStripeWebhook', () => {
       },
     });
     const sig = await buildStripeSignature(body, WEBHOOK_SECRET, '1714000002');
-    const result = await handleStripeWebhook(body, sig, {} as never, WEBHOOK_SECRET);
+    const result = await handleStripeWebhook(body, sig, mockDb as never, WEBHOOK_SECRET);
     expect(result.statusCode).toBe(200);
   });
 });
@@ -295,11 +295,12 @@ describe('debitCreditsForRender', () => {
     const db = makeDb([
       [],                         // INSERT ON CONFLICT DO NOTHING
       [{ total: '8' }],           // balance query
+      [],                         // refresh_entitlements SELECT (async)
     ]);
     const result = await debitCreditsForRender(db as never, 'cust-01', 2, 'job-001', 'render');
     expect(result.success).toBe(true);
     expect(result.newAvailableCredits).toBe(8);
-    expect(db.execute).toHaveBeenCalledTimes(2);
+    expect(db.execute).toHaveBeenCalledTimes(3);
   });
 });
 

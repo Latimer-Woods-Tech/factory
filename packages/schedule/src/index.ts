@@ -7,9 +7,46 @@ import type { RenderJob, RenderJobType, RenderJobStatus } from '@adrper79-dot/vi
 export type { RenderJob, RenderJobType, RenderJobStatus } from '@adrper79-dot/video';
 
 // Practitioner Studio entitlements + Stripe webhook (W360-005)
-export * from './studio-entitlements.js';
-export { handleStripeWebhook } from './stripe-webhook.js';
-export type { StripeEvent, StripeSubscription, StripeInvoice } from './stripe-webhook.js';
+// Re-exported from @adrper79-dot/neon where they live alongside drizzle-orm
+export {
+  studioPlanTable,
+  studioCustomerTable,
+  studioSubscriptionTable,
+  studioCreditLedgerTable,
+  studioEntitlementTable,
+  studioPlanTables,
+  type StudioPlan,
+  type StudioPlanInsert,
+  type StudioCustomer,
+  type StudioCustomerInsert,
+  type StudioSubscription,
+  type StudioSubscriptionInsert,
+  type StudioCreditLedgerEntry,
+  type StudioCreditLedgerInsert,
+  type CreditLedgerOperationType,
+  type StudioEntitlement,
+  type StudioEntitlementInsert,
+  type EntitlementPolicy,
+  evaluateEntitlementPolicy,
+  getEntitlementPolicy,
+  debitCreditsForRender,
+  grantCredits,
+  refundCredits,
+  getTotalAvailableCredits,
+  entitlementService,
+  handleStripeWebhook,
+  verifyStripeSignature,
+  isEventProcessed,
+  recordProcessedEvent,
+  handleSubscriptionCreated,
+  handleSubscriptionUpdated,
+  handleSubscriptionDeleted,
+  refreshEntitlements,
+  type StripeEvent,
+  type StripeSubscription,
+  type StripeCustomer,
+  type StripeInvoice,
+} from '@adrper79-dot/neon';
 
 // ---------------------------------------------------------------------------
 // Domain types

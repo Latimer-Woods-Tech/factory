@@ -24,7 +24,7 @@ import {
   index,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
-import type { FactoryDb } from '@adrper79-dot/neon';
+import type { FactoryDb } from '../index.js';
 
 // ============================================================================
 // 1. Plans Table — Product Catalog
@@ -158,7 +158,7 @@ export const studioCreditLedgerTable = pgTable(
     createdByUserId: text('created_by_user_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`NOW()`),
   },
-  (table) => ({
+  (table: any) => ({
     idxCustomerId: index('idx_studio_credit_ledger_customer_id').on(table.customerId),
     idxOperationType: index('idx_studio_credit_ledger_operation_type').on(table.operationType),
     idxRenderJobId: index('idx_studio_credit_ledger_render_job_id').on(table.renderJobId),
@@ -199,7 +199,7 @@ export const studioEntitlementTable = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`NOW()`),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`NOW()`),
   },
-  (table) => ({
+  (table: any) => ({
     idxCustomerId: index('idx_studio_entitlements_customer_id').on(table.customerId),
     idxSubscriptionId: index('idx_studio_entitlements_subscription_id').on(table.subscriptionId),
   }),
@@ -246,10 +246,11 @@ export interface EntitlementPolicy {
  * Used by render endpoints to make fast policy decisions.
  */
 export function evaluateEntitlementPolicy(entitlement: StudioEntitlement): EntitlementPolicy {
+  const credits = parseFloat(entitlement.availableCredits);
   return {
-    canRender: entitlement.canRender && entitlement.availableCredits > 0,
+    canRender: entitlement.canRender && credits > 0,
     canPublishPublic: entitlement.canPublishPublic,
-    availableCredits: parseFloat(entitlement.availableCredits),
+    availableCredits: credits,
     monthlyRenderQuota: entitlement.monthlyRenderQuota,
     maxVideoSeconds: entitlement.maxVideoSeconds,
     maxRetriesPerJob: entitlement.maxRetriesPerJob,

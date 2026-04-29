@@ -117,3 +117,11 @@ export async function runMigrations(
   const migrator = await import(migratorModule) as PostgresJsMigratorModule;
   await migrator.migrate(db as unknown as PostgresJsDatabase<Record<string, never>>, { migrationsFolder: options.migrationsFolder });
 }
+
+/**
+ * W360-005: Practitioner Studio Entitlements Module
+ *
+ * Revenue model for self-serve video generation product.
+ * Exports schema, service layer, and webhook handler.
+ */
+export * from './entitlements/index.js';
