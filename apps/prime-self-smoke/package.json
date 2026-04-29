@@ -9,7 +9,7 @@
     "test:report": "playwright show-report"
   },
   "dependencies": {
-    "@adrper79-dot/testing": "workspace:*"
+    "@adrper79-dot/testing": "file:../../packages/testing"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.2",

@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import path from 'path';
+import * as path from 'path';
 
 // ---------------------------------------------------------------------------
 // W360-042: UI Regression Gates Configuration

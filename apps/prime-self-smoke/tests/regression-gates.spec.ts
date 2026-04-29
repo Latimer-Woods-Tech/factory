@@ -7,7 +7,7 @@ import {
   DEFAULT_PERFORMANCE_BUDGETS,
   type ScreenshotDiffResult,
 } from '@adrper79-dot/testing';
-import path from 'path';
+import * as path from 'path';
 
 // ---------------------------------------------------------------------------
 // W360-042: UI Regression Gates

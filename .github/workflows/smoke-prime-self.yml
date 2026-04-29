@@ -35,7 +35,17 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: apps/prime-self-smoke/package-lock.json
+          cache-dependency-path: |
+            apps/prime-self-smoke/package-lock.json
+            packages/testing/package-lock.json
+
+      - name: Install testing package dependencies
+        working-directory: packages/testing
+        run: npm ci
+
+      - name: Build testing package
+        working-directory: packages/testing
+        run: npm run build
 
       - name: Install dependencies
         working-directory: apps/prime-self-smoke
@@ -79,7 +89,17 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: apps/prime-self-smoke/package-lock.json
+          cache-dependency-path: |
+            apps/prime-self-smoke/package-lock.json
+            packages/testing/package-lock.json
+
+      - name: Install testing package dependencies
+        working-directory: packages/testing
+        run: npm ci
+
+      - name: Build testing package
+        working-directory: packages/testing
+        run: npm run build
 
       - name: Install dependencies
         working-directory: apps/prime-self-smoke
