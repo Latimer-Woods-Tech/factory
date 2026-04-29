@@ -105,7 +105,10 @@ jobs:
               }],
             }),
           });
-          if (!resp.ok) throw new Error('LLM call failed: ' + resp.status);
+          if (!resp.ok) {
+            const errBody = await resp.text().catch(() => '(unreadable)');
+            throw new Error('LLM call failed: ' + resp.status + ' — ' + errBody);
+          }
           const data = await resp.json();
           const text = data.content?.[0]?.text ?? '';
           // Output as single line for GitHub Actions
