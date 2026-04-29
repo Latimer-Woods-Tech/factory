@@ -229,26 +229,37 @@ jobs:
 
           const numSteps = JSON.parse(process.env.BRIEF_KEY_POINTS || '[]').length || 4;
 
-          const systemPrompt = [
-            systemCtx,
+          // Build system prompt: brand context first, then task-specific constraints
+          const contextSection = systemCtx;
+
+          const taskSection = [
+            '---',
+            `## TASK: Write a TrainingVideo script for topic: "${topic}"`,
             '',
-            '## Current Task',
-            'You are generating a TrainingVideo script for Prime Self.',
-            `Learning goal: ${learningGoal || 'User understands the topic and can take action.'}`,
-            keyPts,
-            forbidden,
-            tone,
+            `LEARNING GOAL: ${learningGoal || 'Viewer understands the topic and knows their immediate next action.'}`,
             '',
-            '## Output Format — STRICT',
-            'Return ONLY a JSON object with exactly two keys, no markdown fences, no explanation:',
-            '{"script": "<30-second narration — 68 to 80 words — written for Eric to read aloud>",',
-            `"steps": ["<step 1 — 6-8 words, imperative>", ...(${numSteps} steps total matching the key points above)]}`,
+            keyPts ? ('GROUND TRUTH — use ONLY these approved facts:\n' + keyPts) : '',
+            forbidden ? ('DO NOT state or imply:\n' + forbidden) : '',
+            tone ? tone : '',
             '',
-            'Sentence rules: max 18 words per sentence. No em dashes. No ellipses. No exclamation marks.',
-            'Script must be Eric reading naturally — not bullet points, not a list, continuous narration.',
+            '## WORD COUNT RULE — CRITICAL',
+            'The "script" field in your JSON output MUST contain between 68 and 80 words.',
+            'Count every word. If your script is fewer than 68 words, add more detail.',
+            'If your script is more than 80 words, cut the least important phrase.',
+            '68 words is approximately this many sentences: "You just signed in for the first time. Your Free Energy Blueprint is already calculated and waiting. In this video you will see exactly how to find your Energy Type, read your AI Synthesis, and set your first aligned goal. This process takes less than ten minutes. By the end you will know the single most important insight about how your energy works."',
+            '',
+            '## OUTPUT — STRICT JSON ONLY',
+            'Return ONLY a valid JSON object. No markdown. No code fences. No explanation before or after.',
+            '{',
+            '  "script": "<write 68 to 80 words of continuous narration here — what Eric says aloud>",',
+            `  "steps": ["<${numSteps}-word imperative step 1>", "<step 2>", ... (${numSteps} steps total)]`,
+            '}',
+            '',
+            'Script style: direct second-person, max 18 words per sentence, no em dashes, no ellipses.',
           ].filter(Boolean).join('\n');
 
-          const userPrompt = `Topic: "${topic}"\n\nWrite the TrainingVideo script and ${numSteps} steps now. Return only the JSON object.`;
+          const systemPrompt = contextSection + '\n\n' + taskSection;
+          const userPrompt   = `Topic: "${topic}"\n\nWrite the JSON now. Remember: the "script" field must be 68 to 80 words.`;
 
           const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
@@ -258,7 +269,7 @@ jobs:
             },
             body: JSON.stringify({
               model: 'llama-3.3-70b-versatile',
-              max_tokens: 700,
+              max_tokens: 800,
               temperature: 0.3,
               messages: [
                 { role: 'system', content: systemPrompt },
