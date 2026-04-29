@@ -1,6 +1,10 @@
 packages/*/coverage/
 packages/*/dist/
 packages/*/node_modules/
+apps/*/coverage/
+apps/*/dist/
+apps/*/node_modules/
+apps/*/*.tsbuildinfo
 .env.sentry
 .env.*.local
 _external_reviews/
