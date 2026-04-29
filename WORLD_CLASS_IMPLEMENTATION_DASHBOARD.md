@@ -1,6 +1,6 @@
 # World-Class Implementation Dashboard
 
-**Last Updated:** April 29, 2026 (PHASE 2 SMOKE GATE GREEN · VIDEO RENDER #1 COMPLETE · /LOGIN /DASHBOARD FIXED · OWR-007/008/013/014/015 DONE)  
+**Last Updated:** April 29, 2026 (PHASE 3 A11Y GATE GREEN · PHASE 2 SMOKE GATE GREEN · OWR-007/008/013/014/015/016 DONE)  
 **Phase B Progress:** 28/28 (100% Complete) 🎉  
 **Status:** Canonical execution dashboard, work register, and coordination process  
 **Scope:** Factory support platform + core application delivery model  
@@ -230,6 +230,7 @@ This section is the single place to answer: what exists, what is done, what is u
 | OWR-008 | ~~Set `LANDING_VIDEO_STREAM_UID` for SelfPrime~~ | SelfPrime specialist | **DONE** Secret set in `adrper79-dot/prime-self` — April 29, 2026 | Wire iframe into landing page on next UI update |
 | OWR-014 | Fix `/login` and `/dashboard` 404s (Phase 1) | SelfPrime specialist | **DONE** `_redirects` added to `prime-self-ui`; `/login` → `/?modal=login 302`, `/dashboard` → `/?start=1 302` — April 29, 2026 | `curl -I selfprime.net/login` returns 302 ✅ |
 | OWR-015 | Phase 2 Playwright smoke gate (14 tests, 3 browsers) | SelfPrime specialist | **DONE** `apps/prime-self-smoke` created; all 14 tests green across chromium-desktop, mobile-chrome, mobile-safari — April 29, 2026 | Run ID 25120316725 ✅ |
+| OWR-016 | Phase 3 axe accessibility gate (6 pages, chromium) | SelfPrime specialist | **DONE** `tests/accessibility.spec.ts`; 0 critical/serious violations; `a11y` CI job added to smoke workflow — April 29, 2026 | Run ID 25120669481 ✅ |
 | OWR-005 | Run schedule-worker database migration | Video platform specialist | Pending after Worker deploy | `POST /migrate` with valid `WORKER_API_TOKEN`, then verify logs/status |
 | OWR-006 | Complete R2 bucket and production video storage secrets | Infrastructure specialist | Pending / verify placeholders | Confirm bucket, API keys, public domain, and GitHub secrets are real |
 | OWR-009 | Phase 6 infrastructure provisioning across app repos | Infrastructure specialist | Ready; execution/credential-dependent | Orchestrator dry run, execution, and per-app `/health` verification |
