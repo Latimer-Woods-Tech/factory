@@ -111,8 +111,83 @@ async function handlePendingJobs(c: ScheduleWorkerContext): Promise<Response> {
 app.get('/health', (c) => c.json({ status: 'ok', worker: 'schedule-worker', ts: new Date().toISOString() }));
 
 // ---------------------------------------------------------------------------
-// GET /jobs/pending  — returns jobs ready for rendering (cron Worker calls this)
+// GET /manifest  — machine-readable function manifest for studio catalog crawlers
 // ---------------------------------------------------------------------------
+
+app.get('/manifest', (c) => {
+  const manifest = {
+    manifestVersion: 1,
+    app: 'schedule-worker',
+    env: c.env.ENVIRONMENT ?? 'production',
+    generatedAt: new Date().toISOString(),
+    entries: [
+      {
+        method: 'GET',
+        path: '/health',
+        auth: 'public',
+        summary: 'Liveness probe with deployed env',
+        smoke: [{ expectedStatus: 200, expectContains: '"status":"ok"' }],
+        slo: { p95Ms: 200, errorRate: 0.001 },
+        tags: ['ops'],
+      },
+      {
+        method: 'GET',
+        path: '/manifest',
+        auth: 'public',
+        summary: 'Machine-readable manifest for studio catalog crawlers',
+        smoke: [{ expectedStatus: 200, expectContains: '"manifestVersion"' }],
+        tags: ['ops'],
+      },
+      {
+        method: 'GET',
+        path: '/jobs/pending',
+        auth: 'admin',
+        summary: 'List pending render jobs ready for dispatch',
+        reversibility: 'reversible',
+        slo: { p95Ms: 500, errorRate: 0.01 },
+        tags: ['video', 'jobs'],
+      },
+      {
+        method: 'GET',
+        path: '/jobs/:id',
+        auth: 'admin',
+        summary: 'Fetch single render job by ID',
+        reversibility: 'reversible',
+        slo: { p95Ms: 400, errorRate: 0.01 },
+        tags: ['video', 'jobs'],
+      },
+      {
+        method: 'POST',
+        path: '/jobs',
+        auth: 'admin',
+        summary: 'Schedule a new video render job',
+        reversibility: 'reversible',
+        slo: { p95Ms: 600, errorRate: 0.01 },
+        tags: ['video', 'jobs'],
+      },
+      {
+        method: 'PATCH',
+        path: '/jobs/:id',
+        auth: 'admin',
+        summary: 'Update render job status (called by render-video.yml)',
+        reversibility: 'reversible',
+        slo: { p95Ms: 500, errorRate: 0.01 },
+        tags: ['video', 'jobs'],
+      },
+      {
+        method: 'POST',
+        path: '/migrate',
+        auth: 'admin',
+        summary: 'Run DDL migrations — internal Factory token only',
+        reversibility: 'irreversible',
+        tags: ['ops', 'migrations'],
+      },
+    ],
+  };
+  return c.json(manifest);
+});
+
+
 
 app.get('/jobs/pending', async (c) => {
   return handlePendingJobs(c);
