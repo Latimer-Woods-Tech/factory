@@ -1,7 +1,7 @@
 import { Composition, registerRoot } from 'remotion';
-import { MarketingVideo, marketingSchema } from './compositions/MarketingVideo.js';
-import { TrainingVideo, trainingSchema } from './compositions/TrainingVideo.js';
-import { WalkthroughVideo, walkthroughSchema } from './compositions/WalkthroughVideo.js';
+import { MarketingVideo, marketingSchema } from './compositions/MarketingVideo';
+import { TrainingVideo, trainingSchema } from './compositions/TrainingVideo';
+import { WalkthroughVideo, walkthroughSchema } from './compositions/WalkthroughVideo';
 
 export const VIDEO_FPS = 30;
 export const VIDEO_WIDTH = 1920;
