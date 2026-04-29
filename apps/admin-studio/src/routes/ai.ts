@@ -44,6 +44,14 @@ const SYSTEM_PROMPTS: Record<AIChatRequest['mode'], string> = {
   ].join('\n'),
 };
 
+interface AnthropicStreamPayload {
+  type?: string;
+  delta?: { type?: string; text?: string };
+  usage?: { input_tokens?: number; output_tokens?: number };
+  message?: { usage?: { input_tokens?: number } };
+  error?: { message?: string };
+}
+
 function buildSystem(body: AIChatRequest): string {
   const base = SYSTEM_PROMPTS[body.mode];
   if (!body.context?.snippet) return base;
@@ -95,9 +103,11 @@ function transformAnthropicSse(input: ReadableStream<Uint8Array>): ReadableStrea
             if (!dataLine) continue;
             const json = dataLine.slice(5).trim();
             if (!json) continue;
-            let payload: { type?: string; delta?: { type?: string; text?: string }; usage?: { input_tokens?: number; output_tokens?: number }; message?: { usage?: { input_tokens?: number } }; error?: { message?: string } };
+            let payload: AnthropicStreamPayload;
             try {
-              payload = JSON.parse(json);
+              const parsed: unknown = JSON.parse(json);
+              if (!isAnthropicStreamPayload(parsed)) continue;
+              payload = parsed;
             } catch {
               continue;
             }
@@ -141,6 +151,10 @@ function transformAnthropicSse(input: ReadableStream<Uint8Array>): ReadableStrea
       }
     },
   });
+}
+
+function isAnthropicStreamPayload(value: unknown): value is AnthropicStreamPayload {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 
 ai.post('/chat', async (c) => {

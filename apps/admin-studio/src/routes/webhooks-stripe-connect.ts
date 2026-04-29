@@ -8,7 +8,6 @@ import type { AppEnv } from '../types.js';
 import {
   ValidationError,
   ErrorCodes,
-  toErrorResponse,
 } from '@adrper79-dot/errors';
 import Stripe from 'stripe';
 import { eq } from 'drizzle-orm';
@@ -60,7 +59,7 @@ router.post('/', async (c) => {
 
     // Handle account.updated events
     if (event.type === 'account.updated') {
-      const account = event.data.object as Stripe.Account;
+      const account = event.data.object;
 
       // Find creator with this Stripe account
       const connection = await db.query.creatorConnections.findFirst({

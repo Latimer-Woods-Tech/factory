@@ -29,7 +29,12 @@ export function auditMiddleware(): MiddlewareHandler<AppEnv> {
     try {
       const cloned = c.req.raw.clone();
       const text = await cloned.text();
-      if (text) payload = redactSecrets(JSON.parse(text));
+      if (text) {
+        const parsed: unknown = JSON.parse(text);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          payload = redactSecrets(parsed as Record<string, unknown>);
+        }
+      }
     } catch {
       // Non-JSON body (form upload, etc.) — log empty payload.
     }

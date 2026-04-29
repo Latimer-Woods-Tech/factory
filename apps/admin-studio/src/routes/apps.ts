@@ -54,7 +54,7 @@ async function checkOne(
     const latencyMs = Date.now() - start;
     let body: Record<string, unknown> = {};
     try {
-      body = (await res.json()) as Record<string, unknown>;
+      body = await res.json<Record<string, unknown>>();
     } catch {
       // Non-JSON response — keep going, treat as degraded if 2xx.
     }
@@ -157,9 +157,9 @@ apps.get('/versions', async (c) => {
           source: `cf-api-${res.status}`,
         };
       }
-      const json = (await res.json()) as {
+      const json: {
         result?: { deployments?: Array<{ id: string; created_on: string; source?: string }> };
-      };
+      } = await res.json();
       const latest = json.result?.deployments?.[0];
       if (!latest) return null;
       return {

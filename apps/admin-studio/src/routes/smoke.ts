@@ -15,6 +15,7 @@ import {
   isEnvironment,
   executeSmokeProbes,
   type Environment,
+  type SmokeProbe,
 } from '@adrper79-dot/studio-core';
 import type { AppEnv } from '../types.js';
 import { FACTORY_APPS, healthUrlFor } from '../lib/app-registry.js';
@@ -22,15 +23,25 @@ import { listCatalog } from '../lib/catalog-store.js';
 
 const smoke = new Hono<AppEnv>();
 
+interface SmokeRunRequest {
+  env?: unknown;
+  probeIdx?: unknown;
+}
+
 smoke.post('/:app/:endpoint', async (c) => {
   const appId = c.req.param('app');
   const endpointB64 = c.req.param('endpoint');
   let env: Environment = 'production';
+  let probeIdx: number | undefined;
 
   try {
-    const body = (await c.req.json()) as any;
+    const body = await c.req.json<SmokeRunRequest>();
     if (body.env && isEnvironment(body.env)) {
       env = body.env;
+    }
+    const requestedProbeIdx = body.probeIdx;
+    if (typeof requestedProbeIdx === 'number' && Number.isInteger(requestedProbeIdx) && requestedProbeIdx >= 0) {
+      probeIdx = requestedProbeIdx;
     }
   } catch {
     // ignore body parse error, use default env
@@ -67,12 +78,24 @@ smoke.post('/:app/:endpoint', async (c) => {
     return c.json({ error: 'endpoint has no smoke probes', app: appId, env, method, path }, 400);
   }
 
-  // Get a token if the endpoint requires auth
+  let probes: ReadonlyArray<SmokeProbe> = endpoint.smoke;
+  if (probeIdx !== undefined) {
+    const selectedProbe = probes[probeIdx];
+    if (!selectedProbe) {
+      return c.json({ error: 'probeIdx out of range', app: appId, env, method, path, probeIdx }, 400);
+    }
+    probes = [selectedProbe];
+  }
+
+  // Reuse the operator bearer token for session/admin probes. The route is
+  // already authenticated by envContextMiddleware, so this preserves the same
+  // env-locked identity and avoids unsafe service-token stubs.
   let authToken: string | undefined;
   if (endpoint.auth === 'admin' || endpoint.auth === 'session') {
-    // For now, use the Studio token from the current context if available
-    // In production, you'd want to create a service-to-service token
-    // This is left as a TODO for now — just try without a token
+    const authorization = c.req.header('Authorization');
+    authToken = authorization?.startsWith('Bearer ')
+      ? authorization.slice(7).trim()
+      : c.req.query('access_token');
   }
 
   try {
@@ -85,8 +108,8 @@ smoke.post('/:app/:endpoint', async (c) => {
       baseUrl,
       endpoint.method,
       endpoint.path,
-      endpoint.auth as any,
-      endpoint.smoke as any,
+      endpoint.auth,
+      probes,
       authToken,
     );
 

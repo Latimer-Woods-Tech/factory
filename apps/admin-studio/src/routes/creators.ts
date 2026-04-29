@@ -6,6 +6,7 @@
  */
 
 import { Hono } from 'hono';
+import type { MiddlewareHandler } from 'hono';
 import type { AppEnv } from '../types.js';
 import {
   ValidationError,
@@ -17,7 +18,6 @@ import { eq, desc } from 'drizzle-orm';
 import {
   createAdminDb,
   creatorConnections,
-  creators,
 } from '../lib/admin-db.js';
 
 const router = new Hono<AppEnv>();
@@ -25,9 +25,8 @@ const router = new Hono<AppEnv>();
 /**
  * Middleware: Require admin or owner role
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const requireAdmin = async (c: any, next: any) => {
-  const ctx = c.var.envContext as { role?: string } | undefined;
+const requireAdmin: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const ctx = c.var.envContext;
   if (!ctx || (ctx.role !== 'admin' && ctx.role !== 'owner')) {
     return c.json(
       toErrorResponse(
@@ -36,7 +35,7 @@ const requireAdmin = async (c: any, next: any) => {
       403,
     );
   }
-  return next();
+  return await next();
 };
 
 function getStripe(secretKey: string): Stripe {

@@ -41,19 +41,31 @@ function parseTotals(value: unknown): TestRun['totals'] {
   if (!value) return ZERO_TOTALS;
   if (typeof value === 'string') {
     try {
-      return { ...ZERO_TOTALS, ...(JSON.parse(value) as Partial<TestRun['totals']>) };
+      const parsed: unknown = JSON.parse(value);
+      return { ...ZERO_TOTALS, ...toPartialTotals(parsed) };
     } catch {
       return ZERO_TOTALS;
     }
   }
-  return { ...ZERO_TOTALS, ...(value as Partial<TestRun['totals']>) };
+  return { ...ZERO_TOTALS, ...toPartialTotals(value) };
+}
+
+function toPartialTotals(value: unknown): Partial<TestRun['totals']> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const record = value as Record<string, unknown>;
+  return {
+    total: typeof record.total === 'number' ? record.total : undefined,
+    passed: typeof record.passed === 'number' ? record.passed : undefined,
+    failed: typeof record.failed === 'number' ? record.failed : undefined,
+    skipped: typeof record.skipped === 'number' ? record.skipped : undefined,
+  };
 }
 
 function parseSuites(value: unknown): readonly string[] {
   if (Array.isArray(value)) return value as string[];
   if (typeof value === 'string') {
     try {
-      const parsed = JSON.parse(value);
+      const parsed: unknown = JSON.parse(value);
       return Array.isArray(parsed) ? (parsed as string[]) : [];
     } catch {
       return [];

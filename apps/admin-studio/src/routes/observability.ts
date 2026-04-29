@@ -49,7 +49,7 @@ observability.get('/sentry/issues', async (c) => {
     if (!res.ok) {
       return c.json({ configured: true, error: `sentry-${res.status}`, issues: [] }, 502);
     }
-    const issues = (await res.json()) as SentryIssue[];
+    const issues: SentryIssue[] = await res.json();
     return c.json({ configured: true, env, issues });
   } catch (err) {
     return c.json({ configured: true, error: (err as Error).message, issues: [] }, 502);
@@ -97,7 +97,7 @@ observability.get('/posthog/tiles', async (c) => {
     if (!res.ok) {
       return c.json({ configured: true, error: `posthog-${res.status}`, tiles: [] }, 502);
     }
-    const json = (await res.json()) as { results?: Array<[number]> };
+    const json: { results?: Array<[number]> } = await res.json();
     const total = json.results?.[0]?.[0] ?? 0;
     const tiles: PostHogTile[] = [
       { id: 'events_24h', label: 'Events (24h)', value: total },

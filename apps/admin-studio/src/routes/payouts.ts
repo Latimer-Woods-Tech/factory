@@ -11,6 +11,7 @@
  */
 
 import { Hono } from 'hono';
+import type { MiddlewareHandler } from 'hono';
 import type { AppEnv } from '../types.js';
 import {
   ValidationError,
@@ -25,7 +26,6 @@ import {
   payouts as payoutsTable,
   payoutDlq,
   payoutAuditLog,
-  creators,
 } from '../lib/admin-db.js';
 
 const router = new Hono<AppEnv>();
@@ -33,9 +33,8 @@ const router = new Hono<AppEnv>();
 /**
  * Middleware: Require admin or owner role
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const requireAdmin = async (c: any, next: any) => {
-  const ctx = c.var.envContext as { role?: string } | undefined;
+const requireAdmin: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const ctx = c.var.envContext;
   if (!ctx || (ctx.role !== 'admin' && ctx.role !== 'owner')) {
     return c.json(
       toErrorResponse(
@@ -44,7 +43,7 @@ const requireAdmin = async (c: any, next: any) => {
       403,
     );
   }
-  return next();
+  return await next();
 };
 
 function getStripe(secretKey: string): Stripe {
@@ -61,14 +60,13 @@ function getStripe(secretKey: string): Stripe {
 router.get('/batches', requireAdmin, async (c) => {
   try {
     const status = c.req.query('status');
-    const sortBy = c.req.query('sortBy') || 'period_date';
     const page = parseInt(c.req.query('page') || '1', 10);
     const limit_ = Math.min(parseInt(c.req.query('limit') || '50', 10), 100);
     const offsetVal = (page - 1) * limit_;
 
     const db = createAdminDb(c.env.DB);
 
-    let filters: ReturnType<typeof eq>[] = [];
+    const filters: ReturnType<typeof eq>[] = [];
     if (status) {
       filters.push(eq(payoutBatches.status, status));
     }

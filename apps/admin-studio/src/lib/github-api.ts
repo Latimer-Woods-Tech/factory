@@ -262,7 +262,7 @@ export async function commitFile(
     const text = await res.text();
     throw new GitHubApiError(`commitFile ${res.status}`, res.status, text);
   }
-  const data = (await res.json()) as { commit: { sha: string }; content: { sha: string } };
+  const data: { commit: { sha: string }; content: { sha: string } } = await res.json();
   return { commitSha: data.commit.sha, blobSha: data.content.sha };
 }
 
@@ -297,7 +297,7 @@ export async function openPullRequest(
     const text = await res.text();
     throw new GitHubApiError(`openPullRequest ${res.status}`, res.status, text);
   }
-  const data = (await res.json()) as GhPullResponse;
+  const data: GhPullResponse = await res.json();
   return {
     number: data.number,
     url: data.html_url,
