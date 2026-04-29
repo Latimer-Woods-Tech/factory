@@ -1,0 +1,16 @@
+name: Migrate schedule-worker DB (one-off)
+on:
+  workflow_dispatch:
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run migration
+        run: |
+          RESULT=$(curl -sf -X POST https://schedule-worker.adrper79.workers.dev/migrate 
+            -H "Authorization: Bearer ${{ secrets.WORKER_API_TOKEN }}" 
+            -H "Content-Type: application/json")
+          echo "$RESULT"
+          echo "$RESULT" | grep -q '"migrated":true' && echo "Migration OK" || exit 1
+        shell: bash
