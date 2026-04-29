@@ -8,6 +8,7 @@ import {
   setPerformanceScore,
   toRenderJob,
   VIDEO_CALENDAR_DDL,
+  VIDEO_CALENDAR_MIGRATION_STATEMENTS,
 } from './index.js';
 import type { VideoCalendarRow, ProductionBrief } from './index.js';
 import { ValidationError, InternalError, NotFoundError } from '@adrper79-dot/errors';
@@ -50,12 +51,21 @@ function makeRow(overrides: Partial<Record<string, unknown>> = {}): Record<strin
 function makeDb(rows: Record<string, unknown>[][] = [[]]) {
   let callIndex = 0;
   return {
-    execute: vi.fn(() => {
+    execute: vi.fn((query: unknown) => {
+      void query;
       const result = rows[callIndex % rows.length] ?? [];
       callIndex++;
       return Promise.resolve({ rows: result });
     }),
   };
+}
+
+type SqlMockCall = { strings: TemplateStringsArray; values: unknown[] };
+
+function firstSqlCall(db: ReturnType<typeof makeDb>): SqlMockCall {
+  const call = db.execute.mock.calls[0]?.[0];
+  if (!call) throw new Error('Expected db.execute to be called');
+  return call as SqlMockCall;
 }
 
 afterEach(() => {
@@ -70,6 +80,7 @@ describe('VIDEO_CALENDAR_DDL', () => {
   it('is a non-empty string containing CREATE TABLE', () => {
     expect(typeof VIDEO_CALENDAR_DDL).toBe('string');
     expect(VIDEO_CALENDAR_DDL).toContain('CREATE TABLE IF NOT EXISTS video_calendar');
+    expect(VIDEO_CALENDAR_MIGRATION_STATEMENTS.length).toBeGreaterThan(1);
   });
 
   it('includes all required columns', () => {
@@ -77,6 +88,8 @@ describe('VIDEO_CALENDAR_DDL', () => {
     expect(VIDEO_CALENDAR_DDL).toContain('trigger_source');
     expect(VIDEO_CALENDAR_DDL).toContain('performance_score');
     expect(VIDEO_CALENDAR_DDL).toContain('stream_uid');
+    expect(VIDEO_CALENDAR_DDL).toContain('idempotency_key');
+    expect(VIDEO_CALENDAR_DDL).toContain('video_calendar_app_idempotency_idx');
   });
 });
 
@@ -132,6 +145,25 @@ describe('scheduleVideo', () => {
     });
     expect(row.scheduledAt).toEqual(scheduledAt);
   });
+
+  it('accepts an idempotency key for retry-safe creation', async () => {
+    const db = makeDb([[makeRow({ idempotency_key: 'selfprime:video:001' })]]);
+    const row = await scheduleVideo(db as unknown as Parameters<typeof scheduleVideo>[0], {
+      ...brief,
+      idempotencyKey: 'selfprime:video:001',
+    });
+
+    expect(row.idempotencyKey).toBe('selfprime:video:001');
+    const firstCall = firstSqlCall(db);
+    expect(firstCall.values).toContain('selfprime:video:001');
+  });
+
+  it('throws ValidationError when idempotencyKey is blank', async () => {
+    const db = makeDb();
+    await expect(
+      scheduleVideo(db as unknown as Parameters<typeof scheduleVideo>[0], { ...brief, idempotencyKey: '  ' }),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -144,6 +176,13 @@ describe('getVideoJob', () => {
     const row = await getVideoJob(db as unknown as Parameters<typeof getVideoJob>[0], 'row-uuid-001');
     expect(row.id).toBe('row-uuid-001');
     expect(row.type).toBe('marketing');
+  });
+
+  it('accepts an optional app scope', async () => {
+    const db = makeDb([[makeRow()]]);
+    await getVideoJob(db as unknown as Parameters<typeof getVideoJob>[0], 'row-uuid-001', 'prime_self');
+    const firstCall = firstSqlCall(db);
+    expect(firstCall.values).toContain('prime_self');
   });
 
   it('throws NotFoundError when no row exists', async () => {
@@ -169,6 +208,13 @@ describe('getPendingJobs', () => {
     const db = makeDb([[]]);
     const rows = await getPendingJobs(db as unknown as Parameters<typeof getPendingJobs>[0]);
     expect(rows).toHaveLength(0);
+  });
+
+  it('accepts an optional app scope', async () => {
+    const db = makeDb([[makeRow()]]);
+    await getPendingJobs(db as unknown as Parameters<typeof getPendingJobs>[0], 10, 'selfprime');
+    const firstCall = firstSqlCall(db);
+    expect(firstCall.values).toContain('selfprime');
   });
 
   it('throws ValidationError when limit is zero', async () => {
@@ -202,6 +248,20 @@ describe('updateJobStatus', () => {
     );
     expect(row.status).toBe('done');
     expect(row.streamUid).toBe('uid-abc');
+  });
+
+  it('accepts an optional app scope', async () => {
+    const updated = makeRow({ status: 'rendering' });
+    const db = makeDb([[updated]]);
+    await updateJobStatus(
+      db as unknown as Parameters<typeof updateJobStatus>[0],
+      'row-uuid-001',
+      'rendering',
+      {},
+      'selfprime',
+    );
+    const firstCall = firstSqlCall(db);
+    expect(firstCall.values).toContain('selfprime');
   });
 
   it('throws NotFoundError when UPDATE matches no row', async () => {
@@ -307,6 +367,7 @@ describe('toRenderJob', () => {
     status: 'done',
     performanceScore: 75,
     triggerSource: 'cron',
+    idempotencyKey: 'prime_self:video:001',
     error: null,
     createdAt: new Date(NOW_ISO),
     updatedAt: new Date(NOW_ISO),

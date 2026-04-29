@@ -51,6 +51,8 @@ export interface VideoCalendarRow {
   performanceScore: number;
   /** What triggered this calendar entry. */
   triggerSource: TriggerSource;
+  /** Optional retry-safe key supplied by the caller. */
+  idempotencyKey: string | null;
   /** ISO 8601 error message when status is 'failed'. */
   error: string | null;
   /** Row creation timestamp. */
@@ -73,6 +75,10 @@ export interface ProductionBrief {
   scheduledAt?: Date;
   /** What caused this job to be created. */
   triggerSource: TriggerSource;
+  /** Optional initial priority score between 0 and 100. */
+  performanceScore?: number;
+  /** Optional app-scoped idempotency key for retry-safe job creation. */
+  idempotencyKey?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -88,8 +94,8 @@ export interface ProductionBrief {
  * await db.execute(VIDEO_CALENDAR_DDL);
  * ```
  */
-export const VIDEO_CALENDAR_DDL = `
-CREATE TABLE IF NOT EXISTS video_calendar (
+export const VIDEO_CALENDAR_MIGRATION_STATEMENTS = [
+  `CREATE TABLE IF NOT EXISTS video_calendar (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   app_id           TEXT NOT NULL,
   type             TEXT NOT NULL CHECK (type IN ('marketing', 'training', 'walkthrough')),
@@ -103,15 +109,21 @@ CREATE TABLE IF NOT EXISTS video_calendar (
                      CHECK (status IN ('pending', 'rendering', 'uploading', 'done', 'failed')),
   performance_score INTEGER NOT NULL DEFAULT 0 CHECK (performance_score BETWEEN 0 AND 100),
   trigger_source   TEXT NOT NULL CHECK (trigger_source IN ('cron', 'git_tag', 'feedback_threshold', 'manual')),
+  idempotency_key   TEXT,
   error            TEXT,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+);`,
+  'ALTER TABLE video_calendar ADD COLUMN IF NOT EXISTS idempotency_key TEXT;',
+  'CREATE INDEX IF NOT EXISTS video_calendar_status_idx ON video_calendar (status);',
+  'CREATE INDEX IF NOT EXISTS video_calendar_app_id_idx ON video_calendar (app_id);',
+  'CREATE INDEX IF NOT EXISTS video_calendar_scheduled_at_idx ON video_calendar (scheduled_at);',
+  `CREATE UNIQUE INDEX IF NOT EXISTS video_calendar_app_idempotency_idx
+  ON video_calendar (app_id, idempotency_key)
+  WHERE idempotency_key IS NOT NULL;`,
+] as const;
 
-CREATE INDEX IF NOT EXISTS video_calendar_status_idx      ON video_calendar (status);
-CREATE INDEX IF NOT EXISTS video_calendar_app_id_idx      ON video_calendar (app_id);
-CREATE INDEX IF NOT EXISTS video_calendar_scheduled_at_idx ON video_calendar (scheduled_at);
-`.trim();
+export const VIDEO_CALENDAR_DDL = VIDEO_CALENDAR_MIGRATION_STATEMENTS.join('\n\n');
 
 // ---------------------------------------------------------------------------
 // Row mapper
@@ -132,6 +144,7 @@ function toRow(raw: Record<string, unknown>): VideoCalendarRow {
     status: raw['status'] as RenderJobStatus,
     performanceScore: raw['performance_score'] as number,
     triggerSource: raw['trigger_source'] as TriggerSource,
+    idempotencyKey: (raw['idempotency_key'] as string | null) ?? null,
     error: (raw['error'] as string | null) ?? null,
     createdAt: new Date(raw['created_at'] as string),
     updatedAt: new Date(raw['updated_at'] as string),
@@ -164,22 +177,34 @@ export async function scheduleVideo(
 ): Promise<VideoCalendarRow> {
   if (!brief.appId.trim()) throw new ValidationError('appId is required');
   if (!brief.topic.trim()) throw new ValidationError('topic is required');
+  if (brief.performanceScore !== undefined && (brief.performanceScore < 0 || brief.performanceScore > 100)) {
+    throw new ValidationError('performanceScore must be between 0 and 100', { performanceScore: brief.performanceScore });
+  }
+  if (brief.idempotencyKey !== undefined && !brief.idempotencyKey.trim()) {
+    throw new ValidationError('idempotencyKey must not be blank when provided');
+  }
 
   const scheduledAt = brief.scheduledAt ?? new Date();
+  const performanceScore = brief.performanceScore ?? 0;
+  const idempotencyKey = brief.idempotencyKey?.trim() || null;
 
   const rows = await db.execute(
     sql`
-      INSERT INTO video_calendar (app_id, type, topic, scheduled_at, trigger_source)
+      INSERT INTO video_calendar (app_id, type, topic, scheduled_at, performance_score, trigger_source, idempotency_key)
       VALUES (
         ${brief.appId},
         ${brief.type},
         ${brief.topic},
         ${scheduledAt.toISOString()},
-        ${brief.triggerSource}
+        ${performanceScore},
+        ${brief.triggerSource},
+        ${idempotencyKey}
       )
+      ON CONFLICT (app_id, idempotency_key) WHERE idempotency_key IS NOT NULL
+      DO UPDATE SET updated_at = video_calendar.updated_at
       RETURNING
         id, app_id, type, topic, script, narration_url, video_url, stream_uid,
-        scheduled_at, status, performance_score, trigger_source, error,
+        scheduled_at, status, performance_score, trigger_source, idempotency_key, error,
         created_at, updated_at
     `,
   );
@@ -201,15 +226,18 @@ export async function scheduleVideo(
 export async function getVideoJob(
   db: FactoryDb,
   id: string,
+  appId?: string,
 ): Promise<VideoCalendarRow> {
+  const appScope = appId?.trim() || null;
   const rows = await db.execute(
     sql`
       SELECT
         id, app_id, type, topic, script, narration_url, video_url, stream_uid,
-        scheduled_at, status, performance_score, trigger_source, error,
+        scheduled_at, status, performance_score, trigger_source, idempotency_key, error,
         created_at, updated_at
       FROM video_calendar
       WHERE id = ${id}
+        AND (${appScope} IS NULL OR app_id = ${appScope})
       LIMIT 1
     `,
   );
@@ -234,20 +262,23 @@ export async function getVideoJob(
 export async function getPendingJobs(
   db: FactoryDb,
   limit = 10,
+  appId?: string,
 ): Promise<VideoCalendarRow[]> {
   if (limit < 1 || limit > 100) {
     throw new ValidationError('limit must be between 1 and 100', { limit });
   }
 
+  const appScope = appId?.trim() || null;
   const rows = await db.execute(
     sql`
       SELECT
         id, app_id, type, topic, script, narration_url, video_url, stream_uid,
-        scheduled_at, status, performance_score, trigger_source, error,
+        scheduled_at, status, performance_score, trigger_source, idempotency_key, error,
         created_at, updated_at
       FROM video_calendar
       WHERE status = 'pending'
         AND scheduled_at <= NOW()
+        AND (${appScope} IS NULL OR app_id = ${appScope})
       ORDER BY performance_score DESC, scheduled_at ASC
       LIMIT ${limit}
     `,
@@ -279,7 +310,9 @@ export async function updateJobStatus(
     streamUid?: string;
     error?: string;
   } = {},
+  appId?: string,
 ): Promise<VideoCalendarRow> {
+  const appScope = appId?.trim() || null;
   const rows = await db.execute(
     sql`
       UPDATE video_calendar
@@ -292,9 +325,10 @@ export async function updateJobStatus(
         error         = ${updates.error ?? null},
         updated_at    = NOW()
       WHERE id = ${id}
+        AND (${appScope} IS NULL OR app_id = ${appScope})
       RETURNING
         id, app_id, type, topic, script, narration_url, video_url, stream_uid,
-        scheduled_at, status, performance_score, trigger_source, error,
+        scheduled_at, status, performance_score, trigger_source, idempotency_key, error,
         created_at, updated_at
     `,
   );

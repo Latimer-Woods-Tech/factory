@@ -2,6 +2,14 @@
 
 All notable changes to this package will be documented in this file.
 
+## [0.2.1] — 2026-04-28
+
+### Added
+- App-scoped query filters for `getVideoJob`, `getPendingJobs`, and `updateJobStatus`.
+- Optional `idempotencyKey` support for retry-safe `scheduleVideo` calls.
+- Optional initial `performanceScore` support in `ProductionBrief`.
+- `idempotency_key` migration DDL and a partial unique index on `(app_id, idempotency_key)`.
+
 ## [0.2.0] — 2025-01-01
 
 ### Added
