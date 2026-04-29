@@ -1,6 +1,6 @@
 # World-Class Implementation Dashboard
 
-**Last Updated:** April 29, 2026 (DEEP DIVE ASSESSMENT + WORLD-CLASS BACKLOG ADDED)  
+**Last Updated:** April 29, 2026 (REALITY-TO-WORLD-CLASS EXECUTION PLAN ADDED)  
 **Phase B Progress:** 28/28 (100% Complete) 🎉  
 **Status:** Canonical execution dashboard, work register, and coordination process  
 **Scope:** Factory support platform + core application delivery model  
@@ -390,6 +390,234 @@ The highest-value improvements are:
 | OWR-022 | Build Admin Studio operator health dashboard | Admin Studio specialist + ops | New | DLQ depth, Sentry errors, payout/video queue state, and oldest stuck item visible |
 | OWR-023 | Add per-app delivery roadmap template and first app plans | Product + app specialists | New | Six app rows have owner, phase, dependencies, KPIs, risks, and launch gates |
 | OWR-024 | Create runbook taxonomy and freshness enforcement | Tech writer + coordinator | New | Runbook index lists purpose, owner, last verified date, and deprecation links |
+
+---
+
+## Reality-to-World-Class Execution Plan
+
+This plan turns the assessment register into an executable maturity path. It is intentionally strict: no shortcuts, no hidden production state, no undocumented ownership, no direct claims of "done" without proof, and no scaling the portfolio before the control plane, quality gates, and operating cadence can support it.
+
+### Current Reality Snapshot
+
+| Area | Reality on Apr 29 | Meaning | Required correction |
+|---|---|---|---|
+| Repository state | `main` is current with origin, but local working tree contains unrelated edits, untracked summary docs, package locks, generated `node_modules/`, `dist/`, and build info | Coordination risk and accidental commit risk are real | Clean or quarantine local artifacts before any implementation batch; commit only intentional source/docs changes |
+| Shared packages | Core packages exist and many are published, but maturity differs across foundation, active, and staging packages | Factory has leverage, but not all packages are safe as stable platform contracts | Add stability grades, public API tests, changelogs, compatibility windows, and cross-package integration CI |
+| App portfolio | App repos and scaffold targets exist, while per-app product roadmaps, KPIs, launch gates, and risk registers are not yet visible here | Portfolio is provisionable but not yet governable | Add one-page roadmap and launch checklist for each app before Phase 7/8 work scales |
+| Admin Studio | Environment safety, audit, functions, testing, and code browsing concepts exist, but production command-plane safety is incomplete | Admin Studio is becoming the control plane, not yet the control plane | Implement policy-backed dry-run, approval, audit, PR, deploy, rollback, and evidence workflows before production mutation |
+| Video platform | `schedule-worker` and `video-cron` are deployed and phase-zero smoke verified; first render, R2/Stream validation, Stream UID, and SelfPrime embed remain next | Shared video pipeline is partially proven but not product-complete | Finish first render path and make every step observable, tenant-scoped, and replayable |
+| UI/UX | Rubrics and tokens exist; reusable component system and release-enforced journey gates are incomplete | Quality is documented more than operationalized | Ship accessible shared components, journey maps, state taxonomies, and automated UX/performance checks |
+| Reliability | Health checks and some DLQ patterns exist; retries, backoff, circuit breakers, replay queues, and async correlation are not universal | Failures will be hard to diagnose and recover as integrations grow | Centralize resilience primitives, DLQ standards, and end-to-end trace IDs |
+| Security | Worker constraints, Web Crypto JWTs, env isolation, and secret runbooks exist; dual-key rotation, scoped service tokens, anti-replay, and two-person approvals need work | Security posture is promising but not yet mature enough for high-trust operations | Build key rotation, scoped token policy, nonce-backed confirmations, RBAC matrix, and vendor/compliance calendar |
+| C-Suite operations | Technical docs are rich; board/CFO/CISO/CMO health views are absent | Leaders cannot quickly see risk, revenue, forecast, and decisions needed | Create executive RAG scorecard, revenue integrity dashboard, compliance calendar, and risk register |
+
+### Target Operating State
+
+Factory is world-class when all of the following are true at the same time:
+
+1. **Every claim has evidence.** Status is one of `documented`, `implemented`, `deployed`, or `verified`, with timestamp, owner, and proof link.
+2. **Every app is transferable.** App-specific business logic stays in the app; Factory packages provide reusable infrastructure, templates, controls, and contracts.
+3. **Every change is policy-governed.** Source changes go through branch, PR, CI, review, release gate, smoke verification, and rollback readiness.
+4. **Every critical flow is observable.** User action, Worker request, DB mutation, queue item, GitHub Actions run, R2/Stream artifact, event, and audit row share a correlation path.
+5. **Every risky operation is auditable.** Production deploys, data mutation, payout actions, webhook replays, token rotations, and AI commands record who/what/when/why/result/rollback.
+6. **Every UI surface has a quality bar.** Accessibility, mobile behavior, loading/error/empty states, performance, copy clarity, and analytics are part of done.
+7. **Every package has a contract.** Public API, stability grade, version, changelog, migration policy, test coverage, and consumer compatibility are known before publish.
+8. **Every executive question has a dashboard answer.** Portfolio health, revenue, reliability, release quality, security posture, compliance dates, and top risks are visible without ad hoc SQL or repo spelunking.
+
+### Non-Negotiable Engineering Practices
+
+| Practice | Required standard |
+|---|---|
+| Change control | No direct production mutation from GUI/AI. All code changes use branch + PR + CI + review unless explicitly classified as a read-only or emergency rollback path. |
+| Verification | CI green is not enough. Every deployed service needs direct HTTP verification and critical-route smoke evidence. |
+| Quality gates | Typecheck, lint with zero warnings, tests, build, coverage thresholds, public API checks, docs updates, and security checks are required for implementation work. |
+| Security | Least privilege, scoped tokens, short-lived credentials where possible, dual-key rotations, no secrets in source or vars, and audit logs for all mutating operations. |
+| Resilience | Timeouts, retries with jitter, circuit breakers, idempotency keys, DLQs, replay controls, and bounded concurrency for all external calls and async workflows. |
+| Observability | Structured logs, correlation IDs, Sentry, PostHog, first-party `factory_events`, dashboard metrics, and alert thresholds for every critical flow. |
+| UI/UX | WCAG 2.2 AA critical paths, keyboard navigation, mobile-first checks, consistent design tokens/components, specific errors, loading states, and performance budgets. |
+| Data | RLS where applicable, retention policy, audit trails, migration safety, point-in-time restore awareness, and no money-moving workflow without reconciliation evidence. |
+| Documentation | Docs are source-of-truth only if they include owner, last verified date, status semantics, and links to proof. Historical summaries must be marked historical. |
+
+### Workstream Architecture
+
+| Stream | Purpose | Primary WCA coverage | First outcomes |
+|---|---|---|---|
+| S0 — Control Plane and Truth | Make the repository governable before scaling execution | WCA-001, WCA-014, WCA-018, WCA-019, WCA-022, WCA-025 | Clean source-of-truth model, executive scorecard skeleton, path ownership, dependency graph plan |
+| S1 — Platform Contracts | Make packages safe to consume across many apps | WCA-011, WCA-012, WCA-020 | Stability grades, changelogs, public API tests, integration CI, redaction API |
+| S2 — Reliability and Observability | Make failures diagnosable and recoverable | WCA-004, WCA-005, WCA-006, WCA-013, WCA-016, WCA-017 | Resilience SDK, DLQ standard, correlation contract, richer smoke probes, drill cadence |
+| S3 — Security and Compliance | Make high-trust operations safe and auditable | WCA-007, WCA-008, WCA-009, WCA-010, WCA-028 | Dual-key JWT, scoped service tokens, anti-replay, RBAC matrix, vendor/compliance calendar |
+| S4 — Product and Design Quality | Make apps feel premium, consistent, and measurable | WCA-002, WCA-003, WCA-021, WCA-026 | Shared components, UX state taxonomy, journey gates, accessibility/performance automation |
+| S5 — Revenue and Operator Maturity | Make money-moving and operator workflows CFO-grade | WCA-015, WCA-022, WCA-024 | Revenue control plane, payout/render exception handling, first render proof, operator dashboards |
+| S6 — App Portfolio Rollout | Make each app launchable without bespoke chaos | WCA-023 plus all relevant shared controls | Per-app roadmap, launch gates, KPIs, dependencies, app-specific risk registers |
+
+### Phase 0 — Stabilize the Ground Truth
+
+**Objective:** Stop ambiguity and accidental drift before building more.
+
+| Step | Action | Best-practice rationale | Exit criteria | Evidence |
+|---|---|---|---|---|
+| 0.1 | Triage current local working tree into keep/stash/delete groups | Generated artifacts and unrelated edits create accidental release risk | Only intentional files remain unstaged; generated folders are ignored or removed | `git status -sb` contains only deliberate work |
+| 0.2 | Add status semantics to this dashboard | A mature program separates plans from implemented and verified systems | Every open item uses documented/implemented/deployed/verified or equivalent | Dashboard section updated and linked from `MASTER_INDEX.md` |
+| 0.3 | Mark root summaries historical or link them back here | Prevents truth proliferation | Historical docs stop acting as task boards | Doc freshness audit or manual checklist |
+| 0.4 | Freeze new root summary creation | Keeps coordination centralized | New summaries require coordinator approval or go under scoped docs | Contribution rule added to dashboard/process docs |
+| 0.5 | Assign path ownership for active edits | Prevents multi-agent collisions | Owner table maps app/package/doc paths to owner mode | Dashboard owner table updated |
+
+**Do not start implementation batches until Phase 0 is clean.**
+
+### Phase 1 — Build the Control Spine
+
+**Objective:** Create the minimum governance system needed to execute safely.
+
+| Step | Action | Dependencies | Exit criteria | Verification |
+|---|---|---|---|---|
+| 1.1 | Create board-ready executive scorecard skeleton | Phase 0 | RAG health, top risks, release forecast, compliance dates, revenue placeholders, decisions needed | Scorecard linked from this dashboard and reviewed weekly |
+| 1.2 | Define task object model | Phase 0 | Work item includes owner, paths, status, risk, blocker, proof, commits, workflow runs, endpoints | Schema documented; Admin Studio alignment confirmed |
+| 1.3 | Build portfolio dependency graph design | Phase 0 | Graph model includes apps, packages, Workers, Pages, DBs, secrets, workflows, buckets, events, consumers | First static graph generated from service registry/package manifests |
+| 1.4 | Publish RBAC and production action policy | Phase 0 | Viewer/editor/admin/owner actions are explicit; production changes require approval policy | Policy doc plus tests for protected routes once implemented |
+| 1.5 | Define evidence registry | Phase 0 | Smoke checks, workflow IDs, release commits, Sentry links, PostHog dashboards, audit rows have a standard reference format | Dashboard can link proof for each verified item |
+
+### Phase 2 — Harden Platform Contracts
+
+**Objective:** Make Factory packages reliable infrastructure instead of merely available code.
+
+| Step | Action | Package focus | Exit criteria | Verification |
+|---|---|---|---|---|
+| 2.1 | Add package stability grades | All packages | Each package is `foundation`, `stable`, `active`, `experimental`, or `deprecated` with support meaning | Package matrix and package metadata agree |
+| 2.2 | Add changelog and migration policy | All publishable packages | Every package has changelog, SemVer policy, breaking-change rules, and compatibility window | CI/check script fails missing changelog for version change |
+| 2.3 | Add public API contract checks | All packages | Exported API diff is visible on PRs and publish tags | CI blocks accidental public API breakage |
+| 2.4 | Add cross-package integration CI | Dependency chain | Build/import/test all packages in dependency order | CI validates dependency order and Worker constraints |
+| 2.5 | Promote shared redaction APIs | `compliance`, `studio-core`, `logger`, `monitoring` | Standard redaction covers tokens, emails, phones, cookies, auth headers, private keys, and PII markers | Unit tests prove sensitive fields are redacted |
+
+### Phase 3 — Engineer Reliability as a Product Feature
+
+**Objective:** Make failures bounded, observable, replayable, and operator-friendly.
+
+| Step | Action | First adopters | Exit criteria | Verification |
+|---|---|---|---|---|
+| 3.1 | Ship resilience primitives | `monitoring` or dedicated package | `withTimeout`, `withRetry`, jittered backoff, circuit breaker, bounded concurrency, retry classification | Failure-mode tests pass |
+| 3.2 | Standardize idempotency | Stripe webhooks, render dispatch, payouts, audit writes | Idempotency key schema and helpers prevent duplicate side effects | Duplicate webhook/dispatch tests return safe no-op |
+| 3.3 | Standardize DLQ/replay | Audit, video, payouts, emails, analytics | DLQ rows include source, payload hash, error, attempts, next retry, owner, resolution | Synthetic failure creates DLQ and replay succeeds |
+| 3.4 | Implement correlation contract | Browser, Workers, DB, Actions, R2/Stream | Correlation ID travels through headers, job rows, workflow inputs, events, audit, logs | One synthetic render trace is reconstructable end-to-end |
+| 3.5 | Replace shallow smoke with tiered smoke | Deployed Workers/Pages | Health, auth negative path, DB readiness, critical endpoint, third-party readiness, rollback eligibility | Workflow artifact records status codes and timestamps |
+
+### Phase 4 — Mature Security and Compliance
+
+**Objective:** Make trust controls explicit, tested, and scheduled.
+
+| Step | Action | Exit criteria | Verification |
+|---|---|---|---|
+| 4.1 | Implement dual-key JWT rotation | Auth accepts active and previous keys by `kid` until expiration window ends | Tests cover old/new/expired/revoked tokens |
+| 4.2 | Implement scoped service tokens | Tokens include app, action scope, expiration, quota, revocation ID | Unauthorized scope returns `403`; exhausted quota returns `429` |
+| 4.3 | Add one-time confirmation nonces | Risky actions require nonce-backed confirmation and cannot be replayed | Replay test fails and audit row records attempt |
+| 4.4 | Add two-person approval policy | Production irreversible and money-moving actions require second approver | Approval tests prove requester cannot self-approve |
+| 4.5 | Build compliance calendar | Rotations, vendor reviews, DSR drills, breach drills, audit dates have owners and cadence | Calendar has next dates and evidence links |
+| 4.6 | Build vendor risk register | Critical processors have owner, data class, SLA, DPA, renewal, incident contact | Quarterly review closes or accepts exceptions |
+
+### Phase 5 — Operationalize Premium Product Quality
+
+**Objective:** Convert rubrics into code, tests, and release gates.
+
+| Step | Action | Exit criteria | Verification |
+|---|---|---|---|
+| 5.1 | Build shared component primitives | Buttons, inputs, forms, modals, banners, cards, tables, status chips, toasts, state components ship from design-system | Component tests, docs, examples, WCAG checks |
+| 5.2 | Define UX state taxonomy | Loading, empty, partial failure, retry, permission denied, destructive confirm, success, escalation states are standardized | Admin Studio and one app adopt states |
+| 5.3 | Add journey gates | Critical journeys have task success, analytics, accessibility, mobile, performance, and error-state evidence | Release checklist requires journey proof |
+| 5.4 | Automate accessibility and performance checks | Axe/keyboard/Lighthouse or equivalent budgets run in CI for UI apps | CI artifact shows pass/fail and budgets |
+| 5.5 | Add experiment and funnel discipline | Conversion funnels and events are named before launch | PostHog/`factory_events` dashboards show journey completion and drop-off |
+
+### Phase 6 — Make Admin Studio the Safe Operating Console
+
+**Objective:** Move from docs/scripts to a governed GUI control plane without bypassing engineering discipline.
+
+| Step | Capability | Safety model | Exit criteria |
+|---|---|---|---|
+| 6.1 | Work register UI | Read/write status only through policy; coordinator owns roadmap-level changes | OWR/WCA items editable with audit trail |
+| 6.2 | Repo and dependency graph | Read-only first; mutating graph updates go through PR | Impact analysis visible before package, worker, or secret changes |
+| 6.3 | AI command intake | Always structured plan, target paths, risk tier, dry-run diff, tests, approval, rollback | No freeform AI mutation to production or `main` |
+| 6.4 | Test and smoke runner | Persist logs, run IDs, artifacts, coverage, failures | Operator can run selected suites and see evidence |
+| 6.5 | Deploy control | Production requires CI green, smoke pass, approval, rollback plan, type-to-confirm | Deploy evidence recorded in audit log |
+| 6.6 | Operator health | DLQ depth, oldest stuck item, Sentry P1/P2, queue state, payout/render exceptions | Operators see what to fix first |
+
+### Phase 7 — Complete Video and Revenue Proof Paths
+
+**Objective:** Prove the hardest workflows before scaling app delivery.
+
+| Step | Workflow | Exit criteria | Verification |
+|---|---|---|---|
+| 7.1 | First video render | R2, ElevenLabs, Remotion, ffmpeg, R2 upload, Stream registration, schedule status update all complete | `render-video.yml` succeeds and records Stream UID |
+| 7.2 | SelfPrime embed | Landing page uses Stream UID and remains decoupled from shared runtime internals | Direct HTTP root check returns `200`; video embed loads |
+| 7.3 | Render failure recovery | Failed render lands in DLQ/retry path with operator action | Synthetic failure replay succeeds |
+| 7.4 | Revenue evidence | Stripe, DB, events, payout records, DLQ exceptions reconcile | Monthly revenue integrity artifact generated |
+| 7.5 | Operator runbooks | Render fail, payout stuck, webhook replay, creator blocked, service degraded paths are scenario-based | Drill completes and updates runbooks |
+
+### Phase 8 — Portfolio App Launch Factory
+
+**Objective:** Launch apps through a repeatable, measurable factory rather than bespoke hero work.
+
+| Step | Action | Exit criteria | Verification |
+|---|---|---|---|
+| 8.1 | Add per-app one-page plans | Each app has outcome, target user, journeys, KPIs, deps, launch gates, risks, owner | Dashboard links all app plans |
+| 8.2 | Run Phase 6 provisioning gates | Credentials, Neon, Hyperdrive, Sentry, PostHog, secrets, rate limits | Dry run and execution evidence captured |
+| 8.3 | Run Phase 7 scaffold validation | Each app passes structure, env, migration, CI, deploy checks | `phase-7-validate.js --all` passes |
+| 8.4 | Ship one app through full release train | App passes design, security, reliability, release, and exec gates | Direct endpoint verification and dashboard status updated |
+| 8.5 | Repeat with measured cycle time | Each additional app reuses the same launch system | DORA and app launch metrics trend better over time |
+
+### 30/60/90-Day Execution Roadmap
+
+| Window | Theme | Must finish | Should start | Success signal |
+|---|---|---|---|---|
+| Days 0-7 | Clean truth and unblock safe execution | Working tree triage, status semantics, executive scorecard skeleton, path ownership, video next-step owner | Package stability policy draft, scoped token design, runbook taxonomy | Everyone can answer what is done, what is next, who owns it, and what proof is required |
+| Days 8-30 | Build shared control foundations | Package stability/changelog/API checks, cross-package CI, resilience primitives, correlation contract, first design-system primitives | Admin Studio work register, operator health dashboard, compliance/vendor calendar | First synthetic flow is traceable; first shared UI components are consumed; CI catches contract drift |
+| Days 31-60 | Prove hard workflows | First render to Stream, SelfPrime embed, DLQ/replay path, scoped tokens, dual-key JWT, tiered smoke probes, revenue evidence skeleton | AI command model, app roadmaps, accessibility/performance CI | Video pipeline and revenue controls have real evidence, not just design docs |
+| Days 61-90 | Scale portfolio delivery | Per-app launch plans, Phase 6/7 execution, one app full release train, executive dashboard cadence, monthly incident/release drill | Second app launch, package promotion from experimental to stable | Factory can launch an app with repeatable gates and executive visibility |
+
+### Dependency-First Critical Path
+
+1. **Clean workspace and truth model** before any further implementation.
+2. **Package contracts and integration CI** before new apps depend heavily on staging packages.
+3. **Security token/rotation design** before expanding app-to-app calls and Admin Studio production actions.
+4. **Resilience and correlation** before first product-critical async workflows scale.
+5. **Design-system primitives and UX gates** before large UI buildout across apps.
+6. **Video and revenue proof paths** before presenting SelfPrime × VideoKing synergy as product-ready.
+7. **Admin Studio command safety** before GUI AI commands mutate code, deploy, or touch production data.
+8. **Per-app roadmaps and launch gates** before Phase 8+ app execution accelerates.
+
+### Implementation Batch Rules
+
+Each batch must be small enough to review and large enough to produce evidence.
+
+| Batch type | Maximum scope | Required evidence |
+|---|---|---|
+| Docs/control batch | One source-of-truth area or one runbook family | Markdown diagnostics clean, dashboard updated, owner and last verified date present |
+| Package batch | One package or one cross-package contract | Typecheck, lint, tests, build, public API check, changelog, package matrix update |
+| Worker batch | One Worker or one inter-worker path | Typecheck, lint, tests, deploy if applicable, direct HTTP smoke, service registry update if URL/name changes |
+| UI batch | One journey or component family | Component tests, accessibility checks, responsive proof, error/loading/empty states, analytics events |
+| Security batch | One control family | Threat model, negative tests, audit event, runbook, rollback/revocation plan |
+| Revenue batch | One money-moving flow | Idempotency tests, reconciliation proof, DLQ/replay, audit events, finance acceptance |
+
+### Decision Gates
+
+| Gate | Question | If no |
+|---|---|---|
+| G1 — Truth | Is the source of truth updated with owner, status, and proof? | Do not start the next batch |
+| G2 — Safety | Are security, privacy, and reversibility understood? | Write threat model / rollback plan first |
+| G3 — Contract | Are public APIs, events, schemas, and dependencies versioned? | Add contract tests and migration note first |
+| G4 — Quality | Are UX, accessibility, reliability, and observability acceptance criteria explicit? | Work is not ready |
+| G5 — Verification | Can a reviewer independently verify the outcome? | Work is not done |
+| G6 — Operability | Can an operator detect, triage, recover, and audit failure? | Do not deploy to production |
+
+### Definition of World-Class Done
+
+The Factory program reaches the target state only when:
+
+- The dashboard is live, current, and evidence-backed.
+- Admin Studio can safely show portfolio state, run smoke/tests, record audits, and guide deploys without bypassing PR/CI/review.
+- Shared packages have stability grades, API checks, changelogs, integration tests, and adoption guidance.
+- Critical Workers are deployed, directly smoke-verified, observable, and rollback-ready.
+- Product surfaces use shared design primitives and pass accessibility/performance/journey gates.
+- Security operations include rotation, scoped tokens, anti-replay, approvals, vendor risk, and compliance calendar.
+- Revenue operations include reconciliation, exception aging, payout evidence, and DLQ recovery.
+- Every app has a roadmap, launch gate, KPI owner, dependency map, and transfer-ready architecture.
 
 ---
 

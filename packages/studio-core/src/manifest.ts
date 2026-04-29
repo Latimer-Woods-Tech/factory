@@ -16,7 +16,7 @@
  */
 
 /** Wire-format version. Increment on breaking schema change. */
-export const MANIFEST_VERSION = 1 as const;
+export const MANIFEST_VERSION = 1;
 
 export type AuthRequirement = 'public' | 'session' | 'admin' | 'webhook';
 

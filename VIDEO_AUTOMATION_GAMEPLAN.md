@@ -201,7 +201,7 @@ Props: {
 | `R2_SECRET_ACCESS_KEY` | Uses `CF_API_TOKEN` for S3 auth | ✅ Configured |
 | `R2_BUCKET_NAME` | `factory-videos` | ✅ Configured |
 | `R2_PUBLIC_DOMAIN` | `{account-id}.r2.cloudflarestorage.com` | ✅ Configured |
-| `SCHEDULE_WORKER_URL` | `https://schedule.adrper79.workers.dev` | ✅ Configured |
+| `SCHEDULE_WORKER_URL` | `https://schedule-worker.adrper79.workers.dev` | ✅ Configured (⚠️ update GitHub Secret to this canonical URL) |
 | `WORKER_API_TOKEN` | Generated random token | ✅ Configured |
 | `GH_PAT` | GitHub Personal Access Token | ✅ Configured (used for npm auth) |
 
@@ -259,7 +259,7 @@ cd Factory/apps/schedule-worker
 ```bash
 npm run build
 wrangler deploy
-# Output: Deployed schedule-worker to https://schedule.adrper79.workers.dev
+# Output: Deployed schedule-worker to https://schedule-worker.adrper79.workers.dev
 ```
 
 **Add WORKER_API_TOKEN secret**:
@@ -272,7 +272,7 @@ echo "PASTE_TOKEN_HERE" | wrangler secret put WORKER_API_TOKEN
 ```bash
 TOKEN=$(gh secret get WORKER_API_TOKEN --repo adrper79/Factory)
 
-curl -X POST https://schedule.adrper79.workers.dev/migrate \
+curl -X POST https://schedule-worker.adrper79.workers.dev/migrate \
   -H "Authorization: Bearer $TOKEN" \
   --fail-with-body
 ```
@@ -280,11 +280,11 @@ curl -X POST https://schedule.adrper79.workers.dev/migrate \
 **Verification**:
 ```bash
 # Health check
-curl https://schedule.adrper79.workers.dev/health
+curl https://schedule-worker.adrper79.workers.dev/health
 # Expected: 200 {"status":"ok"}
 
 # Check pending jobs (should be empty array)
-curl https://schedule.adrper79.workers.dev/jobs/pending?limit=10 \
+curl https://schedule-worker.adrper79.workers.dev/jobs/pending?limit=10 \
   -H "Authorization: Bearer $TOKEN"
 # Expected: 200 {"data":[]}
 ```
@@ -315,7 +315,7 @@ cd Factory/apps/video-cron
 
 ```bash
 # schedule-worker URL
-echo "https://schedule.adrper79.workers.dev" | wrangler secret put SCHEDULE_WORKER_URL
+echo "https://schedule-worker.adrper79.workers.dev" | wrangler secret put SCHEDULE_WORKER_URL
 
 # Worker API token (same as schedule-worker)
 echo "PASTE_TOKEN_HERE" | wrangler secret put WORKER_API_TOKEN
@@ -713,13 +713,13 @@ done
 **Daily smoke tests** (add to monitoring cron):
 ```bash
 # schedule-worker health
-curl https://schedule.adrper79.workers.dev/health
+curl https://schedule-worker.adrper79.workers.dev/health
 
 # video-cron health
 curl https://video-cron.adrper79.workers.dev/health
 
 # Check pending jobs count
-curl https://schedule.adrper79.workers.dev/jobs/pending?limit=1 \
+curl https://schedule-worker.adrper79.workers.dev/jobs/pending?limit=1 \
   -H "Authorization: Bearer $WORKER_API_TOKEN" \
   | jq '.data | length'
 ```
@@ -814,7 +814,7 @@ If `"state": "error"`: Check Stream dashboard for encoding errors
 gh run list --workflow=render-video.yml --limit 5
 
 # If failed run found, manually mark as failed
-curl -X PATCH "https://schedule.adrper79.workers.dev/jobs/$JOB_ID" \
+curl -X PATCH "https://schedule-worker.adrper79.workers.dev/jobs/$JOB_ID" \
   -H "Authorization: Bearer $WORKER_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"status":"failed","error":"Workflow manually aborted"}'
@@ -825,12 +825,12 @@ curl -X PATCH "https://schedule.adrper79.workers.dev/jobs/$JOB_ID" \
 ## Success Criteria
 
 ### Phase 1 Complete ✅
-- [ ] All 14 GitHub Secrets configured
-- [ ] `gh secret list` shows all secrets
+- [x] All 14 GitHub Secrets configured
+- [x] `gh secret list` shows all secrets
 
 ### Phase 2 Complete ✅
 - [ ] `schedule-worker` deployed
-- [ ] `curl https://schedule.adrper79.workers.dev/health` returns 200
+- [ ] `curl https://schedule-worker.adrper79.workers.dev/health` returns 200
 - [ ] `video_calendar` table exists (POST /migrate returns 200)
 
 ### Phase 3 Complete ✅
@@ -868,7 +868,7 @@ curl -X PATCH "https://schedule.adrper79.workers.dev/jobs/$JOB_ID" \
 ## Quick Reference
 
 ### Key URLs
-- **schedule-worker**: https://schedule.adrper79.workers.dev
+- **schedule-worker**: https://schedule-worker.adrper79.workers.dev
 - **video-cron**: https://video-cron.adrper79.workers.dev
 - **GitHub Actions**: https://github.com/adrper79/Factory/actions/workflows/render-video.yml
 - **Prime Self UI**: https://selfprime.net
@@ -883,7 +883,7 @@ curl -X POST https://prime-self.adrper79.workers.dev/videos/schedule \
   -d '{"type":"training","topic":"Your topic here"}'
 
 # Check pending jobs
-curl https://schedule.adrper79.workers.dev/jobs/pending?limit=10 \
+curl https://schedule-worker.adrper79.workers.dev/jobs/pending?limit=10 \
   -H "Authorization: Bearer $WORKER_API_TOKEN"
 
 # Manually trigger cron (for testing)

@@ -1,17 +1,18 @@
 /**
- * FunctionsTab — Phase E function-catalog viewer.
+ * FunctionsTab — Phase E+F function-catalog viewer + smoke runner.
  *
  * Reads `GET /catalog` for the cross-app summary, then `GET /catalog/:app`
  * for endpoint rows. Operators can refresh an app's catalog (calls
  * `POST /catalog/:app/refresh`, which crawls the app's `/manifest` and
- * upserts into `function_catalog`).
+ * upserts into `function_catalog`). Operators can also run smoke tests
+ * against any endpoint that declares probes.
  *
  * Stale rows (last_seen_at > 24h ago) get a yellow "stale" pill so it's
  * obvious when the crawler hasn't seen an endpoint in a while.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../lib/api.js';
-import type { Environment, FunctionCatalogRow } from '@adrper79-dot/studio-core';
+import type { Environment, FunctionCatalogRow, SmokeSuiteResult } from '@adrper79-dot/studio-core';
 
 interface SummaryRow {
   app: string;
@@ -55,6 +56,9 @@ export function FunctionsTab() {
   const [rowsErr, setRowsErr] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<string | null>(null);
   const [refreshMsg, setRefreshMsg] = useState<string | null>(null);
+  const [smokeRunning, setSmokeRunning] = useState<string | null>(null);
+  const [smokeResult, setSmokeResult] = useState<SmokeSuiteResult | null>(null);
+  const [smokeErr, setSmokeErr] = useState<string | null>(null);
 
   const loadSummary = useCallback(async () => {
     setSummaryErr(null);
@@ -108,6 +112,25 @@ export function FunctionsTab() {
       setRefreshMsg(`refresh failed: ${(e as Error).message}`);
     } finally {
       setRefreshing(null);
+    }
+  }
+
+  async function runSmoke(row: FunctionCatalogRow) {
+    if (!activeApp) return;
+    const endpointId = btoa(`${row.method}:${row.path}`).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+    setSmokeRunning(endpointId);
+    setSmokeErr(null);
+    setSmokeResult(null);
+    try {
+      const result = await apiFetch<SmokeSuiteResult>(
+        `/smoke/${encodeURIComponent(activeApp)}/${encodeURIComponent(endpointId)}`,
+        { method: 'POST', body: JSON.stringify({ env }) },
+      );
+      setSmokeResult(result);
+    } catch (err) {
+      setSmokeErr((err as Error).message);
+    } finally {
+      setSmokeRunning(null);
     }
   }
 
@@ -254,11 +277,18 @@ export function FunctionsTab() {
                             <th className="px-2 py-1">auth</th>
                             <th className="px-2 py-1">summary</th>
                             <th className="px-2 py-1">last seen</th>
+                            <th className="px-2 py-1 text-right">smoke</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800">
                           {group.map((row) => (
-                            <EndpointRow key={row.id} row={row} />
+                            <EndpointRow
+                              key={row.id}
+                              row={row}
+                              onRunSmoke={runSmoke}
+                              smokeRunning={smokeRunning === btoa(`${row.method}:${row.path}`).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')}
+                              smokeResult={smokeResult}
+                            />
                           ))}
                         </tbody>
                       </table>
@@ -274,26 +304,68 @@ export function FunctionsTab() {
   );
 }
 
-function EndpointRow({ row }: { row: FunctionCatalogRow }) {
+function EndpointRow({ row, onRunSmoke, smokeRunning, smokeResult }: { row: FunctionCatalogRow; onRunSmoke: (row: FunctionCatalogRow) => void; smokeRunning: boolean; smokeResult: SmokeSuiteResult | null }) {
   const lastSeen = new Date(row.lastSeenAt).getTime();
   const stale = Number.isFinite(lastSeen) && Date.now() - lastSeen > STALE_MS;
+  const hasProbes = row.smoke && row.smoke.length > 0;
   return (
-    <tr className="text-slate-200">
-      <td className="px-2 py-1 font-mono text-xs">
-        <MethodBadge method={row.method} />
-      </td>
-      <td className="px-2 py-1 font-mono text-xs">{row.path}</td>
-      <td className="px-2 py-1 text-xs">
-        <AuthBadge auth={row.auth} />
-      </td>
-      <td className="px-2 py-1 text-xs text-slate-300">{row.summary}</td>
-      <td className="px-2 py-1 text-xs text-slate-400">
-        {stale && (
-          <span className="mr-1 rounded bg-amber-900/60 px-1.5 text-amber-300">stale</span>
-        )}
-        {formatRelative(row.lastSeenAt)}
-      </td>
-    </tr>
+    <>
+      <tr className="text-slate-200">
+        <td className="px-2 py-1 font-mono text-xs">
+          <MethodBadge method={row.method} />
+        </td>
+        <td className="px-2 py-1 font-mono text-xs">{row.path}</td>
+        <td className="px-2 py-1 text-xs">
+          <AuthBadge auth={row.auth} />
+        </td>
+        <td className="px-2 py-1 text-xs text-slate-300">{row.summary}</td>
+        <td className="px-2 py-1 text-xs text-slate-400">
+          {stale && (
+            <span className="mr-1 rounded bg-amber-900/60 px-1.5 text-amber-300">stale</span>
+          )}
+          {formatRelative(row.lastSeenAt)}
+        </td>
+        <td className="px-2 py-1 text-right">
+          {hasProbes && (
+            <button
+              onClick={() => onRunSmoke(row)}
+              disabled={smokeRunning}
+              className="rounded bg-indigo-700 px-2 py-1 text-xs text-white hover:bg-indigo-600 disabled:opacity-50"
+            >
+              {smokeRunning ? 'Running…' : `Run (${row.smoke!.length})`}
+            </button>
+          )}
+        </td>
+      </tr>
+      {smokeResult && (
+        <tr className="bg-slate-950">
+          <td colSpan={6} className="px-2 py-2">
+            <div className="rounded border border-slate-700 bg-slate-900 p-2 text-xs">
+              <div className="mb-1 font-semibold text-slate-200">
+                {smokeResult.passed} / {smokeResult.total} passed ({smokeResult.durationMs}ms)
+              </div>
+              <div className="space-y-0.5">
+                {smokeResult.results.map((r, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-start justify-between py-0.5 px-1 rounded text-xs ${
+                      r.passed ? 'bg-emerald-950/40 text-emerald-300' : 'bg-red-950/40 text-red-300'
+                    }`}
+                  >
+                    <span>
+                      {r.label} — {r.status || '·'} {r.durationMs}ms
+                    </span>
+                    {!r.passed && r.reason && (
+                      <span className="text-slate-400">{r.reason.slice(0, 60)}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 

@@ -37,6 +37,29 @@ describe('manifest', () => {
     expect(validateManifest({ ...goodManifest, entries: 'oops' })).toMatch(/entries/);
   });
 
+  it('rejects missing env', () => {
+    expect(validateManifest({ ...goodManifest, env: '' })).toMatch(/env required/);
+  });
+
+  it('rejects missing generatedAt', () => {
+    expect(validateManifest({ ...goodManifest, generatedAt: 42 })).toMatch(/generatedAt required/);
+  });
+
+  it('rejects entry with missing method', () => {
+    const entry = { ...goodEntry, method: '' };
+    expect(validateManifest({ ...goodManifest, entries: [entry] })).toMatch(/method required/);
+  });
+
+  it('rejects entry with missing auth', () => {
+    const entry = { ...goodEntry, auth: 99 };
+    expect(validateManifest({ ...goodManifest, entries: [entry] })).toMatch(/auth required/);
+  });
+
+  it('rejects entry with missing summary', () => {
+    const entry = { ...goodEntry, summary: 0 };
+    expect(validateManifest({ ...goodManifest, entries: [entry] })).toMatch(/summary required/);
+  });
+
   it('rejects entries with non-/ paths', () => {
     expect(
       validateManifest({ ...goodManifest, entries: [{ ...goodEntry, path: 'health' }] }),

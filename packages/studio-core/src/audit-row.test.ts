@@ -52,4 +52,22 @@ describe('audit row mapping', () => {
     expect(values[11]).toBe('{}');
     expect(values[13]).toBeNull();
   });
+
+  it('fromAuditEntry maps all optional null fields to null', () => {
+    const row: AuditRow = {
+      ...sampleRow,
+      resource: null,
+      resource_id: null,
+      result_detail: null,
+      ip_address: null,
+      user_agent: null,
+    };
+    const entry = toAuditEntry(row);
+    const values = fromAuditEntry(entry);
+    expect(values[8]).toBeNull();  // resource
+    expect(values[9]).toBeNull();  // resourceId
+    expect(values[13]).toBeNull(); // resultDetail
+    expect(values[14]).toBeNull(); // ipAddress
+    expect(values[15]).toBeNull(); // userAgent
+  });
 });

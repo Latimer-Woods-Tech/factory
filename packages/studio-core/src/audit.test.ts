@@ -28,4 +28,17 @@ describe('redactSecrets', () => {
     expect(result.MY_SECRET_KEY).toBe('[REDACTED]');
     expect(result.User_Token).toBe('[REDACTED]');
   });
+
+  it('passes arrays through without redaction', () => {
+    const result = redactSecrets({ tags: ['a', 'b'], count: 3, flag: false });
+    expect(result.tags).toEqual(['a', 'b']);
+    expect(result.count).toBe(3);
+    expect(result.flag).toBe(false);
+  });
+
+  it('passes null values through without recursing', () => {
+    const result = redactSecrets({ optional: null, name: 'alice' });
+    expect(result.optional).toBeNull();
+    expect(result.name).toBe('alice');
+  });
 });
