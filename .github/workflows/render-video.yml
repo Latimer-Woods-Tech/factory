@@ -220,64 +220,19 @@ jobs:
           if [ "$COMPOSITION_TYPE" = "TrainingVideo" ]; then
 
             RESULT=$(node --input-type=module << 'SCRIPT_EOF'
+          // SYSTEM_CONTEXT injected — full Prime Self methodology, energy types,
+          // brand voice rules, and forbidden terminology.
+          const systemCtx    = process.env.SYSTEM_CONTEXT;
           const topic        = process.env.RESOLVED_TOPIC;
           const keyPts       = process.env.KEY_POINTS_BLOCK;
           const forbidden    = process.env.FORBIDDEN_BLOCK;
           const tone         = process.env.TONE_BLOCK;
           const learningGoal = process.env.BRIEF_LEARNING_GOAL;
+          const numSteps     = JSON.parse(process.env.BRIEF_KEY_POINTS || '[]').length || 4;
 
-          const numSteps = JSON.parse(process.env.BRIEF_KEY_POINTS || '[]').length || 4;
-
-          // Count words helper
           const wordCount = s => s.trim().split(/\s+/).filter(Boolean).length;
 
-          function buildMessages(topic, keyPts, forbidden, tone, learningGoal, numSteps) {
-            const systemPrompt = [
-              'You are Eric, the voice of Prime Self. Write narration scripts for training videos.',
-              'Prime Self is a Human Design intelligence platform that calculates a persons Free Energy Blueprint.',
-              'Always use second-person. Never use: journey, transformation, unlock, empower, amazing, leverage.',
-              'Speak with calm authority — confident, direct, no hedging.',
-              tone ? ('Tone guidance: ' + tone) : '',
-            ].filter(Boolean).join('\n');
-
-            const keyPointsText = keyPts
-              ? 'Cover these points in the script:\n' + keyPts
-              : '';
-
-            const forbiddenText = forbidden
-              ? 'Do not state or imply:\n' + forbidden
-              : '';
-
-            const userPrompt = [
-              `Write a 30-second narration script for this Prime Self training video topic: "${topic}"`,
-              '',
-              `Learning goal: ${learningGoal || 'Viewer understands the topic and knows their next action.'}`,
-              keyPointsText,
-              forbiddenText,
-              '',
-              'Script rules:',
-              '- Write 5 complete sentences',
-              '- Each sentence must be 12 to 16 words long (this ensures the correct 60-80 word total)',
-              '- Use second-person (you, your)',
-              '- No em dashes, no ellipses, no exclamation marks',
-              '- Continuous narration, not a list',
-              '',
-              `Also write ${numSteps} action steps. Each step: an imperative verb phrase, 5 to 7 words.`,
-              '',
-              'Return ONLY a valid JSON object. No markdown. No explanation. Just the JSON:',
-              '{',
-              '  "script": "<5 sentences of narration, 12-16 words each>",',
-              `  "steps": ["<step 1>", "<step 2>", ... (exactly ${numSteps} steps)]`,
-              '}',
-            ].filter(Boolean).join('\n');
-
-            return [
-              { role: 'system', content: systemPrompt },
-              { role: 'user',   content: userPrompt   },
-            ];
-          }
-
-          async function callGroq(messages, maxTokens) {
+          async function callGroq(messages, temperature, maxTokens) {
             const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
               method: 'POST',
               headers: {
@@ -287,7 +242,7 @@ jobs:
               body: JSON.stringify({
                 model: 'llama-3.3-70b-versatile',
                 max_tokens: maxTokens,
-                temperature: 0.4,
+                temperature,
                 messages,
               }),
             });
@@ -296,44 +251,99 @@ jobs:
               throw new Error('Groq call failed: ' + resp.status + ' — ' + err);
             }
             const data = await resp.json();
-            const raw = data.choices?.[0]?.message?.content?.trim() ?? '{}';
-            const cleaned = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-            return JSON.parse(cleaned);
+            return (data.choices?.[0]?.message?.content ?? '').trim();
           }
 
-          // First attempt
-          let messages = buildMessages(topic, keyPts, forbidden, tone, learningGoal, numSteps);
-          let parsed = await callGroq(messages, 800);
-          let script = (parsed.script ?? '').replace(/\n/g, ' ').trim();
-          let steps  = Array.isArray(parsed.steps) ? parsed.steps : [];
+          // ------------------------------------------------------------------
+          // Script: separate prose call — no JSON pressure on the generation.
+          // 4 sentences × 15-18 words = 60-72 words (30s at ~130 WPM).
+          // A concrete example sentence anchors the model to the right density.
+          // ------------------------------------------------------------------
+          const scriptSystem = [
+            systemCtx,
+            '',
+            '## Current Task',
+            'Write a 30-second training video narration for Prime Self.',
+            'Your narration must be exactly 4 complete sentences.',
+            'Target: 15-18 words per sentence (60-72 words total).',
+            '',
+            'EXAMPLE of correct sentence density (17 words):',
+            '"You open your Free Energy Blueprint and see your Energy Type, Strategy, and Authority displayed clearly."',
+            '',
+            tone ? ('Tone: ' + tone) : '',
+            '',
+            keyPts ? ('Cover these approved points:\n' + keyPts) : '',
+            forbidden ? ('Do not state or imply any of these:\n' + forbidden) : '',
+            '',
+            'Voice rules: second-person only (you, your).',
+            'Never use: journey, transformation, unlock, empower, amazing, leverage.',
+            'No em dashes. No ellipses. No exclamation marks. Continuous narration, not a list.',
+            '',
+            'Output ONLY the 4 narration sentences. No JSON. No labels. No preamble.',
+          ].filter(Boolean).join('\n');
 
-          // Self-correction: if script is too short, retry with explicit feedback
-          const wc = wordCount(script);
-          console.error('First attempt word count:', wc);
-          if (wc < 60) {
-            console.error('Script too short, retrying with correction...');
-            const correctionMsg = {
+          const scriptUser = [
+            `Topic: "${topic}"`,
+            `Learning goal: "${learningGoal || 'Viewer understands the topic and knows their next action.'}"`,
+            '',
+            'Write the 4-sentence narration now.',
+          ].join('\n');
+
+          let script = (await callGroq(
+            [{ role: 'system', content: scriptSystem }, { role: 'user', content: scriptUser }],
+            0.6,
+            320,
+          )).replace(/\n/g, ' ').trim();
+
+          const wc1 = wordCount(script);
+          console.error('First attempt word count:', wc1);
+
+          // Cold retry — independent call with reinforced framing. Not a
+          // continuation thread so the short output cannot anchor the model.
+          if (wc1 < 60) {
+            console.error('Under target — cold retry with reinforced density framing...');
+            const retrySystem = scriptSystem +
+              '\n\nCRITICAL: Your previous attempt was only ' + wc1 + ' words. ' +
+              'You MUST write information-dense sentences. Each sentence must name a ' +
+              'specific Prime Self concept and describe what the viewer does with it. ' +
+              'Aim for 16-18 words per sentence (64-72 words total).';
+            const retry = (await callGroq(
+              [{ role: 'system', content: retrySystem }, { role: 'user', content: scriptUser }],
+              0.7,
+              360,
+            )).replace(/\n/g, ' ').trim();
+            const wc2 = wordCount(retry);
+            console.error('Retry word count:', wc2);
+            if (wc2 > wc1) script = retry;
+          }
+
+          // ------------------------------------------------------------------
+          // Steps: separate call — clean JSON, no prose competition.
+          // ------------------------------------------------------------------
+          const stepsRaw = await callGroq(
+            [{
               role: 'user',
-              content: `Your script was ${wc} words — it needs to be 60 to 80 words (5 sentences of 12-16 words each). ` +
-                       `Here is what you wrote: "${script}". ` +
-                       `Please expand it to 5 full sentences (12-16 words each) and return the same JSON format.`,
-            };
-            const retryMessages = [...messages, { role: 'assistant', content: JSON.stringify(parsed) }, correctionMsg];
-            const retryParsed = await callGroq(retryMessages, 900);
-            const retryScript = (retryParsed.script ?? '').replace(/\n/g, ' ').trim();
-            console.error('Retry word count:', wordCount(retryScript));
-            if (wordCount(retryScript) > wc) {
-              script = retryScript;
-              steps  = Array.isArray(retryParsed.steps) ? retryParsed.steps : steps;
-            }
+              content: `Write ${numSteps} action steps for a Prime Self training video.\nTopic: "${topic}"\nEach step: imperative verb phrase, 5-7 words.\nReturn ONLY a JSON array: ["step 1", "step 2", ...]`,
+            }],
+            0.4,
+            200,
+          );
+
+          let steps = [];
+          try {
+            const cleaned = stepsRaw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+            steps = JSON.parse(cleaned);
+            if (!Array.isArray(steps)) steps = [];
+          } catch {
+            console.error('Steps parse failed, using empty array. Raw:', stepsRaw.slice(0, 200));
           }
 
           process.stdout.write(JSON.stringify({ script, steps }));
           SCRIPT_EOF
             )
 
-            SCRIPT=$(echo "$RESULT" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); process.stdout.write(JSON.parse(d).script)")
-            STEPS=$(echo  "$RESULT" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); process.stdout.write(JSON.stringify(JSON.parse(d).steps))")
+            SCRIPT=$(echo "$RESULT" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); process.stdout.write(JSON.parse(d).script ?? '')")
+            STEPS=$(echo  "$RESULT" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); process.stdout.write(JSON.stringify(JSON.parse(d).steps ?? []))")
 
           elif [ "$COMPOSITION_TYPE" = "WalkthroughVideo" ]; then
 
@@ -444,8 +454,18 @@ jobs:
             STEPS='[]'
           fi
 
-          echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
-          echo "steps=$STEPS"   >> "$GITHUB_OUTPUT"
+          # Use GitHub's multiline heredoc format to safely handle any
+          # characters (quotes, $ signs) that would corrupt key=value writes.
+          {
+            printf 'script<<SCRIPT_EOF\n'
+            printf '%s\n' "$SCRIPT"
+            printf 'SCRIPT_EOF\n'
+          } >> "$GITHUB_OUTPUT"
+          {
+            printf 'steps<<STEPS_EOF\n'
+            printf '%s\n' "$STEPS"
+            printf 'STEPS_EOF\n'
+          } >> "$GITHUB_OUTPUT"
           echo "Script word count: $(echo "$SCRIPT" | wc -w) words"
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
@@ -464,14 +484,13 @@ jobs:
 
       # -----------------------------------------------------------------------
       # 7. Validate script word count — ensures pacing matches video duration
-      # MarketingVideo: 30-48 words (15s at ~150 WPM)
-      # TrainingVideo:  60-90 words (30s at ~150 WPM)
-      # WalkthroughVideo: 80-120 words (40s at ~150 WPM)
-      # NOTE: continue-on-error=true so the pipeline completes even if the
-      # model undershoots; the error annotation flags the issue for review.
+      # MarketingVideo: 30-48 words (15s at ~130 WPM)
+      # TrainingVideo:  60-90 words (30s at ~130 WPM)
+      # WalkthroughVideo: 80-120 words (40s at ~130 WPM)
+      # Hard failure: a script that is too short ships broken audio/video sync.
+      # The generator uses a cold retry so this gate catches genuine failures.
       # -----------------------------------------------------------------------
       - name: Validate script length
-        continue-on-error: true
         run: |
           WORD_COUNT=$(echo "$SCRIPT" | wc -w | tr -d ' ')
           echo "Script word count: $WORD_COUNT"
@@ -492,14 +511,41 @@ jobs:
           esac
 
           if [ "$WORD_COUNT" -lt "$MIN" ] || [ "$WORD_COUNT" -gt "$MAX" ]; then
-            echo "::warning::Script word count $WORD_COUNT is out of range [$MIN, $MAX] for $COMPOSITION_TYPE. Video pacing may be off. Review and tune the prompt."
-            echo "Script: $SCRIPT"
-          else
-            echo "Word count $WORD_COUNT is within acceptable range [$MIN, $MAX]. Proceeding."
+            echo "::error::Script word count $WORD_COUNT is out of range [$MIN, $MAX] for $COMPOSITION_TYPE."
+            echo "Script content: $SCRIPT"
+            exit 1
           fi
+          echo "Word count $WORD_COUNT is within acceptable range [$MIN, $MAX]. Proceeding."
         env:
           SCRIPT: ${{ steps.generate_script.outputs.script }}
           COMPOSITION_TYPE: ${{ github.event.inputs.composition_id }}
+
+      # -----------------------------------------------------------------------
+      # 7b. Validate forbidden claims are absent from the generated script
+      # Brief-level guardrail: ensures no forbidden phrases appear in output.
+      # -----------------------------------------------------------------------
+      - name: Validate forbidden claims
+        run: |
+          node --input-type=module << 'EOF'
+          const script   = (process.env.SCRIPT   ?? '').toLowerCase();
+          const forbidden = JSON.parse(process.env.BRIEF_FORBIDDEN_CLAIMS || '[]');
+
+          if (forbidden.length === 0) {
+            console.log('No forbidden claims configured — skipping check.');
+            process.exit(0);
+          }
+
+          const violations = forbidden.filter(phrase => script.includes(phrase.toLowerCase()));
+          if (violations.length > 0) {
+            console.error('Forbidden claim violations detected in generated script:');
+            for (const v of violations) console.error('  -', v);
+            process.exit(1);
+          }
+          console.log(`Forbidden claims check passed (${forbidden.length} phrases checked, 0 violations).`);
+          EOF
+        env:
+          SCRIPT: ${{ steps.generate_script.outputs.script }}
+          BRIEF_FORBIDDEN_CLAIMS: ${{ steps.load_brief.outputs.brief_forbidden_claims }}
 
       # -----------------------------------------------------------------------
       # 8. Generate narration audio via ElevenLabs
@@ -516,20 +562,26 @@ jobs:
 
           NARRATION_PATH="/tmp/narration_${{ github.event.inputs.job_id }}.mp3"
 
+          # Build JSON body via Node to safely handle quotes, $ signs, and any
+          # special characters that would corrupt a bash-interpolated string.
+          ELEVENLABS_BODY=$(node -e "
+            process.stdout.write(JSON.stringify({
+              text: process.env.SCRIPT,
+              model_id: 'eleven_multilingual_v2',
+              voice_settings: {
+                stability: 0.5,
+                similarity_boost: 0.75,
+                style: 0.3,
+                use_speaker_boost: true,
+              },
+            }));
+          ")
+
           curl -s -X POST \
             "https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}" \
             -H "xi-api-key: ${ELEVENLABS_API_KEY}" \
             -H "Content-Type: application/json" \
-            -d "{
-              \"text\": \"$SCRIPT\",
-              \"model_id\": \"eleven_turbo_v2_5\",
-              \"voice_settings\": {
-                \"stability\": 0.5,
-                \"similarity_boost\": 0.75,
-                \"style\": 0.3,
-                \"use_speaker_boost\": true
-              }
-            }" \
+            --data-binary "$ELEVENLABS_BODY" \
             --output "$NARRATION_PATH"
 
           # Verify file was created and has content
@@ -562,11 +614,13 @@ jobs:
             --endpoint-url "https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com" \
             --region "auto"
 
-          # Generate a presigned URL (1 hour) so Remotion can fetch the private object
+          # Generate a presigned URL (7200s / 2h) — wide enough to survive slow
+          # runners where Chrome install + Remotion bundle + ffmpeg encode can
+          # consume over an hour before Cloudflare Stream pulls the file.
           NARRATION_URL=$(aws s3 presign "s3://${R2_BUCKET_NAME}/${NARRATION_KEY}" \
             --endpoint-url "https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com" \
             --region "auto" \
-            --expires-in 3600)
+            --expires-in 7200)
           echo "narration_url=$NARRATION_URL" >> "$GITHUB_OUTPUT"
           echo "narration_key=$NARRATION_KEY" >> "$GITHUB_OUTPUT"
         env:
@@ -620,7 +674,7 @@ jobs:
           OUTPUT_PATH="/tmp/video_${{ github.event.inputs.job_id }}.mp4"
 
           PUPPETEER_EXECUTABLE_PATH=$(which google-chrome-stable || which google-chrome || which chromium) \
-          node -r ts-node/register src/render.ts \
+          npx ts-node --transpile-only src/render.ts \
             --composition "$COMPOSITION_ID" \
             --props "$PROPS_JSON" \
             --output "$OUTPUT_PATH"
@@ -668,11 +722,12 @@ jobs:
             --region "auto" \
             --content-type "video/mp4"
 
-          # Generate a presigned URL (1 hour) so Cloudflare Stream can copy from private R2
+          # Generate a presigned URL (7200s / 2h) — Cloudflare Stream pulls
+          # asynchronously and may start several minutes after registration.
           VIDEO_URL=$(aws s3 presign "s3://${R2_BUCKET_NAME}/${VIDEO_KEY}" \
             --endpoint-url "https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com" \
             --region "auto" \
-            --expires-in 3600)
+            --expires-in 7200)
           echo "video_url=$VIDEO_URL" >> "$GITHUB_OUTPUT"
           echo "video_key=$VIDEO_KEY" >> "$GITHUB_OUTPUT"
         env:
@@ -716,8 +771,35 @@ jobs:
           VIDEO_URL: ${{ steps.upload_video.outputs.video_url }}
 
       # -----------------------------------------------------------------------
-      # 11. Update video_calendar via the schedule Worker
+      # 10b. Poll until Cloudflare Stream marks the video readyToStream
+      # The copy API returns a UID immediately but the video isn’t playable
+      # until Stream finishes pulling from R2 (typically 30–120 seconds).
+      # 24 attempts × 10s = up to 4 minutes. Non-blocking warning on timeout.
       # -----------------------------------------------------------------------
+      - name: Wait for stream to be ready
+        run: |
+          STREAM_UID="${{ steps.register_stream.outputs.stream_uid }}"
+          echo "Polling Cloudflare Stream for UID: $STREAM_UID"
+          READY="false"
+          for i in $(seq 1 24); do
+            READY=$(curl -s \
+              "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/stream/${STREAM_UID}" \
+              -H "Authorization: Bearer ${CF_API_TOKEN}" | \
+              node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); process.stdout.write(JSON.parse(d).result?.readyToStream ? 'true' : 'false')")
+            if [ "$READY" = "true" ]; then
+              echo "Stream is ready to play (attempt $i/24)."
+              break
+            fi
+            if [ "$i" = "24" ]; then
+              echo "::warning::Stream UID ${STREAM_UID} is registered but not yet ready after 4 minutes. The video will become available shortly."
+            else
+              echo "Attempt $i/24: not yet ready, waiting 10s..."
+              sleep 10
+            fi
+          done
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
       - name: Update job status in database
         if: always()
         run: |
@@ -741,8 +823,55 @@ jobs:
           NARRATION_URL: ${{ steps.upload_narration.outputs.narration_url }}
 
       # -----------------------------------------------------------------------
-      # 12. Summary
+      # 13. Track video_published event in PostHog for priority scoring
+      # Feeds scorePriority() in @adrper79-dot/schedule so the engine avoids
+      # re-generating topics that are already live.
+      # continue-on-error: PostHog is observability, not a hard dependency.
       # -----------------------------------------------------------------------
+      - name: Track video published event
+        continue-on-error: true
+        if: steps.register_stream.outputs.stream_uid != ''
+        run: |
+          node --input-type=module << 'EOF'
+          const key = process.env.POSTHOG_PROJECT_API_KEY;
+          if (!key) { console.log('POSTHOG_PROJECT_API_KEY not set — skipping.'); process.exit(0); }
+
+          const payload = {
+            api_key: key,
+            event: 'video_published',
+            distinct_id: 'system',
+            properties: {
+              job_id:        process.env.JOB_ID,
+              app_id:        process.env.APP_ID,
+              composition:   process.env.COMPOSITION_TYPE,
+              stream_uid:    process.env.STREAM_UID,
+              topic:         process.env.TOPIC,
+              brief_key:     process.env.BRIEF_KEY,
+              embed_url:     `https://iframe.cloudflarestream.com/${process.env.STREAM_UID}`,
+              produced_at:   new Date().toISOString(),
+            },
+          };
+
+          const resp = await fetch('https://app.posthog.com/capture/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const result = await resp.json().catch(() => ({}));
+          if (result.status === 1) {
+            console.log('PostHog: video_published captured successfully.');
+          } else {
+            console.log('PostHog response:', JSON.stringify(result));
+          }
+          EOF
+        env:
+          POSTHOG_PROJECT_API_KEY: ${{ secrets.POSTHOG_PROJECT_API_KEY }}
+          JOB_ID:           ${{ github.event.inputs.job_id }}
+          APP_ID:           ${{ github.event.inputs.app_id }}
+          COMPOSITION_TYPE: ${{ github.event.inputs.composition_id }}
+          STREAM_UID:       ${{ steps.register_stream.outputs.stream_uid }}
+          TOPIC:            ${{ github.event.inputs.topic }}
+          BRIEF_KEY:        ${{ github.event.inputs.brief_key }}
       - name: Render summary
         if: always()
         run: |
@@ -768,6 +897,12 @@ jobs:
     steps:
       - name: Update job status to failed
         run: |
+          # Guard: if register_job failed, real_job_id is empty — skip the PATCH
+          # to avoid sending a malformed request to /jobs/ with no ID segment.
+          if [ -z "$REAL_JOB_ID" ]; then
+            echo "No real_job_id available (register_job step failed). Skipping failure update."
+            exit 0
+          fi
           curl -s -X PATCH \
             "${SCHEDULE_WORKER_URL}/jobs/${REAL_JOB_ID}" \
             -H "Authorization: Bearer ${WORKER_API_TOKEN}" \

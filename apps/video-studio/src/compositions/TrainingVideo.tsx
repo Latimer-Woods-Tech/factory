@@ -37,8 +37,6 @@ export type TrainingVideoProps = z.infer<typeof trainingSchema>;
 // Sub-components
 // ---------------------------------------------------------------------------
 
-const STEP_FRAMES_EACH = 60; // 2 seconds per step at 30fps
-
 /** Dark sidebar with brand colour stripe. */
 const Sidebar: React.FC<{ color: string }> = ({ color }) => (
   <div
@@ -59,9 +57,10 @@ const StepList: React.FC<{
   frame: number;
   fps: number;
   accent: string;
-}> = ({ steps, frame, accent }) => {
+  stepFrames: number;
+}> = ({ steps, frame, accent, stepFrames }) => {
   const activeStep = Math.min(
-    Math.floor(frame / STEP_FRAMES_EACH),
+    Math.floor(frame / stepFrames),
     steps.length - 1,
   );
 
@@ -133,8 +132,9 @@ const ContentArea: React.FC<{
   stepIndex: number;
   frame: number;
   fps: number;
-}> = ({ step, stepIndex, frame }) => {
-  const stepStart = stepIndex * STEP_FRAMES_EACH;
+  stepFrames: number;
+}> = ({ step, stepIndex, frame, stepFrames }) => {
+  const stepStart = stepIndex * stepFrames;
   const localFrame = frame - stepStart;
   const opacity = interpolate(localFrame, [0, 20], [0, 1], {
     easing: Easing.out(Easing.quad),
@@ -237,10 +237,14 @@ export const TrainingVideo: React.FC<TrainingVideoProps> = ({
   brandAccent,
 }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, durationInFrames } = useVideoConfig();
+
+  // Distribute steps evenly across the full composition duration so visual
+  // progression stays in sync with the audio narration.
+  const stepFrames = steps.length > 0 ? Math.floor(durationInFrames / steps.length) : 60;
 
   const activeStep = Math.min(
-    Math.floor(frame / STEP_FRAMES_EACH),
+    Math.floor(frame / stepFrames),
     steps.length - 1,
   );
 
@@ -249,13 +253,14 @@ export const TrainingVideo: React.FC<TrainingVideoProps> = ({
   return (
     <AbsoluteFill style={{ background: '#f8f9fa' }}>
       <Sidebar color={brandColor} />
-      <StepList steps={steps} frame={frame} fps={fps} accent={brandAccent} />
+      <StepList steps={steps} frame={frame} fps={fps} accent={brandAccent} stepFrames={stepFrames} />
       <TitleCard topic={topic} fps={fps} frame={frame} />
       <ContentArea
         step={currentStep}
         stepIndex={activeStep}
         frame={frame}
         fps={fps}
+        stepFrames={stepFrames}
       />
       {/* Script is used as narration; display as hidden accessibility text */}
       <div
