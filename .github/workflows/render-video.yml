@@ -192,8 +192,8 @@ jobs:
           echo "narration_url=$NARRATION_URL" >> "$GITHUB_OUTPUT"
           echo "narration_key=$NARRATION_KEY" >> "$GITHUB_OUTPUT"
         env:
-          AWS_ACCESS_KEY_ID: cloudflare
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.CF_API_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           R2_PUBLIC_DOMAIN: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
@@ -299,8 +299,8 @@ jobs:
           echo "video_url=$VIDEO_URL" >> "$GITHUB_OUTPUT"
           echo "video_key=$VIDEO_KEY" >> "$GITHUB_OUTPUT"
         env:
-          AWS_ACCESS_KEY_ID: cloudflare
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.CF_API_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           R2_PUBLIC_DOMAIN: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
