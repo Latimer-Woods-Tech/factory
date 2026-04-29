@@ -1,0 +1,23 @@
+{
+  "briefKey": "platform-overview",
+  "composition": "MarketingVideo",
+  "topic": "Discover Your Free Energy Blueprint",
+  "learningGoal": "Prospective user understands what Prime Self offers and takes the first step to generate their Blueprint.",
+  "targetPersona": "prospect",
+  "keyPoints": [
+    "Prime Self calculates your Free Energy Blueprint using your birth data — date, time, and location",
+    "Your Blueprint shows your Energy Type, Strategy, Authority, and the specific Gates that define how you think and work",
+    "The AI Synthesis translates your chart into plain language — specific, personal, and immediately useful",
+    "Generating your Blueprint takes two minutes, and you access it instantly with no waiting"
+  ],
+  "forbiddenClaims": [
+    "scientifically proven",
+    "predict your future",
+    "change everything",
+    "guaranteed results",
+    "fix your problems"
+  ],
+  "toneNotes": "This is a marketing video. Lead with the outcome and the ease. Confident and decisive. Eric should sound like he has already seen the viewer's blueprint and knows it will matter to them.",
+  "brandColor": "#8B5CF6",
+  "brandAccent": "#10B981"
+}

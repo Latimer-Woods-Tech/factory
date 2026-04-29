@@ -1,0 +1,22 @@
+{
+  "briefKey": "blueprint-reading-guide",
+  "composition": "TrainingVideo",
+  "topic": "How to Read Your Body Graph",
+  "learningGoal": "User can identify the 9 centers on their body graph and understand which are defined vs undefined.",
+  "targetPersona": "new_user",
+  "keyPoints": [
+    "Your body graph is the geometric figure in the center of your Free Energy Blueprint — it shows your 9 energy centers",
+    "A colored center means it is Defined: you have a consistent, reliable source of that energy",
+    "A white center means it is Undefined: you are open to receiving and amplifying that energy from your environment",
+    "Find your Throat Center — the center at the top of the diamond shape — this governs how you communicate and manifest",
+    "Defined centers are your strengths and consistent gifts; undefined centers are where you are most adaptive and wise"
+  ],
+  "forbiddenClaims": [
+    "defined centers are better",
+    "undefined centers are weaknesses",
+    "this determines your personality completely"
+  ],
+  "toneNotes": "Visual and pedagogical. The viewer is looking at their chart while watching. Each keyPoint references a specific visual element. Be spatial and precise.",
+  "brandColor": "#8B5CF6",
+  "brandAccent": "#10B981"
+}

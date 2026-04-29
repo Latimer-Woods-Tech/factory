@@ -1,11 +1,17 @@
 name: Render Video
 
+# ---------------------------------------------------------------------------
+# World-class content quality pipeline for Prime Self video automation.
+# All LLM calls use the Prime Self SYSTEM_CONTEXT.md + optional content brief
+# for brand-accurate, hallucination-resistant script generation.
+# ---------------------------------------------------------------------------
+
 on:
   # Manual dispatch — also called programmatically by the cron Worker
   workflow_dispatch:
     inputs:
       job_id:
-        description: 'video_calendar UUID of the job to render'
+        description: 'video_calendar UUID (used as idempotency key)'
         required: true
         type: string
       composition_id:
@@ -21,21 +27,26 @@ on:
         required: true
         type: string
       topic:
-        description: 'Short topic label for the video'
+        description: 'Short topic label (used when brief_key is not provided)'
         required: true
         type: string
-      brand_color:
-        description: 'Primary brand hex colour (e.g. #0066FF)'
+      brief_key:
+        description: 'Content brief filename key (e.g. getting-started-first-week). Loads from apps/video-studio/content-briefs/{app_id}/{key}.json'
         required: false
-        default: '#0066FF'
+        default: ''
+        type: string
+      brand_color:
+        description: 'Primary brand hex colour — defaults to Prime Self purple'
+        required: false
+        default: '#8B5CF6'
         type: string
       brand_accent:
-        description: 'Accent hex colour (e.g. #FF6600)'
+        description: 'Accent hex colour — defaults to Prime Self green'
         required: false
-        default: '#FF6600'
+        default: '#10B981'
         type: string
       logo_url:
-        description: 'Logo image URL (leave blank for no logo)'
+        description: 'Logo image URL (leave blank to use APP_LOGO_URL env default)'
         required: false
         default: ''
         type: string
@@ -123,95 +134,322 @@ jobs:
           sudo apt-get install -y ffmpeg
 
       # -----------------------------------------------------------------------
-      # 4. Generate script via LLM — duration + structure vary by composition type
+      # 5. Load content brief (optional — enriches LLM with approved keyPoints)
+      # If brief_key is provided, reads from apps/video-studio/content-briefs/{app_id}/{brief_key}.json
+      # Outputs: brief_topic, brief_learning_goal, brief_key_points, brief_forbidden_claims, brief_tone_notes
+      # -----------------------------------------------------------------------
+      - name: Load content brief
+        id: load_brief
+        run: |
+          BRIEF_KEY="${{ github.event.inputs.brief_key }}"
+          APP_ID="${{ github.event.inputs.app_id }}"
+          TOPIC="${{ github.event.inputs.topic }}"
+
+          if [ -z "$BRIEF_KEY" ]; then
+            echo "No brief_key provided — using free-form topic."
+            echo "brief_topic=$TOPIC" >> "$GITHUB_OUTPUT"
+            echo "brief_learning_goal=" >> "$GITHUB_OUTPUT"
+            echo "brief_key_points=[]" >> "$GITHUB_OUTPUT"
+            echo "brief_forbidden_claims=[]" >> "$GITHUB_OUTPUT"
+            echo "brief_tone_notes=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BRIEF_PATH="apps/video-studio/content-briefs/${APP_ID}/${BRIEF_KEY}.json"
+          if [ ! -f "$BRIEF_PATH" ]; then
+            echo "Brief file not found: $BRIEF_PATH — falling back to free-form topic."
+            echo "brief_topic=$TOPIC" >> "$GITHUB_OUTPUT"
+            echo "brief_learning_goal=" >> "$GITHUB_OUTPUT"
+            echo "brief_key_points=[]" >> "$GITHUB_OUTPUT"
+            echo "brief_forbidden_claims=[]" >> "$GITHUB_OUTPUT"
+            echo "brief_tone_notes=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BRIEF=$(cat "$BRIEF_PATH")
+          BRIEF_TOPIC=$(echo "$BRIEF" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); process.stdout.write(JSON.parse(d).topic ?? '')")
+          LEARNING_GOAL=$(echo "$BRIEF" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); process.stdout.write(JSON.parse(d).learningGoal ?? '')")
+          KEY_POINTS=$(echo "$BRIEF" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); process.stdout.write(JSON.stringify(JSON.parse(d).keyPoints ?? []))")
+          FORBIDDEN=$(echo "$BRIEF" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); process.stdout.write(JSON.stringify(JSON.parse(d).forbiddenClaims ?? []))")
+          TONE=$(echo "$BRIEF" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); process.stdout.write(JSON.parse(d).toneNotes ?? '')")
+
+          echo "brief_topic=$BRIEF_TOPIC" >> "$GITHUB_OUTPUT"
+          echo "brief_learning_goal=$LEARNING_GOAL" >> "$GITHUB_OUTPUT"
+          echo "brief_key_points=$KEY_POINTS" >> "$GITHUB_OUTPUT"
+          echo "brief_forbidden_claims=$FORBIDDEN" >> "$GITHUB_OUTPUT"
+          echo "brief_tone_notes=$TONE" >> "$GITHUB_OUTPUT"
+          echo "Loaded brief: $BRIEF_PATH (topic: $BRIEF_TOPIC)"
+
+      # -----------------------------------------------------------------------
+      # 6. Generate narration script via Anthropic Claude
+      #    — System context: Prime Self methodology + brand voice (SYSTEM_CONTEXT.md)
+      #    — Brief context: approved keyPoints, learningGoal, forbiddenClaims
+      #    — Output: script (plain text narration) + steps (JSON array, TrainingVideo only)
       # -----------------------------------------------------------------------
       - name: Generate narration script
         id: generate_script
         run: |
+          SYSTEM_CONTEXT=$(cat apps/video-studio/content-briefs/prime-self/SYSTEM_CONTEXT.md)
+
+          # NOTE: RESOLVED_TOPIC is already set correctly by the env block
+          # (steps.load_brief.outputs.brief_topic, or raw topic if no brief loaded)
+
+          # Build the key points block if available
+          KEY_POINTS_BLOCK=""
+          if [ "$BRIEF_KEY_POINTS" != "[]" ] && [ -n "$BRIEF_KEY_POINTS" ]; then
+            KEY_POINTS_BLOCK=$(node -e "
+              const pts = JSON.parse(process.env.BRIEF_KEY_POINTS);
+              const block = pts.map((p, i) => \`\${i+1}. \${p}\`).join('\n');
+              process.stdout.write('APPROVED KEY POINTS (use these as the ground truth — rephrase into your script voice but do not add facts beyond these):\n' + block);
+            ")
+          fi
+
+          FORBIDDEN_BLOCK=""
+          if [ "$BRIEF_FORBIDDEN_CLAIMS" != "[]" ] && [ -n "$BRIEF_FORBIDDEN_CLAIMS" ]; then
+            FORBIDDEN_BLOCK=$(node -e "
+              const f = JSON.parse(process.env.BRIEF_FORBIDDEN_CLAIMS);
+              process.stdout.write('FORBIDDEN CLAIMS (never imply any of these):\n' + f.map(x => '- ' + x).join('\n'));
+            ")
+          fi
+
+          TONE_BLOCK=""
+          if [ -n "$BRIEF_TONE_NOTES" ]; then
+            TONE_BLOCK="TONE DIRECTION: ${BRIEF_TONE_NOTES}"
+          fi
+
           if [ "$COMPOSITION_TYPE" = "TrainingVideo" ]; then
-            # Training: 30 s — return structured JSON {script, steps[]}
+
             RESULT=$(node --input-type=module << 'SCRIPT_EOF'
-          const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          import { readFileSync } from 'fs';
+
+          const systemCtx   = process.env.SYSTEM_CONTEXT;
+          const topic       = process.env.RESOLVED_TOPIC;
+          const keyPts      = process.env.KEY_POINTS_BLOCK;
+          const forbidden   = process.env.FORBIDDEN_BLOCK;
+          const tone        = process.env.TONE_BLOCK;
+          const learningGoal = process.env.BRIEF_LEARNING_GOAL;
+
+          const numSteps = JSON.parse(process.env.BRIEF_KEY_POINTS || '[]').length || 4;
+
+          const systemPrompt = [
+            systemCtx,
+            '',
+            '## Current Task',
+            'You are generating a TrainingVideo script for Prime Self.',
+            `Learning goal: ${learningGoal || 'User understands the topic and can take action.'}`,
+            keyPts,
+            forbidden,
+            tone,
+            '',
+            '## Output Format — STRICT',
+            'Return ONLY a JSON object with exactly two keys, no markdown, no explanation:',
+            '{"script": "<30-second narration — 68 to 80 words — written for Eric to read aloud>",',
+            `"steps": ["<step 1 — 6-8 words, imperative>", ...(${numSteps} steps total matching the key points above)]}`,
+            '',
+            'Sentence rules: max 18 words per sentence. No em dashes. No ellipses. No exclamation marks.',
+            'Script must be Eric reading naturally — not bullet points, not a list, continuous narration.',
+          ].filter(Boolean).join('\n');
+
+          const userPrompt = `Topic: "${topic}"\n\nWrite the TrainingVideo script and ${numSteps} steps now. Return only the JSON.`;
+
+          const resp = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
-              'Authorization': 'Bearer ' + process.env.GROQ_API_KEY,
-              'Content-Type': 'application/json',
+              'x-api-key': process.env.ANTHROPIC_API_KEY,
+              'anthropic-version': '2023-06-01',
+              'content-type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
-              max_tokens: 500,
-              response_format: { type: 'json_object' },
-              messages: [
-                {
-                  role: 'system',
-                  content: 'You are a training video writer. Return ONLY valid JSON with this exact shape: {"script": "<30-second narration>", "steps": ["<step1>", "<step2>", "<step3>", "<step4>"]}. No markdown, no extra keys.',
-                },
-                {
-                  role: 'user',
-                  content: `Write a 30-second onboarding narration and 4 clear beginner steps for: ${process.env.TOPIC}. App: ${process.env.APP_ID}.`,
-                },
-              ],
+              model: 'claude-3-5-haiku-20241022',
+              max_tokens: 700,
+              system: systemPrompt,
+              messages: [{ role: 'user', content: userPrompt }],
             }),
           });
+
           if (!resp.ok) {
-            const errBody = await resp.text().catch(() => '(unreadable)');
-            throw new Error('LLM call failed: ' + resp.status + ' — ' + errBody);
+            const err = await resp.text().catch(() => '(unreadable)');
+            throw new Error('Anthropic call failed: ' + resp.status + ' — ' + err);
           }
+
           const data = await resp.json();
-          const content = data.choices?.[0]?.message?.content ?? '{}';
-          const parsed = JSON.parse(content);
-          process.stdout.write(JSON.stringify({ script: (parsed.script ?? '').replace(/\n/g, ' '), steps: parsed.steps ?? [] }));
+          const raw = data.content?.[0]?.text?.trim() ?? '{}';
+
+          // Strip markdown code fences if Claude wraps it
+          const cleaned = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+          const parsed = JSON.parse(cleaned);
+          const script = (parsed.script ?? '').replace(/\n/g, ' ').trim();
+          const steps  = Array.isArray(parsed.steps) ? parsed.steps : [];
+
+          process.stdout.write(JSON.stringify({ script, steps }));
           SCRIPT_EOF
             )
+
             SCRIPT=$(echo "$RESULT" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); process.stdout.write(JSON.parse(d).script)")
-            STEPS=$(echo "$RESULT" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); process.stdout.write(JSON.stringify(JSON.parse(d).steps))")
-          else
-            # Marketing (15 s) / Walkthrough (40 s) — plain script
-            DURATION=$( [ "$COMPOSITION_TYPE" = "WalkthroughVideo" ] && echo 40 || echo 15 )
+            STEPS=$(echo  "$RESULT" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); process.stdout.write(JSON.stringify(JSON.parse(d).steps))")
+
+          elif [ "$COMPOSITION_TYPE" = "WalkthroughVideo" ]; then
+
             SCRIPT=$(node --input-type=module << 'SCRIPT_EOF'
-          const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          const systemCtx  = process.env.SYSTEM_CONTEXT;
+          const topic      = process.env.RESOLVED_TOPIC;
+          const keyPts     = process.env.KEY_POINTS_BLOCK;
+          const forbidden  = process.env.FORBIDDEN_BLOCK;
+          const tone       = process.env.TONE_BLOCK;
+
+          const systemPrompt = [
+            systemCtx,
+            '',
+            '## Current Task',
+            'You are generating a WalkthroughVideo narration for Prime Self. Duration: 40 seconds. Word count: 90 to 110 words.',
+            keyPts,
+            forbidden,
+            tone,
+            '',
+            'Output ONLY the narration text. No labels, no JSON, no formatting markers.',
+            'Write exactly what Eric will say. Sentences max 18 words. No em dashes. No ellipses.',
+          ].filter(Boolean).join('\n');
+
+          const userPrompt = `Topic: "${topic}"\n\nWrite the 40-second WalkthroughVideo narration now.`;
+
+          const resp = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
-              'Authorization': 'Bearer ' + process.env.GROQ_API_KEY,
-              'Content-Type': 'application/json',
+              'x-api-key': process.env.ANTHROPIC_API_KEY,
+              'anthropic-version': '2023-06-01',
+              'content-type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
-              max_tokens: 300,
-              messages: [
-                {
-                  role: 'system',
-                  content: `You are a concise copywriter. Write a punchy, direct narration script for a ${process.env.DURATION}-second video. Output only the script text, no labels.`,
-                },
-                {
-                  role: 'user',
-                  content: `Write a ${process.env.DURATION}-second narration script for a ${process.env.COMPOSITION_TYPE} video about: ${process.env.TOPIC}. App voice: ${process.env.APP_ID}. Be specific and compelling.`,
-                },
-              ],
+              model: 'claude-3-5-haiku-20241022',
+              max_tokens: 400,
+              system: systemPrompt,
+              messages: [{ role: 'user', content: userPrompt }],
             }),
           });
+
           if (!resp.ok) {
-            const errBody = await resp.text().catch(() => '(unreadable)');
-            throw new Error('LLM call failed: ' + resp.status + ' — ' + errBody);
+            const err = await resp.text().catch(() => '(unreadable)');
+            throw new Error('Anthropic call failed: ' + resp.status + ' — ' + err);
           }
+
           const data = await resp.json();
-          const text = data.choices?.[0]?.message?.content ?? '';
-          process.stdout.write(text.replace(/\n/g, ' '));
+          const text = (data.content?.[0]?.text ?? '').replace(/\n/g, ' ').trim();
+          process.stdout.write(text);
+          SCRIPT_EOF
+            )
+            STEPS='[]'
+
+          else
+
+            # MarketingVideo — 15 seconds, 35-42 words
+            SCRIPT=$(node --input-type=module << 'SCRIPT_EOF'
+          const systemCtx = process.env.SYSTEM_CONTEXT;
+          const topic     = process.env.RESOLVED_TOPIC;
+          const keyPts    = process.env.KEY_POINTS_BLOCK;
+          const forbidden = process.env.FORBIDDEN_BLOCK;
+          const tone      = process.env.TONE_BLOCK;
+
+          const systemPrompt = [
+            systemCtx,
+            '',
+            '## Current Task',
+            'You are generating a MarketingVideo narration for Prime Self. Duration: 15 seconds. Word count: 35 to 42 words.',
+            keyPts,
+            forbidden,
+            tone,
+            '',
+            'Output ONLY the narration text. No labels, no JSON, no formatting markers.',
+            'This is a punchy, high-impact marketing script. Lead with the outcome. End with a clear directive.',
+            'Write exactly what Eric will say. Sentences max 18 words. No em dashes.',
+          ].filter(Boolean).join('\n');
+
+          const userPrompt = `Topic: "${topic}"\n\nWrite the 15-second MarketingVideo narration now.`;
+
+          const resp = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'x-api-key': process.env.ANTHROPIC_API_KEY,
+              'anthropic-version': '2023-06-01',
+              'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'claude-3-5-haiku-20241022',
+              max_tokens: 200,
+              system: systemPrompt,
+              messages: [{ role: 'user', content: userPrompt }],
+            }),
+          });
+
+          if (!resp.ok) {
+            const err = await resp.text().catch(() => '(unreadable)');
+            throw new Error('Anthropic call failed: ' + resp.status + ' — ' + err);
+          }
+
+          const data = await resp.json();
+          const text = (data.content?.[0]?.text ?? '').replace(/\n/g, ' ').trim();
+          process.stdout.write(text);
           SCRIPT_EOF
             )
             STEPS='[]'
           fi
+
           echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
-          echo "steps=$STEPS" >> "$GITHUB_OUTPUT"
+          echo "steps=$STEPS"   >> "$GITHUB_OUTPUT"
+          echo "Script word count: $(echo "$SCRIPT" | wc -w) words"
         env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           TOPIC: ${{ github.event.inputs.topic }}
+          RESOLVED_TOPIC: ${{ steps.load_brief.outputs.brief_topic }}
           APP_ID: ${{ github.event.inputs.app_id }}
           COMPOSITION_TYPE: ${{ github.event.inputs.composition_id }}
-          DURATION: 15
+          SYSTEM_CONTEXT: ''
+          BRIEF_KEY_POINTS: ${{ steps.load_brief.outputs.brief_key_points }}
+          BRIEF_FORBIDDEN_CLAIMS: ${{ steps.load_brief.outputs.brief_forbidden_claims }}
+          BRIEF_LEARNING_GOAL: ${{ steps.load_brief.outputs.brief_learning_goal }}
+          BRIEF_TONE_NOTES: ${{ steps.load_brief.outputs.brief_tone_notes }}
+          KEY_POINTS_BLOCK: ''
+          FORBIDDEN_BLOCK: ''
+          TONE_BLOCK: ''
 
       # -----------------------------------------------------------------------
-      # 5. Generate narration audio via ElevenLabs
+      # 7. Validate script word count — ensures pacing matches video duration
+      # MarketingVideo: 35-42 words (15s at 150 WPM)
+      # TrainingVideo:  68-80 words (30s at 150 WPM)
+      # WalkthroughVideo: 90-110 words (40s at 150 WPM)
+      # -----------------------------------------------------------------------
+      - name: Validate script length
+        run: |
+          WORD_COUNT=$(echo "$SCRIPT" | wc -w | tr -d ' ')
+          echo "Script word count: $WORD_COUNT"
+
+          case "$COMPOSITION_TYPE" in
+            MarketingVideo)
+              MIN=30; MAX=48
+              ;;
+            TrainingVideo)
+              MIN=60; MAX=90
+              ;;
+            WalkthroughVideo)
+              MIN=80; MAX=120
+              ;;
+            *)
+              MIN=30; MAX=120
+              ;;
+          esac
+
+          if [ "$WORD_COUNT" -lt "$MIN" ] || [ "$WORD_COUNT" -gt "$MAX" ]; then
+            echo "::error::Script word count $WORD_COUNT is out of range [$MIN, $MAX] for $COMPOSITION_TYPE."
+            echo "Script: $SCRIPT"
+            exit 1
+          fi
+
+          echo "Word count $WORD_COUNT is within acceptable range [$MIN, $MAX]. Proceeding."
+        env:
+          SCRIPT: ${{ steps.generate_script.outputs.script }}
+          COMPOSITION_TYPE: ${{ github.event.inputs.composition_id }}
+
+      # -----------------------------------------------------------------------
+      # 8. Generate narration audio via ElevenLabs
       # -----------------------------------------------------------------------
       - name: Generate narration audio (ElevenLabs)
         id: generate_narration
@@ -258,7 +496,7 @@ jobs:
           SCRIPT: ${{ steps.generate_script.outputs.script }}
 
       # -----------------------------------------------------------------------
-      # 6. Upload narration audio to Cloudflare R2
+      # 9. Upload narration audio to Cloudflare R2
       # -----------------------------------------------------------------------
       - name: Upload narration to R2
         id: upload_narration
@@ -286,32 +524,25 @@ jobs:
           R2_PUBLIC_DOMAIN: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
 
       # -----------------------------------------------------------------------
-      # 7. Render MP4 via Remotion
+      # 10. Render MP4 via Remotion
       # -----------------------------------------------------------------------
       - name: Build composition props JSON
         id: build_props
         run: |
-          # Construct the props JSON for the composition
-          APP_ID="${{ github.event.inputs.app_id }}"
-          COMPOSITION="${{ github.event.inputs.composition_id }}"
-          TOPIC="${{ github.event.inputs.topic }}"
-          SCRIPT="${{ steps.generate_script.outputs.script }}"
-          NARRATION_URL="${{ steps.upload_narration.outputs.narration_url }}"
-          BRAND_COLOR="${{ github.event.inputs.brand_color }}"
-          BRAND_ACCENT="${{ github.event.inputs.brand_accent }}"
-          LOGO_URL="${{ github.event.inputs.logo_url }}"
-
-          # Build base props
           PROPS=$(node -e "
+            // Resolve logo: explicit input → app-specific secret default → empty
+            const logoUrl = process.env.LOGO_URL_INPUT
+              || (process.env.APP_ID === 'prime_self' ? (process.env.PRIME_SELF_LOGO_URL || '') : '');
+
             const props = JSON.stringify({
-              appId: process.env.APP_ID,
-              topic: process.env.TOPIC,
-              script: process.env.SCRIPT,
-              narrationUrl: process.env.NARRATION_URL,
-              brandColor: process.env.BRAND_COLOR,
-              brandAccent: process.env.BRAND_ACCENT,
-              logoUrl: process.env.LOGO_URL,
-              steps: JSON.parse(process.env.STEPS || '[]'),
+              appId:          process.env.APP_ID,
+              topic:          process.env.RESOLVED_TOPIC,
+              script:         process.env.SCRIPT,
+              narrationUrl:   process.env.NARRATION_URL,
+              brandColor:     process.env.BRAND_COLOR,
+              brandAccent:    process.env.BRAND_ACCENT,
+              logoUrl:        logoUrl,
+              steps:          JSON.parse(process.env.STEPS || '[]'),
               screenshotUrls: [],
             });
             process.stdout.write(props);
@@ -320,13 +551,14 @@ jobs:
           echo "props=$PROPS" >> "$GITHUB_OUTPUT"
         env:
           APP_ID: ${{ github.event.inputs.app_id }}
-          TOPIC: ${{ github.event.inputs.topic }}
+          RESOLVED_TOPIC: ${{ steps.load_brief.outputs.brief_topic }}
           SCRIPT: ${{ steps.generate_script.outputs.script }}
           STEPS: ${{ steps.generate_script.outputs.steps }}
           NARRATION_URL: ${{ steps.upload_narration.outputs.narration_url }}
           BRAND_COLOR: ${{ github.event.inputs.brand_color }}
           BRAND_ACCENT: ${{ github.event.inputs.brand_accent }}
-          LOGO_URL: ${{ github.event.inputs.logo_url }}
+          LOGO_URL_INPUT: ${{ github.event.inputs.logo_url }}
+          PRIME_SELF_LOGO_URL: ${{ secrets.PRIME_SELF_LOGO_URL }}
 
       - name: Render MP4
         id: render

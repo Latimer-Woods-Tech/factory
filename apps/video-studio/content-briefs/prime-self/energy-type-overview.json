@@ -1,0 +1,24 @@
+{
+  "briefKey": "energy-type-overview",
+  "composition": "TrainingVideo",
+  "topic": "Understanding Your Energy Type",
+  "learningGoal": "User understands what their Energy Type means and how to apply their Strategy in daily decisions.",
+  "targetPersona": "new_user",
+  "keyPoints": [
+    "Your Energy Type is the most important factor in your Free Energy Blueprint — it defines how you generate and use life force energy",
+    "Generators and Manifesting Generators have a consistent sacral response: follow what lights you up, not what you think you should do",
+    "Projectors do not have consistent energy output — they thrive when invited, and burn out when they push without recognition",
+    "Manifestors initiate: inform the people affected by your decisions before you act, then move without waiting for permission",
+    "Your Strategy is the specific decision-making approach for your type — apply it to work, relationships, and major choices",
+    "Your Signature feeling tells you when you are aligned: Satisfaction for Generators, Success for Projectors, Peace for Manifestors"
+  ],
+  "forbiddenClaims": [
+    "your type is better than others",
+    "scientifically proven",
+    "guaranteed to work",
+    "fixes all your problems"
+  ],
+  "toneNotes": "Educational and precise. No mysticism. Treat the viewer as intelligent. Each type gets equal respect — no hierarchy.",
+  "brandColor": "#8B5CF6",
+  "brandAccent": "#10B981"
+}
