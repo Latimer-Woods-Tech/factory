@@ -12,7 +12,7 @@ describe('Label Component', () => {
   it('has htmlFor attribute', () => {
     render(<Label htmlFor="email-input">Email</Label>);
     const label = screen.getByText('Email');
-    expect(label).toHaveAttribute('htmlFor', 'email-input');
+    expect(label).toHaveAttribute('for', 'email-input');
   });
 
   it('shows required indicator', () => {

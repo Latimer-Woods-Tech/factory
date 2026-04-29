@@ -13,7 +13,7 @@ describe('Input Component', () => {
     render(<Input label="Password" />);
     const label = screen.getByText('Password');
     expect(label.tagName).toBe('LABEL');
-    expect(label).toHaveAttribute('htmlFor');
+    expect(label).toHaveAttribute('for');
   });
 
   it('renders input with correct type', () => {
@@ -90,7 +90,7 @@ describe('Input Component', () => {
     expect(input.type).toBe('email');
 
     rerender(<Input type="password" />);
-    input = screen.getByRole('textbox') as HTMLInputElement;
+    input = document.querySelector('input') as HTMLInputElement;
     expect(input.type).toBe('password');
   });
 
