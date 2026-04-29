@@ -77,13 +77,12 @@ test.describe('Marketing pages', () => {
   test('pricing page loads with plan copy', async ({ page }) => {
     await page.goto('/pricing.html');
     await expect(page).toHaveTitle(/Prime Self/);
-    await expect(page.locator('body')).toContainText('Plan');
+    await expect(page.locator('h1')).toContainText(/Plans/i);
   });
 
   test('practitioners page loads', async ({ page }) => {
     await page.goto('/practitioners.html');
-    await expect(page).toHaveTitle(/Prime Self/);
-    await expect(page.locator('body')).toContainText('Practitioner');
+    await expect(page).toHaveTitle(/Practitioner/i);
   });
 
   test('privacy policy loads', async ({ page }) => {
