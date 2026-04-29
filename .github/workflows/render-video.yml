@@ -84,6 +84,18 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@adrper79-dot'
 
+      # Build @adrper79-dot/llm and its dep chain from source so the
+      # video-studio can import it via the file: reference in package.json.
+      # Order matches the dependency graph: errors → monitoring → logger → llm.
+      - name: Build @adrper79-dot/llm from source
+        run: |
+          for pkg in errors monitoring logger llm; do
+            echo "--- Building $pkg ---"
+            (cd packages/$pkg && npm ci && npm run build)
+          done
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PAT }}
+
       - name: Install video-studio dependencies
         working-directory: apps/video-studio
         run: npm ci
@@ -185,20 +197,17 @@ jobs:
           echo "Loaded brief: $BRIEF_PATH (topic: $BRIEF_TOPIC)"
 
       # -----------------------------------------------------------------------
-      # 6. Generate narration script via Anthropic Claude
-      #    — System context: Prime Self methodology + brand voice (SYSTEM_CONTEXT.md)
-      #    — Brief context: approved keyPoints, learningGoal, forbiddenClaims
-      #    — Output: script (plain text narration) + steps (JSON array, TrainingVideo only)
+      # 6. Generate narration script
+      #    Uses @adrper79-dot/llm: Anthropic → Grok → Groq failover chain.
+      #    System context, brief data, and block helpers are passed as env vars
+      #    to apps/video-studio/scripts/generate-script.mjs which writes
+      #    `script` and `steps` to GITHUB_OUTPUT.
       # -----------------------------------------------------------------------
       - name: Generate narration script
         id: generate_script
         run: |
           SYSTEM_CONTEXT=$(cat apps/video-studio/content-briefs/prime-self/SYSTEM_CONTEXT.md)
 
-          # NOTE: RESOLVED_TOPIC is already set correctly by the env block
-          # (steps.load_brief.outputs.brief_topic, or raw topic if no brief loaded)
-
-          # Build the key points block if available
           KEY_POINTS_BLOCK=""
           if [ "$BRIEF_KEY_POINTS" != "[]" ] && [ -n "$BRIEF_KEY_POINTS" ]; then
             KEY_POINTS_BLOCK=$(node -e "
@@ -221,270 +230,23 @@ jobs:
             TONE_BLOCK="TONE DIRECTION: ${BRIEF_TONE_NOTES}"
           fi
 
-          if [ "$COMPOSITION_TYPE" = "TrainingVideo" ]; then
-
-            RESULT=$(node --input-type=module << 'SCRIPT_EOF'
-          // SYSTEM_CONTEXT injected — full Prime Self methodology, energy types,
-          // brand voice rules, and forbidden terminology.
-          const systemCtx    = process.env.SYSTEM_CONTEXT;
-          const topic        = process.env.RESOLVED_TOPIC;
-          const keyPts       = process.env.KEY_POINTS_BLOCK;
-          const forbidden    = process.env.FORBIDDEN_BLOCK;
-          const tone         = process.env.TONE_BLOCK;
-          const learningGoal = process.env.BRIEF_LEARNING_GOAL;
-          const numSteps     = JSON.parse(process.env.BRIEF_KEY_POINTS || '[]').length || 4;
-
-          const wordCount = s => s.trim().split(/\s+/).filter(Boolean).length;
-
-          async function callGroq(messages, temperature, maxTokens) {
-            const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                model: 'llama-3.3-70b-versatile',
-                max_tokens: maxTokens,
-                temperature,
-                messages,
-              }),
-            });
-            if (!resp.ok) {
-              const err = await resp.text().catch(() => '(unreadable)');
-              throw new Error('Groq call failed: ' + resp.status + ' — ' + err);
-            }
-            const data = await resp.json();
-            return (data.choices?.[0]?.message?.content ?? '').trim();
-          }
-
-          // ------------------------------------------------------------------
-          // Script: separate prose call — no JSON pressure on the generation.
-          // 4 sentences × 15-18 words = 60-72 words (30s at ~130 WPM).
-          // A concrete example sentence anchors the model to the right density.
-          // ------------------------------------------------------------------
-          const scriptSystem = [
-            systemCtx,
-            '',
-            '## Current Task',
-            'Write a 30-second training video narration for Prime Self.',
-            'Your narration must be exactly 4 complete sentences.',
-            'Target: 15-18 words per sentence (60-72 words total).',
-            '',
-            'EXAMPLE of correct sentence density (17 words):',
-            '"You open your Free Energy Blueprint and see your Energy Type, Strategy, and Authority displayed clearly."',
-            '',
-            tone ? ('Tone: ' + tone) : '',
-            '',
-            keyPts ? ('Cover these approved points:\n' + keyPts) : '',
-            forbidden ? ('Do not state or imply any of these:\n' + forbidden) : '',
-            '',
-            'Voice rules: second-person only (you, your).',
-            'Never use: journey, transformation, unlock, empower, amazing, leverage.',
-            'No em dashes. No ellipses. No exclamation marks. Continuous narration, not a list.',
-            '',
-            'Output ONLY the 4 narration sentences. No JSON. No labels. No preamble.',
-          ].filter(Boolean).join('\n');
-
-          const scriptUser = [
-            `Topic: "${topic}"`,
-            `Learning goal: "${learningGoal || 'Viewer understands the topic and knows their next action.'}"`,
-            '',
-            'Write the 4-sentence narration now.',
-          ].join('\n');
-
-          let script = (await callGroq(
-            [{ role: 'system', content: scriptSystem }, { role: 'user', content: scriptUser }],
-            0.6,
-            320,
-          )).replace(/\n/g, ' ').trim();
-
-          const wc1 = wordCount(script);
-          console.error('First attempt word count:', wc1);
-
-          // Cold retry — independent call with reinforced framing. Not a
-          // continuation thread so the short output cannot anchor the model.
-          if (wc1 < 60) {
-            console.error('Under target — cold retry with reinforced density framing...');
-            const retrySystem = scriptSystem +
-              '\n\nCRITICAL: Your previous attempt was only ' + wc1 + ' words. ' +
-              'You MUST write information-dense sentences. Each sentence must name a ' +
-              'specific Prime Self concept and describe what the viewer does with it. ' +
-              'Aim for 16-18 words per sentence (64-72 words total).';
-            const retry = (await callGroq(
-              [{ role: 'system', content: retrySystem }, { role: 'user', content: scriptUser }],
-              0.7,
-              360,
-            )).replace(/\n/g, ' ').trim();
-            const wc2 = wordCount(retry);
-            console.error('Retry word count:', wc2);
-            if (wc2 > wc1) script = retry;
-          }
-
-          // ------------------------------------------------------------------
-          // Steps: separate call — clean JSON, no prose competition.
-          // ------------------------------------------------------------------
-          const stepsRaw = await callGroq(
-            [{
-              role: 'user',
-              content: `Write ${numSteps} action steps for a Prime Self training video.\nTopic: "${topic}"\nEach step: imperative verb phrase, 5-7 words.\nReturn ONLY a JSON array: ["step 1", "step 2", ...]`,
-            }],
-            0.4,
-            200,
-          );
-
-          let steps = [];
-          try {
-            const cleaned = stepsRaw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-            steps = JSON.parse(cleaned);
-            if (!Array.isArray(steps)) steps = [];
-          } catch {
-            console.error('Steps parse failed, using empty array. Raw:', stepsRaw.slice(0, 200));
-          }
-
-          process.stdout.write(JSON.stringify({ script, steps }));
-          SCRIPT_EOF
-            )
-
-            SCRIPT=$(echo "$RESULT" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); process.stdout.write(JSON.parse(d).script ?? '')")
-            STEPS=$(echo  "$RESULT" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); process.stdout.write(JSON.stringify(JSON.parse(d).steps ?? []))")
-
-          elif [ "$COMPOSITION_TYPE" = "WalkthroughVideo" ]; then
-
-            SCRIPT=$(node --input-type=module << 'SCRIPT_EOF'
-          const systemCtx = process.env.SYSTEM_CONTEXT;
-          const topic     = process.env.RESOLVED_TOPIC;
-          const keyPts    = process.env.KEY_POINTS_BLOCK;
-          const forbidden = process.env.FORBIDDEN_BLOCK;
-          const tone      = process.env.TONE_BLOCK;
-
-          const systemPrompt = [
-            systemCtx,
-            '',
-            '## Current Task',
-            'You are generating a WalkthroughVideo narration for Prime Self. Duration: 40 seconds. Word count: 90 to 110 words.',
-            keyPts,
-            forbidden,
-            tone,
-            '',
-            'Output ONLY the narration text. No labels, no JSON, no formatting markers.',
-            'Write exactly what Eric will say. Sentences max 18 words. No em dashes. No ellipses.',
-          ].filter(Boolean).join('\n');
-
-          const userPrompt = `Topic: "${topic}"\n\nWrite the 40-second WalkthroughVideo narration now.`;
-
-          const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
-              max_tokens: 400,
-              temperature: 0.3,
-              messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user',   content: userPrompt   },
-              ],
-            }),
-          });
-
-          if (!resp.ok) {
-            const err = await resp.text().catch(() => '(unreadable)');
-            throw new Error('Groq call failed: ' + resp.status + ' — ' + err);
-          }
-
-          const data = await resp.json();
-          const text = (data.choices?.[0]?.message?.content ?? '').replace(/\n/g, ' ').trim();
-          process.stdout.write(text);
-          SCRIPT_EOF
-            )
-            STEPS='[]'
-
-          else
-
-            # MarketingVideo — 15 seconds, 35-42 words
-            SCRIPT=$(node --input-type=module << 'SCRIPT_EOF'
-          const systemCtx = process.env.SYSTEM_CONTEXT;
-          const topic     = process.env.RESOLVED_TOPIC;
-          const keyPts    = process.env.KEY_POINTS_BLOCK;
-          const forbidden = process.env.FORBIDDEN_BLOCK;
-          const tone      = process.env.TONE_BLOCK;
-
-          const systemPrompt = [
-            systemCtx,
-            '',
-            '## Current Task',
-            'You are generating a MarketingVideo narration for Prime Self. Duration: 15 seconds. Word count: 35 to 42 words.',
-            keyPts,
-            forbidden,
-            tone,
-            '',
-            'Output ONLY the narration text. No labels, no JSON, no formatting markers.',
-            'This is a punchy, high-impact marketing script. Lead with the outcome. End with a clear directive.',
-            'Write exactly what Eric will say. Sentences max 18 words. No em dashes.',
-          ].filter(Boolean).join('\n');
-
-          const userPrompt = `Topic: "${topic}"\n\nWrite the 15-second MarketingVideo narration now.`;
-
-          const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
-              max_tokens: 200,
-              temperature: 0.3,
-              messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user',   content: userPrompt   },
-              ],
-            }),
-          });
-
-          if (!resp.ok) {
-            const err = await resp.text().catch(() => '(unreadable)');
-            throw new Error('Groq call failed: ' + resp.status + ' — ' + err);
-          }
-
-          const data = await resp.json();
-          const text = (data.choices?.[0]?.message?.content ?? '').replace(/\n/g, ' ').trim();
-          process.stdout.write(text);
-          SCRIPT_EOF
-            )
-            STEPS='[]'
-          fi
-
-          # Use GitHub's multiline heredoc format to safely handle any
-          # characters (quotes, $ signs) that would corrupt key=value writes.
-          {
-            printf 'script<<SCRIPT_EOF\n'
-            printf '%s\n' "$SCRIPT"
-            printf 'SCRIPT_EOF\n'
-          } >> "$GITHUB_OUTPUT"
-          {
-            printf 'steps<<STEPS_EOF\n'
-            printf '%s\n' "$STEPS"
-            printf 'STEPS_EOF\n'
-          } >> "$GITHUB_OUTPUT"
-          echo "Script word count: $(echo "$SCRIPT" | wc -w) words"
+          # Delegate to the standalone script — handles all composition types
+          # and writes script/steps directly to GITHUB_OUTPUT.
+          SYSTEM_CONTEXT="$SYSTEM_CONTEXT" \
+          KEY_POINTS_BLOCK="$KEY_POINTS_BLOCK" \
+          FORBIDDEN_BLOCK="$FORBIDDEN_BLOCK" \
+          TONE_BLOCK="$TONE_BLOCK" \
+          node apps/video-studio/scripts/generate-script.mjs
         env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          TOPIC: ${{ github.event.inputs.topic }}
           RESOLVED_TOPIC: ${{ steps.load_brief.outputs.brief_topic }}
-          APP_ID: ${{ github.event.inputs.app_id }}
           COMPOSITION_TYPE: ${{ github.event.inputs.composition_id }}
-          SYSTEM_CONTEXT: ''
           BRIEF_KEY_POINTS: ${{ steps.load_brief.outputs.brief_key_points }}
           BRIEF_FORBIDDEN_CLAIMS: ${{ steps.load_brief.outputs.brief_forbidden_claims }}
           BRIEF_LEARNING_GOAL: ${{ steps.load_brief.outputs.brief_learning_goal }}
           BRIEF_TONE_NOTES: ${{ steps.load_brief.outputs.brief_tone_notes }}
-          KEY_POINTS_BLOCK: ''
-          FORBIDDEN_BLOCK: ''
-          TONE_BLOCK: ''
 
       # -----------------------------------------------------------------------
       # 7. Validate script word count — ensures pacing matches video duration
