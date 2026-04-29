@@ -149,11 +149,28 @@ export function createMockStripeWebhook(
       };
       break;
 
+    case 'charge.refunded':
+      eventData.data.object = {
+        id: `ch_${randomId(24)}`,
+        object: 'charge',
+        customer: overrides?.customerId || `cus_${randomId(24)}`,
+        amount: overrides?.amount || 999,
+        currency: 'usd',
+        status: 'succeeded',
+        paid: true,
+        refunded: true,
+        metadata: overrides?.metadata || {},
+        created: Math.floor(Date.now() / 1000),
+      };
+      break;
+
     case 'customer.subscription.created':
+    case 'customer.subscription.deleted':
       eventData.data.object = {
         id: `sub_${randomId(24)}`,
         object: 'subscription',
         customer: overrides?.customerId || `cus_${randomId(24)}`,
+        status: type === 'customer.subscription.deleted' ? 'canceled' : 'active',
         metadata: {
           creator_id: overrides?.creatorId ?? '',
         },
@@ -176,20 +193,21 @@ export function createMockStripeWebhook(
       break;
 
     case 'payment_intent.succeeded':
+    case 'payment_intent.canceled':
       eventData.data.object = {
         id: `pi_${randomId(24)}`,
         object: 'payment_intent',
         amount: overrides?.amount || 999,
         currency: 'usd',
         customer: overrides?.customerId || `cus_${randomId(24)}`,
-        status: 'succeeded',
+        status: type === 'payment_intent.canceled' ? 'canceled' : 'succeeded',
         metadata: overrides?.metadata || {},
         created: Math.floor(Date.now() / 1000),
       };
       break;
 
     default:
-      throw new Error(`Unknown webhook type: ${type}`);
+      throw new Error('Unknown webhook type');
   }
 
   // Apply any overrides to the generated event
@@ -234,7 +252,7 @@ export function createMockCreator(
   overrides?: Partial<MockCreator>,
 ): MockCreator {
   return {
-    id: `creator_${randomId(12)}`,
+    id: overrides?.id || `creator_${randomId(12)}`,
     email: `creator+${randomId(8)}@example.com`,
     name: overrides?.name || 'Test Creator',
     subscriptionStatus: overrides?.subscriptionStatus || 'none',
@@ -282,14 +300,14 @@ export function createMockEarnings(
   overrides?: Partial<MockEarnings>,
 ): MockEarnings {
   return {
-    id: `earnings_${randomId(12)}`,
+    id: overrides?.id || `earnings_${randomId(12)}`,
     creatorId,
     amount,
     currency: 'usd',
     status: overrides?.status || 'pending',
     payoutBatchId: overrides?.payoutBatchId,
     source: overrides?.source || 'subscription',
-    eventId: `evt_${randomId(12)}`,
+    eventId: overrides?.eventId || `evt_${randomId(12)}`,
     createdAt: overrides?.createdAt || new Date(),
     updatedAt: overrides?.updatedAt || new Date(),
   };
@@ -323,7 +341,7 @@ export function createMockDLQEvent(
   overrides?: Partial<MockDLQEvent>,
 ): MockDLQEvent {
   return {
-    id: `dlq_${randomId(12)}`,
+    id: overrides?.id || `dlq_${randomId(12)}`,
     eventType,
     payload: overrides?.payload || {},
     error: overrides?.error || 'Unknown error',

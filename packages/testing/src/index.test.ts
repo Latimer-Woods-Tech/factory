@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  assertDatabaseState,
+  cleanupAfterTest,
   createMockFn,
+  createMockCreator,
+  createMockDLQEvent,
+  createMockEarnings,
+  createMockStripeWebhook,
   createTestRequest,
   createTestSubscription,
   createTestTenant,
@@ -14,6 +20,9 @@ import {
   mockStripe,
   mockTelnyxWebhook,
   mockVoiceSession,
+  randomId,
+  seedDatabase,
+  type MockStripeWebhookType,
 } from './index';
 
 describe('createMockFn', () => {
@@ -208,5 +217,131 @@ describe('createTestRequest', () => {
   it('omits a body when none is provided', () => {
     const req = createTestRequest({ method: 'GET', path: '/ping' });
     expect(req.headers.get('content-type')).toBeNull();
+  });
+});
+
+describe('money-flow fixtures', () => {
+  it.each<MockStripeWebhookType>([
+    'invoice.paid',
+    'invoice.payment_failed',
+    'charge.succeeded',
+    'charge.failed',
+    'charge.refunded',
+    'customer.subscription.created',
+    'customer.subscription.deleted',
+    'payment_intent.succeeded',
+    'payment_intent.canceled',
+  ])('createMockStripeWebhook builds %s events', (type) => {
+    const webhook = createMockStripeWebhook(type, {
+      amount: 1234,
+      customerId: 'cus_test',
+      creatorId: 'creator_test',
+      unlockId: 'unlock_test',
+      metadata: { source: 'unit-test' },
+      eventData: { extra: 'value' },
+    });
+
+    expect(webhook.id).toMatch(/^evt_/);
+    expect(webhook.type).toBe(type);
+    expect(webhook.data.object.extra).toBe('value');
+  });
+
+  it('createMockStripeWebhook rejects unsupported event types at runtime', () => {
+    expect(() => createMockStripeWebhook('unknown.event' as MockStripeWebhookType)).toThrow('Unknown webhook type');
+  });
+
+  it('createMockStripeWebhook uses default nested values when overrides are omitted', () => {
+    const subscription = createMockStripeWebhook('customer.subscription.created');
+    const paymentIntent = createMockStripeWebhook('payment_intent.succeeded');
+
+    expect(subscription.data.object.customer).toMatch(/^cus_/);
+    expect(paymentIntent.data.object.amount).toBe(999);
+  });
+
+  it('fixture builders use defaults when overrides are omitted', () => {
+    expect(createMockCreator().subscriptionStatus).toBe('none');
+    expect(createMockEarnings('creator_test', 100).status).toBe('pending');
+    expect(createMockDLQEvent('webhook_malformed').retryCount).toBe(0);
+  });
+
+  it('createMockCreator uses defaults and accepts overrides', () => {
+    const creator = createMockCreator({
+      name: 'Video Pro',
+      subscriptionStatus: 'active',
+      earningsBalance: 500,
+      stripeConnectComplete: false,
+    });
+
+    expect(creator.id).toMatch(/^creator_/);
+    expect(creator.name).toBe('Video Pro');
+    expect(creator.subscriptionStatus).toBe('active');
+    expect(creator.earningsBalance).toBe(500);
+    expect(creator.stripeConnectComplete).toBe(false);
+  });
+
+  it('createMockEarnings uses defaults and accepts overrides', () => {
+    const earnings = createMockEarnings('creator_test', 2500, {
+      status: 'paid',
+      payoutBatchId: 'batch_test',
+      source: 'unlock',
+    });
+
+    expect(earnings.id).toMatch(/^earnings_/);
+    expect(earnings.creatorId).toBe('creator_test');
+    expect(earnings.amount).toBe(2500);
+    expect(earnings.status).toBe('paid');
+    expect(earnings.source).toBe('unlock');
+  });
+
+  it('createMockDLQEvent uses defaults and accepts overrides', () => {
+    const event = createMockDLQEvent('transfer_failed', {
+      payload: { transferId: 'tr_test' },
+      error: 'Transfer failed',
+      retryCount: 2,
+    });
+
+    expect(event.id).toMatch(/^dlq_/);
+    expect(event.eventType).toBe('transfer_failed');
+    expect(event.payload.transferId).toBe('tr_test');
+    expect(event.retryCount).toBe(2);
+  });
+
+  it('seedDatabase tracks IDs for all supplied fixture records', async () => {
+    const creator = createMockCreator({ id: 'creator_test' });
+    const earnings = createMockEarnings('creator_test', 100, { id: 'earnings_test' });
+    const dlq = createMockDLQEvent('webhook_timeout', { id: 'dlq_test' });
+
+    const seed = await seedDatabase({}, {
+      creators: [creator],
+      earnings: [earnings],
+      dlqEvents: [dlq],
+    });
+
+    expect(seed).toEqual({
+      creatorIds: ['creator_test'],
+      earningsIds: ['earnings_test'],
+      dlqEventIds: ['dlq_test'],
+    });
+  });
+
+  it('cleanupAfterTest resolves for tracked seed records', async () => {
+    await expect(cleanupAfterTest({}, {
+      creatorIds: ['creator_test'],
+      earningsIds: ['earnings_test'],
+      dlqEventIds: ['dlq_test'],
+    })).resolves.toBeUndefined();
+  });
+
+  it('assertDatabaseState resolves for empty assertions and throws detailed mismatches', async () => {
+    await expect(assertDatabaseState({}, {})).resolves.toBeUndefined();
+    await expect(assertDatabaseState({}, {
+      creatorId: 'creator_test',
+      expectedEarnings: 500,
+      dlqEventCount: 1,
+    })).rejects.toThrow('Database state assertions failed');
+  });
+
+  it('randomId returns the requested number of lowercase alphanumeric characters', () => {
+    expect(randomId(16)).toMatch(/^[a-z0-9]{16}$/);
   });
 });
