@@ -232,6 +232,43 @@ export default {
       });
     }
 
+    if (url.pathname === '/manifest') {
+      return Response.json({
+        manifestVersion: 1,
+        app: 'video-cron',
+        env: env.ENVIRONMENT ?? 'production',
+        generatedAt: new Date().toISOString(),
+        entries: [
+          {
+            method: 'GET',
+            path: '/health',
+            auth: 'public',
+            summary: 'Liveness probe with deployed env',
+            smoke: [{ expectedStatus: 200, expectContains: '"status":"ok"' }],
+            slo: { p95Ms: 200, errorRate: 0.001 },
+            tags: ['ops'],
+          },
+          {
+            method: 'GET',
+            path: '/manifest',
+            auth: 'public',
+            summary: 'Machine-readable manifest for studio catalog crawlers',
+            smoke: [{ expectedStatus: 200, expectContains: '"manifestVersion"' }],
+            tags: ['ops'],
+          },
+          {
+            method: 'POST',
+            path: '/trigger',
+            auth: 'admin',
+            summary: 'Manually dispatch pending render jobs (requires WORKER_API_TOKEN)',
+            reversibility: 'reversible',
+            slo: { p95Ms: 30000, errorRate: 0.05 },
+            tags: ['video', 'jobs', 'cron'],
+          },
+        ],
+      });
+    }
+
     if (url.pathname === '/trigger' && request.method === 'POST') {
       // Manual trigger endpoint — protected by WORKER_API_TOKEN
       const authHeader = request.headers.get('authorization');
