@@ -25,6 +25,8 @@ export interface Env {
   GITHUB_REPO: string;
   /** Base URL of the schedule-worker, e.g. https://schedule.adrper79.workers.dev */
   SCHEDULE_WORKER_URL: string;
+  /** Service binding for private Worker-to-Worker schedule calls. */
+  SCHEDULE_WORKER?: Fetcher;
   /** App ID whose pending render jobs this cron dispatches. */
   APP_ID: string;
   /** Remotion composition ID to use for automatic marketing videos. */

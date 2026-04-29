@@ -20,6 +20,13 @@ async function readErrorBody(res: Response): Promise<string> {
   return res.text().catch(() => '');
 }
 
+async function fetchScheduleWorker(env: Env, path: string, init: RequestInit = {}): Promise<Response> {
+  if (env.SCHEDULE_WORKER) {
+    return env.SCHEDULE_WORKER.fetch(new Request(`https://schedule-worker.internal${path}`, init));
+  }
+  return fetchWithTimeout(`${env.SCHEDULE_WORKER_URL}${path}`, init);
+}
+
 // ---------------------------------------------------------------------------
 // Schedule-worker API helpers
 // ---------------------------------------------------------------------------
@@ -29,14 +36,14 @@ async function readErrorBody(res: Response): Promise<string> {
  */
 async function fetchPendingJobs(env: Env): Promise<RenderJob[]> {
   const search = new URLSearchParams({ limit: String(PENDING_LIMIT), appId: env.APP_ID });
-  const url = `${env.SCHEDULE_WORKER_URL}/jobs/pending?${search.toString()}`;
-  const res = await fetchWithTimeout(url, {
+  const path = `/jobs/pending?${search.toString()}`;
+  const res = await fetchScheduleWorker(env, path, {
     headers: { Authorization: `Bearer ${env.WORKER_API_TOKEN}` },
   });
 
   if (!res.ok) {
     throw new InternalError(`Failed to fetch pending jobs: ${res.status}`, {
-      url,
+      path,
       status: res.status,
       body: await readErrorBody(res),
     });
@@ -51,7 +58,7 @@ async function fetchPendingJobs(env: Env): Promise<RenderJob[]> {
  * This prevents double-dispatch if the cron fires again before the workflow completes.
  */
 async function markRendering(env: Env, jobId: string): Promise<void> {
-  const res = await fetchWithTimeout(`${env.SCHEDULE_WORKER_URL}/jobs/${jobId}`, {
+  const res = await fetchScheduleWorker(env, `/jobs/${jobId}`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${env.WORKER_API_TOKEN}`,
@@ -73,7 +80,7 @@ async function markRendering(env: Env, jobId: string): Promise<void> {
  * Marks a job as `failed` in the schedule-worker (used when dispatch itself errors).
  */
 async function markFailed(env: Env, jobId: string, reason: string): Promise<void> {
-  const res = await fetchWithTimeout(`${env.SCHEDULE_WORKER_URL}/jobs/${jobId}`, {
+  const res = await fetchScheduleWorker(env, `/jobs/${jobId}`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${env.WORKER_API_TOKEN}`,

@@ -11,6 +11,12 @@
   "triggers": {
     "crons": ["0 * * * *"]
   },
+  "services": [
+    {
+      "binding": "SCHEDULE_WORKER",
+      "service": "schedule-worker"
+    }
+  ],
   "vars": {
     "APP_ID": "selfprime",
     "DEFAULT_COMPOSITION_ID": "MarketingVideo",
@@ -30,6 +36,12 @@
       "triggers": {
         "crons": ["0 * * * *"]
       },
+      "services": [
+        {
+          "binding": "SCHEDULE_WORKER",
+          "service": "schedule-worker"
+        }
+      ],
       "vars": {
         "APP_ID": "selfprime",
         "DEFAULT_COMPOSITION_ID": "MarketingVideo",
