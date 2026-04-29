@@ -44,16 +44,15 @@ jobs:
           workingDirectory: apps/video-cron
           command: deploy --env production
           secrets: |
-            SCHEDULE_WORKER_URL
+            GITHUB_TOKEN
             WORKER_API_TOKEN
-            SENTRY_DSN
         env:
-          SCHEDULE_WORKER_URL: ${{ secrets.SCHEDULE_WORKER_URL }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           WORKER_API_TOKEN: ${{ secrets.WORKER_API_TOKEN }}
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN_FACTORY_ADMIN }}
 
       - name: Verify deployment
         run: |
           echo "🚀 Deployment complete"
           echo "⏰ Cron job configured: hourly (0 * * * *)"
           echo "📋 Cron jobs are managed by Cloudflare and run automatically"
+          curl -f https://video-cron.adrper79.workers.dev/health
