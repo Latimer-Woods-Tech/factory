@@ -133,7 +133,7 @@ Detailed ownership and app/repo mapping lives in `docs/operations/WORLD_CLASS_36
 
 | ID | Workstream | Lead disciplines | Scope / paths | Dependencies | Exit criteria |
 |---|---|---|---|---|---|
-| W360-031 | Full portfolio app scope registry | D01, D09, D13 | Factory apps, external app repos, service registry, Admin Studio registry | W360-001 | Every Factory app/repo is listed with status, owner, gates, W360 disposition, and next verification |
+| W360-031 | Full portfolio app scope registry | D01, D09, D13 | Factory apps, external app repos, service registry, Admin Studio registry | W360-001 | ✅ DONE 2026-04-29 — `docs/APP_SCOPE_REGISTRY.md` created: 9 Factory apps + 5 external apps inventoried by type/status/W360-phase; W360-035 graduation gate matrix defined (10-point checklist); template apps + pending repos classified with owner/setup status |
 | W360-032 | Template buildout pack | D13 + discipline leads | `docs/templates/`, `packages/deploy/templates/`, `packages/testing`, `packages/studio-core` | W360-031 | Worker, Pages/PWA, RFC, manifest, webhook, credit ledger, booking/payout, event, smoke/a11y, synthetic monitor, support, launch, seed-data, and historical-banner templates exist or are explicitly deferred |
 | W360-033 | Standards catalog and enforcement | D13, D09, D12 | frontend/design/API/runtime/auth/money/AI/analytics/observability/config/docs/release standards | W360-032 | Each standard has owner, required gate, check mechanism, and reference path |
 | W360-034 | Config normalization pass | D09, D12, D10 | `wrangler.jsonc`, GitHub Actions, `package.json`, lockfiles, TS/ESLint/Vitest, Renovate, Sentry/PostHog, service registry | W360-031 | Audit completed; gaps filed; normalized configs applied first to W360-critical repos |
