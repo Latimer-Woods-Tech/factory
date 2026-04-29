@@ -1,6 +1,6 @@
 # World-Class Implementation Dashboard
 
-**Last Updated:** April 29, 2026 (REASSESSMENT + ACTIVE PROMPT PACK + LLM DEP FIX + PACKAGE INTEGRATION CI GREEN)  
+**Last Updated:** April 29, 2026 (WORLD CLASS 360 TASK DASHBOARD LOADED)  
 **Phase B Progress:** 28/28 (100% Complete) 🎉  
 **Status:** Canonical execution dashboard, work register, and coordination process  
 **Scope:** Factory support platform + core application delivery model  
@@ -29,6 +29,8 @@ What is still missing for world-class execution:
 ---
 
 ## North Star
+
+**Current iteration north star:** World Class 360. The active execution queue is `docs/operations/WORLD_CLASS_360_TASK_DASHBOARD.md`.
 
 Build a portfolio system where each app can ship with:
 - world-class user experience,
@@ -110,6 +112,98 @@ Build a portfolio system where each app can ship with:
 
 ---
 
+## World-Class UI/UX Operating Plan
+
+The missing step is not more isolated polish work. It is an operating model that ties design, frontend engineering, accessibility, performance, analytics, and release evidence into one system.
+
+### Objective
+
+Ship customer-facing and operator-facing surfaces that are:
+- immediately understandable,
+- premium in visual hierarchy and motion,
+- WCAG 2.2 AA compliant on critical paths,
+- performant on real mobile networks,
+- instrumented for conversion and trust,
+- and reusable across Factory apps without flattening brand identity.
+
+### Non-Negotiable Outcomes
+
+| Outcome | Required proof |
+|---|---|
+| Shared primitives exist and are used | `@adrper79-dot/design-tokens` and `@adrper79-dot/ui` own tokens + core primitives; apps consume instead of hardcoding repeated styles |
+| Critical journeys are explicitly designed | Every app has journey maps with acceptance criteria for anonymous, authenticated, paid, and operator flows |
+| Accessibility is enforced in CI and manually verified | axe, keyboard-path review, screen-reader spot checks, and breakpoint checks are attached to PR evidence |
+| Performance is treated as a release gate | Lighthouse/Core Web Vitals budgets are defined per surface and regressions block merge or release |
+| UX success is measurable | PostHog + `factory_events` capture funnel, trust, and failure events for each critical journey |
+| Release evidence includes UX proof | Screenshots, a11y proof, mobile proof, and happy/sad path evidence are part of Definition of Done |
+
+### System Architecture For UI/UX Quality
+
+| Layer | Factory responsibility | App responsibility |
+|---|---|---|
+| Tokens | semantic colors, spacing, typography, motion, focus, density, breakpoints | brand palette choices within token constraints |
+| Primitives | Button, Input, Label, Alert, Dialog, Toast, Tabs, Card, EmptyState, LoadingState | app-specific wrappers and composed product modules |
+| Journey patterns | auth gate, checkout shell, dashboard shell, destructive-action confirmation, form validation pattern | information architecture, copy, domain-specific task flows |
+| Quality gates | axe, Lighthouse, visual regression, interaction timing, mobile matrix, event schema validation | route-specific tests, product-specific fixtures, operator walkthroughs |
+| Analytics | shared event naming conventions and funnel templates | app KPIs, experiment definitions, retention and conversion goals |
+
+### Execution Workstreams
+
+| Workstream | Scope | Owner disciplines | Exit criteria |
+|---|---|---|---|
+| UX-01 Foundations | Tokens, primitives, component API, accessibility defaults, motion rules | D03, D04, D09, D12 | `design-tokens` and `ui` packages exist with docs, tests, and at least Button/Input/Dialog/Toast/FormField/Card shipped |
+| UX-02 Journey design | Journey maps and acceptance criteria for public, auth, checkout, dashboard, and operator flows | D02, D03, D04, D14 | Each critical flow has a journey spec, success metric, failure states, and test plan |
+| UX-03 Quality gates | axe, Lighthouse, visual diff, breakpoint matrix, keyboard path automation | D04, D09, D10, D12 | CI blocks regressions on agreed routes and publishes evidence artifacts |
+| UX-04 Instrumentation | funnel, trust, rage-click/drop-off, error, and success event coverage | D02, D10, D12, D14 | Every critical journey emits required events and missing events fail tests |
+| UX-05 Product polish | copy hierarchy, loading/success/error states, empty states, mobile density, operator ergonomics | D03, D04, D05, D14 | Core routes meet rubric and usability review on desktop + mobile |
+| UX-06 Governance | design review, RFC usage, Definition of Ready/Done enforcement, launch review | D01, D03, D06, D12, D13 | No UI work starts without journey criteria and no UI work closes without UX evidence |
+
+### Marketplace Quality Scorecard
+
+Every launch candidate should be scored against these dimensions before it is called world-class.
+
+| Dimension | Minimum bar | World-class bar |
+|---|---|---|
+| Clarity | user identifies primary action in <= 2 seconds | user identifies primary action, fallback path, and trust signal immediately |
+| Accessibility | WCAG 2.2 AA on critical routes | AA plus manual keyboard and screen-reader walkthrough evidence on all critical journeys |
+| Performance | Lighthouse >= 85 and LCP <= 2.5s | Lighthouse >= 95, CLS <= 0.05, route transition feedback <= 100ms |
+| Visual consistency | token usage and primitive reuse on core routes | coherent premium brand system with no ad-hoc exceptions on shipped routes |
+| Trust | clear loading, success, error, and destructive-action states | trust states plus operator-safe recovery and audited money/auth flows |
+| Conversion | funnels instrumented | funnels instrumented, benchmarked, and iterated with visible improvement targets |
+
+### Release Gates For Any UI Surface
+
+No customer-facing or operator-facing UI is release-ready until all of the following are true:
+- Journey spec exists with happy path, sad path, edge cases, and KPI target.
+- Design review references the rubric and breakpoint behavior.
+- Tokens and primitives are used where applicable; ad-hoc styles are justified.
+- axe passes with zero critical issues.
+- Keyboard-only navigation is tested on all interactive routes.
+- Lighthouse/mobile performance budget passes on target routes.
+- Critical funnel and trust events are present and validated.
+- Playwright or equivalent covers core happy path and at least one meaningful failure path.
+- Direct HTTP verification and live smoke prove the deployed surface works.
+
+### Delivery Sequence
+
+| Phase | Goal | Concrete outputs |
+|---|---|---|
+| UX Phase 0 | Baseline and scoring | route inventory, journey inventory, current Lighthouse/a11y/mobile baselines, top 10 UX risks |
+| UX Phase 1 | Shared foundation | `design-tokens`, `ui` primitives, usage guide, migration plan for SelfPrime/Admin Studio |
+| UX Phase 2 | Route hardening | SelfPrime public/auth/dashboard polish, Admin Studio control-plane ergonomics, Xico shell patterns |
+| UX Phase 3 | Measurement and regression gates | Lighthouse CI, visual regression, event verification, mobile matrix, screen-reader spot-check checklist |
+| UX Phase 4 | Marketplace polish | trust cues, premium motion, empty states, onboarding refinement, conversion optimization backlog |
+
+### Immediate Priority Order
+
+1. Establish token and primitive packages so future UI work stops hardcoding styles per app.
+2. Baseline SelfPrime, Admin Studio, and Xico critical journeys with measurable UX/performance/accessibility scores.
+3. Add CI-grade Lighthouse and visual regression gates on the routes that already have Playwright and axe coverage.
+4. Convert current route-level fixes into reusable patterns: auth gate, modal/dialog, feedback/toast, dashboard empty/loading/error states.
+5. Make launch review require UX evidence alongside typecheck, test, deploy, and smoke evidence.
+
+---
+
 ## Program Structure
 
 The work is organized into seven coordinated tracks.
@@ -181,6 +275,7 @@ This section is the single place to answer: what exists, what is done, what is u
 | Area | Canonical source | Update rule |
 |---|---|---|
 | Portfolio roadmap and open work | This dashboard | Only the coordinator agent updates roadmap status, open task state, and owner assignments |
+| World Class 360 active task queue | `docs/operations/WORLD_CLASS_360_TASK_DASHBOARD.md` | This is the current iteration board for W360 items, immediate execution order, escaped work, and full Xico/Practitioner/Admin Studio slicing |
 | Worker names, URLs, consumers, and rename safety | `docs/service-registry.yml` | Any worker rename or new hardcoded URL must update the registry in the same change |
 | Admin Studio product plan | `docs/admin-studio/00-MASTER-PLAN.md` | Admin Studio features graduate here only after scope and exit criteria are known |
 | Package dependency and standing constraints | `CLAUDE.md` | Treat as policy; do not duplicate or override elsewhere |
@@ -242,8 +337,16 @@ This section is the single place to answer: what exists, what is done, what is u
 | OWR-019 | Backfill `@adrper79-dot/llm` changelog and release evidence | Package specialist | **DONE locally** changelog documents `0.2.0`, provider failover, runtime deps, and verification — April 29, 2026 | Commit with OWR-018 and confirm publish readiness |
 | OWR-020 | Add cross-package integration CI | Platform specialist | **DONE** package chain build and cross-package smoke passed locally and in Actions — April 29, 2026 | Run 25124117458 passed for `package-integration.yml`; keep workflow required for package-sensitive PRs |
 | OWR-021 | Harden Admin Studio command-plane blockers | Admin Studio specialist | Required; auth, smoke auth, LLM-backed failure analysis, and UI tabs remain partially scaffolded | Real auth, protected smoke runner, code/AI/functions tab evidence, and audit tests pass |
-| OWR-022 | Document workflow coordination and deployment gates | DevOps specialist | **Partially done** workflow coordination doc added; shared deploy-gate implementation still required | Deploy workflows reference common health-gate pattern and dashboard records run IDs/statuses |
+| OWR-022 | Document workflow coordination and deployment gates | DevOps specialist | **MATRIX CREATED** `docs/operations/WORKFLOW_COORDINATION_MATRIX.md` documents critical workflows, deploy gates, coordination rules, and immediate workflow backlog; shared deploy-gate implementation still required | Deploy workflows reference common health-gate pattern and dashboard records run IDs/statuses |
 | OWR-023 | Real-credential live-site auth e2e tests (prime-self-ui) | SelfPrime specialist | **DONE** `SMOKE_EMAIL`/`SMOKE_PASSWORD` secrets set; all localhost testing removed; `playwright.config.mjs` targets `selfprime.net` only; URL assertions fixed for Cloudflare clean URLs + `_redirects` chain — April 29, 2026 | Run ID 25123827532 ✅ all 4 tests green (invalid login, valid login + localStorage, dashboard redirect, public nav) |
+| OWR-024 | WCAG 2.4.7 button focus indicators + form label verification | SelfPrime specialist | **DONE** Added 3px solid focus outline to all `.button` and `.icon-button` elements (outline: 3px solid rgba(126, 224, 198, 0.68); outline-offset: 2px); form labels already properly associated with inputs; deployed to production — April 29, 2026 | Run ID 25127216737 ✅ all tests green; `curl selfprime.net/assets/css/site.css | grep button:focus` confirms live |
+| OWR-024 | Execute Practitioner Video Studio revenue ready-state plan | Coordinator + revenue specialist teams | **PLAN CREATED** `docs/revenue/PRACTITIONER_VIDEO_STUDIO_READY_STATE_PLAN.md` defines the cohesive best-practice buildout from verified video foundation to paid self-serve launch | Close phases in order: checkout/webhook/entitlements/credits → self-serve first render → dashboard/operator MVP → observability/cost/failure recovery → legal/trust → launch/acquisition |
+| OWR-025 | Complete Xico City through World Class 360 | Coordinator + Xico specialist teams | **REVIEW UPDATED** `docs/revenue/XICO_CITY_TRANCHE_REVIEW.md` now supersedes MVP-only framing; transaction-ready MVP is the first proof gate, full 12-slice World Class 360 is the target | Stabilize CI/deps/routes/schema → deploy health/ready → auth/profile → host onboarding/catalog → discovery/booking checkout → reviews/subscriptions/payouts/curator tooling → compliance/PWA polish |
+| OWR-026 | Operate from World Class 360 task dashboard | Coordinator + all specialist teams | **DASHBOARD CREATED** `docs/operations/WORLD_CLASS_360_TASK_DASHBOARD.md` loads W360-001 through W360-030, Xico full-build slices, Practitioner Video Studio slices, Admin Studio slices, docs hygiene, escaped items, and immediate execution order | Keep dashboard current as work closes; next close Xico repo stabilization and Practitioner Studio entitlement bridge |
+| OWR-027 | Classify stale and canonical documents | Coordinator + docs specialist | **INDEX CREATED** `docs/DOCUMENT_STATUS_INDEX.md` classifies canonical, active reference, historical, and archive-candidate docs for the World Class 360 iteration | Add historical banners or archive folders after coordinator review |
+| OWR-028 | Break World Class 360 work into disciplines | Coordinator + discipline leads | **DISCIPLINE MODEL CREATED** `docs/operations/WORLD_CLASS_360_DISCIPLINE_BREAKDOWN.md` defines D01-D14 and maps W360 items, apps, templates, standards, and evidence by discipline | Assign each W360 item a lead discipline, reviewer discipline, risk tier, and evidence requirement |
+| OWR-029 | Expand W360 scope for all apps, templates, standards, and configs | Coordinator + platform/docs specialists | **SCOPE REVIEW CREATED** `docs/operations/WORLD_CLASS_360_SCOPE_GAP_REVIEW.md`; W360-031 through W360-038 added to the active dashboard | Close portfolio app registry, template pack, standards catalog, config normalization, app graduation gates, support runbooks, and brand/design system |
+| OWR-030 | Build the world-class UI/UX operating plan and execution queue | Coordinator + UX/frontend/platform leads | **PLAN CREATED** in this dashboard under `World-Class UI/UX Operating Plan`; holistic system now defines outcomes, architecture layers, workstreams, release gates, and delivery sequence | Staff W360-039 through W360-045 and attach measurable UX evidence to each surface before calling it world-class |
 
 ### Confirmed Done / Undone / Unrealized
 
