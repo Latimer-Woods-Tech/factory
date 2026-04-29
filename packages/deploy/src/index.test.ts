@@ -107,10 +107,10 @@ describe('validateSecrets', () => {
 
 describe('checkHealth', () => {
   it('returns ok=true for 200 response', async () => {
-    const mockFetch = vi.fn<FetchFn>().mockResolvedValue(
+    const mockFetch = vi.fn().mockResolvedValue(
       new Response(null, { status: 200 }),
     );
-    const result = await checkHealth('https://my-worker.adrper79.workers.dev', { fetch: mockFetch });
+    const result = await checkHealth('https://my-worker.adrper79.workers.dev', { fetch: mockFetch as unknown as FetchFn });
     expect(result.ok).toBe(true);
     expect(result.status).toBe(200);
     expect(result.url).toBe('https://my-worker.adrper79.workers.dev/health');
@@ -118,29 +118,29 @@ describe('checkHealth', () => {
   });
 
   it('strips trailing slash before appending /health', async () => {
-    const mockFetch = vi.fn<FetchFn>().mockResolvedValue(new Response(null, { status: 200 }));
-    await checkHealth('https://worker.example.com/', { fetch: mockFetch });
+    const mockFetch = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    await checkHealth('https://worker.example.com/', { fetch: mockFetch as unknown as FetchFn });
     expect(mockFetch).toHaveBeenCalledWith('https://worker.example.com/health');
   });
 
   it('returns ok=false for 500 response', async () => {
-    const mockFetch = vi.fn<FetchFn>().mockResolvedValue(new Response(null, { status: 500 }));
-    const result = await checkHealth('https://worker.example.com', { fetch: mockFetch });
+    const mockFetch = vi.fn().mockResolvedValue(new Response(null, { status: 500 }));
+    const result = await checkHealth('https://worker.example.com', { fetch: mockFetch as unknown as FetchFn });
     expect(result.ok).toBe(false);
     expect(result.status).toBe(500);
   });
 
   it('handles network errors gracefully', async () => {
-    const mockFetch = vi.fn<FetchFn>().mockRejectedValue(new Error('ECONNREFUSED'));
-    const result = await checkHealth('https://worker.example.com', { fetch: mockFetch });
+    const mockFetch = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
+    const result = await checkHealth('https://worker.example.com', { fetch: mockFetch as unknown as FetchFn });
     expect(result.ok).toBe(false);
     expect(result.status).toBe(0);
     expect(result.error).toBe('ECONNREFUSED');
   });
 
   it('handles non-Error rejections', async () => {
-    const mockFetch = vi.fn<FetchFn>().mockRejectedValue('string error');
-    const result = await checkHealth('https://worker.example.com', { fetch: mockFetch });
+    const mockFetch = vi.fn().mockRejectedValue('string error');
+    const result = await checkHealth('https://worker.example.com', { fetch: mockFetch as unknown as FetchFn });
     expect(result.error).toBe('string error');
   });
 });
@@ -151,24 +151,24 @@ describe('checkHealth', () => {
 
 describe('waitForHealth', () => {
   it('returns immediately on first success', async () => {
-    const mockFetch = vi.fn<FetchFn>().mockResolvedValue(new Response(null, { status: 200 }));
-    const result = await waitForHealth('https://worker.example.com', 3, 0, { fetch: mockFetch });
+    const mockFetch = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    const result = await waitForHealth('https://worker.example.com', 3, 0, { fetch: mockFetch as unknown as FetchFn });
     expect(result.ok).toBe(true);
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
   it('retries on failure and succeeds on second attempt', async () => {
-    const mockFetch = vi.fn<FetchFn>()
+    const mockFetch = vi.fn()
       .mockResolvedValueOnce(new Response(null, { status: 503 }))
       .mockResolvedValue(new Response(null, { status: 200 }));
-    const result = await waitForHealth('https://worker.example.com', 3, 0, { fetch: mockFetch });
+    const result = await waitForHealth('https://worker.example.com', 3, 0, { fetch: mockFetch as unknown as FetchFn });
     expect(result.ok).toBe(true);
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
   it('returns final failure after all retries exhausted', async () => {
-    const mockFetch = vi.fn<FetchFn>().mockResolvedValue(new Response(null, { status: 503 }));
-    const result = await waitForHealth('https://worker.example.com', 3, 0, { fetch: mockFetch });
+    const mockFetch = vi.fn().mockResolvedValue(new Response(null, { status: 503 }));
+    const result = await waitForHealth('https://worker.example.com', 3, 0, { fetch: mockFetch as unknown as FetchFn });
     expect(result.ok).toBe(false);
     // 3 attempts in loop + 1 final check = 4 total
     expect(mockFetch).toHaveBeenCalledTimes(4);
