@@ -49,7 +49,17 @@ POSTHOG_KEY=phc_...
 
 > For app-specific bindings (Hyperdrive, KV, R2), add them to `wrangler.jsonc` under `[dev]` bindings or use remote dev mode (`wrangler dev --remote`).
 
-## 5. Start the local dev server
+## 5. Verify local environment configuration
+
+Before starting the Worker, run the app's environment verification if it exists. This catches missing bindings, wrong secret names, and environment mixups before `wrangler dev` starts.
+
+```bash
+node scripts/phase-6-setup.js --verify-local
+```
+
+If the app uses a different verifier, follow its README and [Environment Verification Setup](../ENVIRONMENT_VERIFICATION_SETUP.md).
+
+## 6. Start the local dev server
 
 ```bash
 npm run dev
@@ -59,14 +69,14 @@ wrangler dev
 
 The Worker is available at `http://localhost:8787`.
 
-## 6. Verify the health endpoint
+## 7. Verify the health endpoint
 
 ```bash
 curl http://localhost:8787/health
 # {"status":"ok","service":"{app}","version":"x.y.z"}
 ```
 
-## 7. Running tests
+## 8. Running tests
 
 ```bash
 npm test
@@ -74,7 +84,7 @@ npm test
 npm run test:coverage
 ```
 
-## 8. TypeScript typecheck
+## 9. TypeScript typecheck
 
 ```bash
 npm run typecheck
@@ -89,3 +99,4 @@ npm run typecheck
 | Wrangler `InvalidSymbol` in wrangler.jsonc | Ensure all JSON keys are quoted |
 | `process.env` not available | Use `c.env.VAR` / `env.VAR` (Cloudflare bindings only) |
 | `Buffer is not defined` | Replace with `TextEncoder` / `Uint8Array` |
+| Environment mismatch or missing binding | Run the local verifier and compare with [Environment Verification Setup](../ENVIRONMENT_VERIFICATION_SETUP.md) |

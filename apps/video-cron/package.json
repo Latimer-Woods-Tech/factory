@@ -6,11 +6,12 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src --max-warnings 0"
+    "lint": "eslint src --max-warnings 0",
+    "test": "vitest run --coverage"
   },
   "dependencies": {
     "@adrper79-dot/errors": "0.2.0",
-    "@adrper79-dot/schedule": "0.2.0",
+    "@adrper79-dot/schedule": "0.2.1",
     "@adrper79-dot/video": "0.2.0",
     "hono": "^4.12.14"
   },
@@ -19,8 +20,10 @@
     "@types/node": "^25.6.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
+    "@vitest/coverage-v8": "^1.6.0",
     "eslint": "^8.57.0",
     "typescript": "^5.4.0",
+    "vitest": "^1.6.0",
     "wrangler": "^3.0.0"
   }
 }

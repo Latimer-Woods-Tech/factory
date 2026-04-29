@@ -1,51 +1,88 @@
 import { Hono } from 'hono';
-import { toErrorResponse, NotFoundError, ValidationError, AuthError } from '@adrper79-dot/errors';
+import { createDb } from '@adrper79-dot/neon';
+import { toErrorResponse, ValidationError, AuthError } from '@adrper79-dot/errors';
 import {
   getPendingJobs,
   getVideoJob,
   scheduleVideo,
   updateJobStatus,
-  VIDEO_CALENDAR_DDL,
+  VIDEO_CALENDAR_MIGRATION_STATEMENTS,
 } from '@adrper79-dot/schedule';
 import type { TriggerSource, RenderJobStatus } from '@adrper79-dot/schedule';
 import type { Env } from './env.js';
 
-interface DbLike {
-  connectionString: string;
-  execute: (q: unknown) => Promise<{ rows: Record<string, unknown>[] }>;
-}
+type RenderType = 'marketing' | 'training' | 'walkthrough';
 
-/** Minimal FactoryDb adapter over a Hyperdrive binding. */
-function makeDb(env: Env): DbLike {
-  return {
-    connectionString: env.DB.connectionString,
-    execute: async (q: unknown) => {
-      const res = await fetch(env.DB.connectionString, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(q),
-      });
-      if (!res.ok) {
-        throw new Error(`DB execute failed: ${res.status}`);
-      }
-      return res.json() as Promise<{ rows: Record<string, unknown>[] }>;
-    },
-  };
+interface ServiceAuth {
+  /** `null` means the internal Factory token may operate across apps. */
+  appId: string | null;
 }
 
 const app = new Hono<{ Bindings: Env }>();
 
 // ---------------------------------------------------------------------------
-// Auth middleware: checks WORKER_API_TOKEN for mutating routes
+// Auth helpers: supports one internal token plus optional app-scoped tokens
 // ---------------------------------------------------------------------------
 
-function requireApiToken(token: string, authHeader: string | undefined): void {
+function parseScopedTokens(raw: string | undefined): Record<string, string> {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter((entry): entry is [string, string] => (
+        typeof entry[0] === 'string' && typeof entry[1] === 'string' && entry[0].length > 0 && entry[1].length > 0
+      )),
+    );
+  } catch {
+    throw new AuthError('APP_SERVICE_TOKENS must be a JSON object when configured');
+  }
+}
+
+function requireApiToken(env: Env, authHeader: string | undefined): ServiceAuth {
   if (!authHeader?.startsWith('Bearer ')) {
     throw new AuthError('Bearer token required');
   }
-  if (authHeader.slice(7) !== token) {
+  const bearer = authHeader.slice(7);
+  if (bearer === env.WORKER_API_TOKEN) {
+    return { appId: null };
+  }
+
+  const appId = parseScopedTokens(env.APP_SERVICE_TOKENS)[bearer];
+  if (!appId) {
     throw new AuthError('Invalid API token');
   }
+  return { appId };
+}
+
+function enforceAppScope(auth: ServiceAuth, requestedAppId: string): string {
+  const appId = requestedAppId.trim();
+  if (!appId) throw new ValidationError('appId is required');
+  if (auth.appId && auth.appId !== appId) {
+    throw new AuthError('API token is not scoped for this app');
+  }
+  return appId;
+}
+
+function requireString(value: unknown, field: string): string {
+  if (typeof value !== 'string' || !value.trim()) throw new ValidationError(`${field} is required`);
+  return value.trim();
+}
+
+function parseRenderType(value: unknown): RenderType {
+  const type = requireString(value, 'type');
+  if (type !== 'marketing' && type !== 'training' && type !== 'walkthrough') {
+    throw new ValidationError('type must be one of: marketing, training, walkthrough');
+  }
+  return type;
+}
+
+function parseTriggerSource(value: unknown): TriggerSource {
+  const triggerSource = requireString(value, 'triggerSource');
+  if (triggerSource !== 'cron' && triggerSource !== 'git_tag' && triggerSource !== 'feedback_threshold' && triggerSource !== 'manual') {
+    throw new ValidationError('triggerSource must be one of: cron, git_tag, feedback_threshold, manual');
+  }
+  return triggerSource;
 }
 
 // ---------------------------------------------------------------------------
@@ -59,16 +96,18 @@ app.get('/health', (c) => c.json({ status: 'ok', worker: 'schedule-worker', ts: 
 // ---------------------------------------------------------------------------
 
 app.get('/jobs/pending', async (c) => {
-  requireApiToken(c.env.WORKER_API_TOKEN, c.req.header('authorization'));
+  const auth = requireApiToken(c.env, c.req.header('authorization'));
   const limitParam = c.req.query('limit');
   const limit = limitParam ? Number(limitParam) : 10;
+  const requestedAppId = c.req.query('appId') ?? auth.appId ?? undefined;
 
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
     throw new ValidationError('limit must be an integer between 1 and 100');
   }
+  const appId = requestedAppId ? enforceAppScope(auth, requestedAppId) : undefined;
 
-  const db = makeDb(c.env) as unknown as Parameters<typeof getPendingJobs>[0];
-  const jobs = await getPendingJobs(db, limit);
+  const db = createDb(c.env.DB);
+  const jobs = await getPendingJobs(db, limit, appId);
   return c.json({ data: jobs });
 });
 
@@ -77,10 +116,10 @@ app.get('/jobs/pending', async (c) => {
 // ---------------------------------------------------------------------------
 
 app.get('/jobs/:id', async (c) => {
-  requireApiToken(c.env.WORKER_API_TOKEN, c.req.header('authorization'));
+  const auth = requireApiToken(c.env, c.req.header('authorization'));
   const { id } = c.req.param();
-  const db = makeDb(c.env) as unknown as Parameters<typeof getVideoJob>[0];
-  const job = await getVideoJob(db, id);
+  const db = createDb(c.env.DB);
+  const job = await getVideoJob(db, id, auth.appId ?? undefined);
   return c.json({ data: job });
 });
 
@@ -89,7 +128,7 @@ app.get('/jobs/:id', async (c) => {
 // ---------------------------------------------------------------------------
 
 app.post('/jobs', async (c) => {
-  requireApiToken(c.env.WORKER_API_TOKEN, c.req.header('authorization'));
+  const auth = requireApiToken(c.env, c.req.header('authorization'));
 
   type Body = {
     appId?: unknown;
@@ -98,27 +137,30 @@ app.post('/jobs', async (c) => {
     triggerSource?: unknown;
     scheduledAt?: unknown;
     performanceScore?: unknown;
+    idempotencyKey?: unknown;
   };
 
   const body = await c.req.json<Body>();
-  const { appId, type, topic, triggerSource, scheduledAt, performanceScore } = body;
+  const { appId, type, topic, triggerSource, scheduledAt, performanceScore, idempotencyKey } = body;
 
-  if (typeof appId !== 'string' || !appId) throw new ValidationError('appId is required');
-  if (typeof type !== 'string' || !type) throw new ValidationError('type is required');
-  if (typeof topic !== 'string' || !topic) throw new ValidationError('topic is required');
-  if (typeof triggerSource !== 'string') throw new ValidationError('triggerSource is required');
+  const scopedAppId = enforceAppScope(auth, requireString(appId, 'appId'));
+  const renderType = parseRenderType(type);
+  const videoTopic = requireString(topic, 'topic');
+  const source = parseTriggerSource(triggerSource);
+  const retryKey = idempotencyKey === undefined ? undefined : requireString(idempotencyKey, 'idempotencyKey');
 
-  const db = makeDb(c.env) as unknown as Parameters<typeof scheduleVideo>[0];
-  const id = await scheduleVideo(db, {
-    appId,
-    type: type as 'marketing' | 'training' | 'walkthrough',
-    topic,
-    triggerSource: triggerSource as TriggerSource,
+  const db = createDb(c.env.DB);
+  const job = await scheduleVideo(db, {
+    appId: scopedAppId,
+    type: renderType,
+    topic: videoTopic,
+    triggerSource: source,
     scheduledAt: scheduledAt ? new Date(scheduledAt as string) : new Date(),
     performanceScore: typeof performanceScore === 'number' ? performanceScore : 50,
+    idempotencyKey: retryKey,
   });
 
-  return c.json({ data: { id } }, 201);
+  return c.json({ data: job }, 201);
 });
 
 // ---------------------------------------------------------------------------
@@ -126,7 +168,7 @@ app.post('/jobs', async (c) => {
 // ---------------------------------------------------------------------------
 
 app.patch('/jobs/:id', async (c) => {
-  requireApiToken(c.env.WORKER_API_TOKEN, c.req.header('authorization'));
+  const auth = requireApiToken(c.env, c.req.header('authorization'));
 
   type Body = {
     status?: unknown;
@@ -145,15 +187,15 @@ app.patch('/jobs/:id', async (c) => {
     throw new ValidationError(`status must be one of: ${validStatuses.join(', ')}`);
   }
 
-  const db = makeDb(c.env) as unknown as Parameters<typeof updateJobStatus>[0];
-  await updateJobStatus(db, id, status as RenderJobStatus, {
+  const db = createDb(c.env.DB);
+  const job = await updateJobStatus(db, id, status as RenderJobStatus, {
     streamUid: typeof streamUid === 'string' ? streamUid : undefined,
     videoUrl: typeof videoUrl === 'string' ? videoUrl : undefined,
     narrationUrl: typeof narrationUrl === 'string' ? narrationUrl : undefined,
     script: typeof script === 'string' ? script : undefined,
-  });
+  }, auth.appId ?? undefined);
 
-  return c.json({ data: { id, status } });
+  return c.json({ data: job });
 });
 
 // ---------------------------------------------------------------------------
@@ -161,10 +203,15 @@ app.patch('/jobs/:id', async (c) => {
 // ---------------------------------------------------------------------------
 
 app.post('/migrate', async (c) => {
-  requireApiToken(c.env.WORKER_API_TOKEN, c.req.header('authorization'));
-  const db = makeDb(c.env) as unknown as Parameters<typeof updateJobStatus>[0];
-  await (db as unknown as { execute: (q: unknown) => Promise<unknown> }).execute(VIDEO_CALENDAR_DDL);
-  return c.json({ data: { migrated: true } });
+  const auth = requireApiToken(c.env, c.req.header('authorization'));
+  if (auth.appId) {
+    throw new AuthError('Only the internal Factory token can run migrations');
+  }
+  const db = createDb(c.env.DB);
+  for (const statement of VIDEO_CALENDAR_MIGRATION_STATEMENTS) {
+    await db.execute(statement);
+  }
+  return c.json({ data: { migrated: true, statements: VIDEO_CALENDAR_MIGRATION_STATEMENTS.length } });
 });
 
 // ---------------------------------------------------------------------------

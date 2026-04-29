@@ -4,6 +4,21 @@ import type { Env } from './env.js';
 
 const MAX_CONCURRENT_JOBS = 3;
 const PENDING_LIMIT = 10;
+const FETCH_TIMEOUT_MS = 30_000;
+
+async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function readErrorBody(res: Response): Promise<string> {
+  return res.text().catch(() => '');
+}
 
 // ---------------------------------------------------------------------------
 // Schedule-worker API helpers
@@ -13,13 +28,17 @@ const PENDING_LIMIT = 10;
  * Fetches pending render jobs from the schedule-worker.
  */
 async function fetchPendingJobs(env: Env): Promise<RenderJob[]> {
-  const url = `${env.SCHEDULE_WORKER_URL}/jobs/pending?limit=${PENDING_LIMIT}`;
-  const res = await fetch(url, {
+  const search = new URLSearchParams({ limit: String(PENDING_LIMIT), appId: env.APP_ID });
+  const url = `${env.SCHEDULE_WORKER_URL}/jobs/pending?${search.toString()}`;
+  const res = await fetchWithTimeout(url, {
     headers: { Authorization: `Bearer ${env.WORKER_API_TOKEN}` },
   });
 
   if (!res.ok) {
-    throw new InternalError(`Failed to fetch pending jobs: ${res.status}`);
+    throw new InternalError(`Failed to fetch pending jobs: ${res.status}`, {
+      status: res.status,
+      body: await readErrorBody(res),
+    });
   }
 
   const body = await res.json() as { data: RenderJob[] };
@@ -31,7 +50,7 @@ async function fetchPendingJobs(env: Env): Promise<RenderJob[]> {
  * This prevents double-dispatch if the cron fires again before the workflow completes.
  */
 async function markRendering(env: Env, jobId: string): Promise<void> {
-  const res = await fetch(`${env.SCHEDULE_WORKER_URL}/jobs/${jobId}`, {
+  const res = await fetchWithTimeout(`${env.SCHEDULE_WORKER_URL}/jobs/${jobId}`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${env.WORKER_API_TOKEN}`,
@@ -41,7 +60,11 @@ async function markRendering(env: Env, jobId: string): Promise<void> {
   });
 
   if (!res.ok) {
-    throw new InternalError(`Failed to mark job ${jobId} as rendering: ${res.status}`);
+    throw new InternalError(`Failed to mark job ${jobId} as rendering: ${res.status}`, {
+      jobId,
+      status: res.status,
+      body: await readErrorBody(res),
+    });
   }
 }
 
@@ -49,7 +72,7 @@ async function markRendering(env: Env, jobId: string): Promise<void> {
  * Marks a job as `failed` in the schedule-worker (used when dispatch itself errors).
  */
 async function markFailed(env: Env, jobId: string, reason: string): Promise<void> {
-  await fetch(`${env.SCHEDULE_WORKER_URL}/jobs/${jobId}`, {
+  const res = await fetchWithTimeout(`${env.SCHEDULE_WORKER_URL}/jobs/${jobId}`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${env.WORKER_API_TOKEN}`,
@@ -57,6 +80,13 @@ async function markFailed(env: Env, jobId: string, reason: string): Promise<void
     },
     body: JSON.stringify({ status: 'failed', script: `dispatch error: ${reason}` }),
   });
+  if (!res.ok) {
+    throw new InternalError(`Failed to mark job ${jobId} as failed: ${res.status}`, {
+      jobId,
+      status: res.status,
+      body: await readErrorBody(res),
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -69,7 +99,7 @@ async function markFailed(env: Env, jobId: string, reason: string): Promise<void
 async function dispatchRenderWorkflow(env: Env, job: RenderJob): Promise<void> {
   const url = `https://api.github.com/repos/${env.GITHUB_REPO}/actions/workflows/render-video.yml/dispatches`;
 
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${env.GITHUB_TOKEN}`,
@@ -82,7 +112,7 @@ async function dispatchRenderWorkflow(env: Env, job: RenderJob): Promise<void> {
       inputs: {
         job_id: job.id,
         composition_id: job.type === 'marketing'
-          ? 'MarketingVideo'
+          ? env.DEFAULT_COMPOSITION_ID
           : job.type === 'training'
             ? 'TrainingVideo'
             : 'WalkthroughVideo',
@@ -123,7 +153,16 @@ async function processPendingJobs(env: Env): Promise<{ dispatched: number; faile
     } catch (err) {
       failed++;
       const reason = err instanceof Error ? err.message : String(err);
-      await markFailed(env, job.id, reason).catch(() => undefined);
+      try {
+        await markFailed(env, job.id, reason);
+      } catch (markErr) {
+        console.error(JSON.stringify({
+          level: 'error',
+          msg: 'Failed to mark render job failed',
+          jobId: job.id,
+          error: markErr instanceof Error ? markErr.message : String(markErr),
+        }));
+      }
       console.error(JSON.stringify({
         level: 'error',
         msg: 'Failed to dispatch render job',

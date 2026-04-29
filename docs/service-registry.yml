@@ -42,6 +42,85 @@ workers:
         line: ~537
         pattern: "fetch('https://prime-self.adrper79.workers.dev/auth/login'"
 
+  - id: schedule-worker
+    name: schedule-worker                                  # matches apps/schedule-worker/wrangler.jsonc `name`
+    repo: adrper79-dot/factory
+    url: https://schedule-worker.adrper79.workers.dev      # canonical workers.dev URL
+    custom_domain: null
+    health_endpoint: /health
+    deployment_status: pending_live_health_verification
+    critical_endpoints:
+      - /jobs
+      - /jobs/pending
+      - /api/admin/health
+      - /api/admin/metrics
+    required_bindings:
+      - DB
+    required_secrets:
+      - WORKER_API_TOKEN
+      - APP_SERVICE_TOKENS
+    required_vars:
+      - ENVIRONMENT
+    consumers:
+      - repo: adrper79-dot/factory
+        file: apps/admin-studio/src/lib/app-registry.ts
+        line: ~42
+        pattern: "productionWorkerName: 'schedule-worker'"
+      - repo: adrper79-dot/factory
+        file: apps/video-cron/src/env.ts
+        line: ~27
+        pattern: "SCHEDULE_WORKER_URL"
+      - repo: adrper79-dot/factory
+        file: docs/SELFPRIME_VIDEOKING_SYNERGY_DEVELOPMENT_PLAN.md
+        line: ~141
+        pattern: "Factory schedule-worker"
+
+  - id: video-cron
+    name: video-cron                                       # matches apps/video-cron/wrangler.jsonc `name`
+    repo: adrper79-dot/factory
+    url: https://video-cron.adrper79.workers.dev           # canonical workers.dev URL
+    custom_domain: null
+    health_endpoint: /health
+    deployment_status: pending_live_health_verification
+    critical_endpoints:
+      - /health
+      - /trigger
+    required_bindings:
+      - DB
+    required_secrets:
+      - WORKER_API_TOKEN
+      - GITHUB_TOKEN
+    required_vars:
+      - APP_ID
+      - GITHUB_REPO
+      - SCHEDULE_WORKER_URL
+      - DEFAULT_COMPOSITION_ID
+      - ENVIRONMENT
+    consumers:
+      - repo: adrper79-dot/factory
+        file: apps/admin-studio/src/lib/app-registry.ts
+        line: ~48
+        pattern: "productionWorkerName: 'video-cron'"
+      - repo: adrper79-dot/factory
+        file: docs/SELFPRIME_VIDEOKING_SYNERGY_DEVELOPMENT_PLAN.md
+        line: ~143
+        pattern: "D[video-cron]"
+
+  - id: videoking
+    name: videoking                                        # NOT a deployed worker — architecture reference only
+    repo: adrper79-dot/factory
+    url: null                                              # No workers.dev URL — never deployed
+    custom_domain: null
+    health_endpoint: null
+    deployment_status: not_deployed                        # VideoKing is a docs/patterns source, not a live worker
+    notes: >
+      VideoKing is the Factory video monetization architecture reference.
+      Its patterns (Hyperdrive, Remotion, Stream, R2) are reused by schedule-worker
+      and video-cron. There is no `videoking.adrper79.workers.dev` endpoint.
+      Do NOT attempt to curl this URL — it returns 404 by design.
+      Hyperdrive ID for VideoKing DB: 72697ebbf0d44419850743679390acf1 (videoking-hyperdrive).
+    consumers: []
+
 pages:
   - id: prime-self-ui
     repo: adrper79-dot/prime-self-ui

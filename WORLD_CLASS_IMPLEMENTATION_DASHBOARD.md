@@ -161,9 +161,26 @@ Exit criteria:
 - Factory support improvements are reusable by additional apps.
 - Dashboard metrics support portfolio-level decision-making.
 
+### Phase E — SelfPrime × VideoKing Synergy Foundation
+**Goal:** turn the SelfPrime × VideoKing synergy plan into a safe execution track without coupling either product runtime.
+
+Exit criteria:
+- Shared Factory video Workers are present in the service registry.
+- `schedule-worker` and `video-cron` live `/health` checks return `200` via direct HTTP verification.
+- SelfPrime product video work starts only after shared video scheduling, cron dispatch, secrets, and telemetry are reconciled.
+- VideoKing remains a pattern source until its documented production URL and health endpoints are reconciled.
+
 ---
 
 ## Implementation Dashboard
+
+### Phase E Addendum — SelfPrime × VideoKing Synergy
+
+| ID | Initiative | Why It Matters | Factory Support Contribution | App Contribution | Exit Criteria | Status |
+|---|---|---|---|---|---|---|
+| E0.1 | Reconcile shared video Worker registry | Prevents hidden dependencies and broken rename/deploy flows | Add `schedule-worker` and `video-cron` to the service registry with owners, consumers, endpoints, and secrets | Confirm SelfPrime and admin consumers use registry-approved URLs | Registry entries exist and remain current | ✅ Complete |
+| E0.2 | Verify shared video Worker health | Product rollout must not depend on undeployed or unreachable services | Deploy Workers after Hyperdrive IDs and secrets are configured | Block SelfPrime video UX until shared services return live `200` health checks | Both `/health` URLs return `200` via direct HTTP verification | 🚫 Blocked: credentials + deploy |
+| E0.3 | Harden schedule pipeline for app tenancy | Private SelfPrime data must not leak into shared services | Add app-scoped auth, sanitized context refs, structured logs, and events | SelfPrime sends minimal generation briefs and owns private chart data | Synthetic job completes or fails with audit trail; no raw private chart payload in shared queue | 🔄 In Progress |
 
 ### T1 — Product + UX Operating System
 

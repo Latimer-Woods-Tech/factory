@@ -15,6 +15,11 @@ export interface Env {
    * Set via: `wrangler secret put WORKER_API_TOKEN`
    */
   WORKER_API_TOKEN: string;
+  /**
+   * Optional JSON object mapping app-scoped bearer tokens to app IDs.
+   * Example: {"token-value":"selfprime"}. Set with `wrangler secret put APP_SERVICE_TOKENS`.
+   */
+  APP_SERVICE_TOKENS?: string;
   /** Worker environment label (development | staging | production). */
   ENVIRONMENT: string;
 }

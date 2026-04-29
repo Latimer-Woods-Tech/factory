@@ -2,22 +2,34 @@
   "name": "video-cron",
   "main": "src/index.ts",
   "compatibility_date": "2024-09-23",
-  "compatibility_flags": ["nodejs_compat"],
   "hyperdrive": [
     {
       "binding": "DB",
-      "id": "REPLACE_WITH_HYPERDRIVE_ID"
+      "id": "78e47571fffb4a81ba12ee454507e006"
     }
   ],
   "triggers": {
     "crons": ["0 * * * *"]
   },
-  "vars": {},
+  "vars": {
+    "APP_ID": "selfprime",
+    "DEFAULT_COMPOSITION_ID": "MarketingVideo",
+    "ENVIRONMENT": "development",
+    "GITHUB_REPO": "adrper79-dot/Factory",
+    "SCHEDULE_WORKER_URL": "https://schedule-worker.adrper79.workers.dev"
+  },
   "env": {
     "production": {
       "name": "video-cron",
       "triggers": {
         "crons": ["0 * * * *"]
+      },
+      "vars": {
+        "APP_ID": "selfprime",
+        "DEFAULT_COMPOSITION_ID": "MarketingVideo",
+        "ENVIRONMENT": "production",
+        "GITHUB_REPO": "adrper79-dot/Factory",
+        "SCHEDULE_WORKER_URL": "https://schedule-worker.adrper79.workers.dev"
       }
     }
   }

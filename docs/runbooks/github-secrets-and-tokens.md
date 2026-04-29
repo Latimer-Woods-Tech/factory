@@ -62,6 +62,27 @@ env:
 | `POSTHOG_KEY` | Analytics data ingestion | Wrangler secret | Never (built into key) | PostHog |
 | `JWT_SECRET` | Auth token signing | **Wrangler secret** only (not GitHub Secrets) | Every 3–6 months | Generate locally |
 
+### Required for Factory Video Rendering Pipeline
+
+These secrets are required before `apps/schedule-worker`, `apps/video-cron`, and the `render-video.yml` workflow can complete a synthetic job flow.
+
+| Secret | Purpose | Set In | Rotation | Provider |
+|--------|---------|--------|----------|----------|
+| `ANTHROPIC_API_KEY` | LLM script generation | GitHub Actions secret | Quarterly or after provider rotation | Anthropic |
+| `ELEVENLABS_API_KEY` | Narration audio generation | GitHub Actions secret | Quarterly | ElevenLabs |
+| `ELEVENLABS_VOICE_PRIME_SELF` | SelfPrime narration voice ID | GitHub Actions secret or repo variable if non-sensitive | When voice changes | ElevenLabs |
+| `ELEVENLABS_VOICE_CYPHER` | Cypher narration voice ID | GitHub Actions secret or repo variable if non-sensitive | When voice changes | ElevenLabs |
+| `ELEVENLABS_VOICE_DEFAULT` | Default fallback narration voice ID | GitHub Actions secret or repo variable if non-sensitive | When voice changes | ElevenLabs |
+| `CF_STREAM_TOKEN` | Cloudflare Stream register/read operations | GitHub Actions secret | Quarterly | Cloudflare |
+| `CF_ACCOUNT_ID` | Cloudflare account ID for Stream/R2 | GitHub Actions secret | Never unless account changes | Cloudflare |
+| `R2_ACCESS_KEY_ID` | R2 S3-compatible upload access | GitHub Actions secret | Quarterly | Cloudflare R2 |
+| `R2_SECRET_ACCESS_KEY` | R2 S3-compatible upload secret | GitHub Actions secret | Quarterly | Cloudflare R2 |
+| `R2_BUCKET_NAME` | R2 media artifact bucket | GitHub Actions secret or repo variable | When bucket changes | Cloudflare R2 |
+| `R2_PUBLIC_DOMAIN` | Public R2 asset domain | GitHub Actions secret or repo variable | When domain changes | Cloudflare R2 |
+| `SCHEDULE_WORKER_URL` | Schedule Worker callback URL | GitHub Actions secret or repo variable | When Worker URL changes | Factory |
+| `WORKER_API_TOKEN` | Bearer token for schedule-worker callbacks | Wrangler secret + GitHub Actions secret | Quarterly | Generate locally |
+| `APP_SERVICE_TOKENS` | JSON token-to-app map for app-scoped schedule-worker access | Wrangler secret | Quarterly | Generate locally |
+
 ## How to Set GitHub Secrets
 
 ### For Factory Core (monorepo)
@@ -173,6 +194,13 @@ openssl rand -base64 32 | wrangler secret put JWT_SECRET --env production --name
 2. Copy exact URL
 3. Update GitHub Secrets: `SENTRY_DSN`
 4. Redeploy
+
+### Error: "render-video workflow secret not found"
+**Cause**: One of the video rendering pipeline secrets is missing from GitHub Actions.
+**Fix**:
+1. Compare the repository secrets against the "Required for Factory Video Rendering Pipeline" table above.
+2. Add the missing secret in **Settings → Secrets and variables → Actions**.
+3. Re-run the failed workflow and verify the schedule-worker callback succeeds.
 
 ## Audit Checklist
 

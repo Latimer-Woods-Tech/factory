@@ -37,6 +37,7 @@ This is the single entry point for all Factory implementation docs. It replaces 
 
 ### User Journeys & Flows
 - **[User Journeys & Telemetry](packages/journeys.mdx)** — Critical paths (signup, payment, creator onboarding, etc.) with instrumentation and KPIs
+- **[SelfPrime × VideoKing Synergy Development Plan](SELFPRIME_VIDEOKING_SYNERGY_DEVELOPMENT_PLAN.md)** — Complete architecture, environment ownership, phased delivery, and governance plan for applying VideoKing patterns to SelfPrime through Factory shared infrastructure
 
 ---
 
