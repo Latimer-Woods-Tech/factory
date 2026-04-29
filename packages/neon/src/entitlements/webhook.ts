@@ -26,7 +26,7 @@ import type { FactoryDb } from '../index.js';
 // Raw SQL row shapes (used for db.execute results)
 // ============================================================================
 
-interface PlanRow {
+interface PlanRow extends Record<string, unknown> {
   id: string;
   included_credits: string | number;
   monthly_render_quota: number | null;
@@ -35,29 +35,29 @@ interface PlanRow {
   public_publish_allowed: boolean;
 }
 
-interface CustomerIdRow {
+interface CustomerIdRow extends Record<string, unknown> {
   id: string;
 }
 
-interface CustomerStatusRow {
+interface CustomerStatusRow extends Record<string, unknown> {
   suspension_status: string;
 }
 
-interface SubscriptionCustomerRow {
+interface SubscriptionCustomerRow extends Record<string, unknown> {
   customer_id: string;
 }
 
-interface SubscriptionPlanRow {
+interface SubscriptionPlanRow extends Record<string, unknown> {
   id: string;
 }
 
-interface SubscriptionDetailRow {
+interface SubscriptionDetailRow extends Record<string, unknown> {
   id: string;
   customer_id: string;
   plan_id: string;
 }
 
-interface PlanIdRow {
+interface PlanIdRow extends Record<string, unknown> {
   plan_id: string;
 }
 
@@ -261,7 +261,7 @@ export async function handleSubscriptionCreated(db: FactoryDb, event: StripeEven
     throw new Error(`[webhook] subscription.created: unknown Stripe price ${stripePriceId}`);
   }
 
-  const plan = planResult.rows[0];
+  const plan = planResult.rows[0]!;
   const planId = plan.id;
 
   // Check if customer exists; if not, create
@@ -271,7 +271,7 @@ export async function handleSubscriptionCreated(db: FactoryDb, event: StripeEven
 
   let customerId: string;
   if (customerResult.rows.length) {
-    customerId = customerResult.rows[0].id;
+    customerId = customerResult.rows[0]!.id;
   } else {
     // Create customer (app_id will be set by Stripe metadata or default)
     customerId = crypto.randomUUID();
@@ -341,7 +341,7 @@ export async function handleSubscriptionUpdated(db: FactoryDb, event: StripeEven
     throw new Error(`[webhook] subscription.updated: subscription ${stripeSubscriptionId} not found`);
   }
 
-  const customerId = subResult.rows[0].customer_id;
+  const customerId = subResult.rows[0]!.customer_id;
 
   if (stripePriceId) {
     // Get plan from price
@@ -350,7 +350,7 @@ export async function handleSubscriptionUpdated(db: FactoryDb, event: StripeEven
     `);
 
     if (planResult.rows.length) {
-      const planId = planResult.rows[0].id;
+      const planId = planResult.rows[0]!.id;
 
       // Update subscription: plan, credits, status, period
       const status = sub.status;
@@ -391,7 +391,10 @@ export async function handleSubscriptionDeleted(db: FactoryDb, event: StripeEven
     throw new Error(`[webhook] subscription.deleted: subscription ${stripeSubscriptionId} not found`);
   }
 
-  const { id: subscriptionId, customer_id: customerId, plan_id: planId } = result.rows[0];
+  const row = result.rows[0]!;
+  const subscriptionId = String(row.id);
+  const customerId = String(row.customer_id);
+  const planId = String(row.plan_id);
 
   // Mark subscription as canceled
   await db.execute(sql`
@@ -431,7 +434,7 @@ export async function refreshEntitlements(
       ORDER BY created_at DESC LIMIT 1
     `);
     if (subResult.rows.length) {
-      planIdToUse = subResult.rows[0].plan_id;
+      planIdToUse = subResult.rows[0]!.plan_id;
     }
   }
 
@@ -472,7 +475,7 @@ export async function refreshEntitlements(
     SELECT suspension_status FROM studio_customers WHERE id = ${customerId}
   `);
 
-  const isSuspended = custResult.rows.length > 0 && custResult.rows[0].suspension_status !== 'active';
+  const isSuspended = custResult.rows.length > 0 && custResult.rows[0]!.suspension_status !== 'active';
 
   // Compute policy
   const canRender = hasActiveSubscription && !isSuspended && availableCredits > 0;
@@ -584,7 +587,9 @@ export async function handleStripeWebhook(
           await handleSubscriptionDeleted(db, event);
           break;
 
-        default:\n          // Unknown event type - ignore silently\n          break;
+        default:
+          // Unknown event type - ignore silently
+          break;
       }
 
       // 5. Record event as processed
