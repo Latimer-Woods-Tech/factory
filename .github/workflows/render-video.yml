@@ -298,7 +298,11 @@ jobs:
             --region "auto" \
             --content-type "video/mp4"
 
-          VIDEO_URL="https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com/${R2_BUCKET_NAME}/${VIDEO_KEY}"
+          # Generate a presigned URL (1 hour) so Cloudflare Stream can copy from private R2
+          VIDEO_URL=$(aws s3 presign "s3://${R2_BUCKET_NAME}/${VIDEO_KEY}" \
+            --endpoint-url "https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com" \
+            --region "auto" \
+            --expires-in 3600)
           echo "video_url=$VIDEO_URL" >> "$GITHUB_OUTPUT"
           echo "video_key=$VIDEO_KEY" >> "$GITHUB_OUTPUT"
         env:
@@ -338,7 +342,7 @@ jobs:
           echo "Registered Stream UID: $STREAM_UID"
         env:
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CF_STREAM_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_STREAM_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           VIDEO_URL: ${{ steps.upload_video.outputs.video_url }}
 
       # -----------------------------------------------------------------------
