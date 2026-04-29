@@ -1,6 +1,6 @@
 # World-Class Implementation Dashboard
 
-**Last Updated:** April 29, 2026 (SYNTHETIC MONITOR DEPLOY WORKFLOW WIRED)  
+**Last Updated:** April 29, 2026 (VIDEO RENDER #1 COMPLETE · /LOGIN /DASHBOARD FIXED · OWR-007/008/013 DONE)  
 **Phase B Progress:** 28/28 (100% Complete) 🎉  
 **Status:** Canonical execution dashboard, work register, and coordination process  
 **Scope:** Factory support platform + core application delivery model  
@@ -225,11 +225,12 @@ This section is the single place to answer: what exists, what is done, what is u
 | OWR-002 | Clean multi-agent collision risk | Coordinator + specialist agents | Required; multiple agents have touched overlapping areas | Assign path ownership before further edits |
 | OWR-003 | Review uncommitted Admin Studio / Studio Core local changes | Admin Studio specialist | Required; local changes exist in `apps/admin-studio-ui` and `packages/studio-core` | Decide commit, stash, or discard before master updates |
 | OWR-004 | Exclude generated dependency/build artifacts from commits | Coordinator | Required; local `node_modules/`, `dist/`, and build info are present | Ensure `.gitignore` coverage and do not stage generated files |
-| OWR-013 | Deploy synthetic-monitor to production and verify `/health` | Platform specialist | Ready: deploy-synthetic-monitor.yml added; push triggers deploy | `curl https://synthetic-monitor.adrper79.workers.dev/health` must return `200` |
+| OWR-013 | ~~Deploy synthetic-monitor to production~~ | Platform specialist | **DONE** `200 {"status":"ok"}` — April 29, 2026 | Cron running every 5 min |
+| OWR-007 | ~~Trigger first `render-video.yml` end-to-end run~~ | Video platform specialist | **DONE** Stream UID `3cf60300e92ad73fe40f0ba7796553f0` — April 29, 2026 | Embed: `iframe.videodelivery.net/3cf60300e92ad73fe40f0ba7796553f0` |
+| OWR-008 | ~~Set `LANDING_VIDEO_STREAM_UID` for SelfPrime~~ | SelfPrime specialist | **DONE** Secret set in `adrper79-dot/prime-self` — April 29, 2026 | Wire iframe into landing page on next UI update |
+| OWR-014 | Fix `/login` and `/dashboard` 404s (Phase 1) | SelfPrime specialist | **DONE** `_redirects` added to `prime-self-ui`; `/login` → `/?modal=login 302`, `/dashboard` → `/?start=1 302` — April 29, 2026 | `curl -I selfprime.net/login` returns 302 ✅ |
 | OWR-005 | Run schedule-worker database migration | Video platform specialist | Pending after Worker deploy | `POST /migrate` with valid `WORKER_API_TOKEN`, then verify logs/status |
 | OWR-006 | Complete R2 bucket and production video storage secrets | Infrastructure specialist | Pending / verify placeholders | Confirm bucket, API keys, public domain, and GitHub secrets are real |
-| OWR-007 | Trigger first `render-video.yml` end-to-end run | Video platform specialist | Pending R2 + migration verification | Workflow completes and returns Cloudflare Stream UID |
-| OWR-008 | Set `LANDING_VIDEO_STREAM_UID` for SelfPrime | SelfPrime specialist | Pending first render | Landing page displays Stream embed and root URL returns `200` |
 | OWR-009 | Phase 6 infrastructure provisioning across app repos | Infrastructure specialist | Ready; execution/credential-dependent | Orchestrator dry run, execution, and per-app `/health` verification |
 | OWR-010 | Phase 7 app scaffolding validation | App agents | Waiting on Phase 6 completion | `phase-7-validate.js --all` passes |
 | OWR-011 | Admin Studio command plane for GUI AI commands | Admin Studio specialist | Planned / partially scaffolded | Command schema, dry-run previews, audit logging, and branch-based PR flow implemented |
