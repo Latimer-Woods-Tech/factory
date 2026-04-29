@@ -220,7 +220,6 @@ jobs:
           if [ "$COMPOSITION_TYPE" = "TrainingVideo" ]; then
 
             RESULT=$(node --input-type=module << 'SCRIPT_EOF'
-          const systemCtx    = process.env.SYSTEM_CONTEXT;
           const topic        = process.env.RESOLVED_TOPIC;
           const keyPts       = process.env.KEY_POINTS_BLOCK;
           const forbidden    = process.env.FORBIDDEN_BLOCK;
@@ -229,68 +228,105 @@ jobs:
 
           const numSteps = JSON.parse(process.env.BRIEF_KEY_POINTS || '[]').length || 4;
 
-          // Build system prompt: brand context first, then task-specific constraints
-          const contextSection = systemCtx;
+          // Count words helper
+          const wordCount = s => s.trim().split(/\s+/).filter(Boolean).length;
 
-          const taskSection = [
-            '---',
-            `## TASK: Write a TrainingVideo script for topic: "${topic}"`,
-            '',
-            `LEARNING GOAL: ${learningGoal || 'Viewer understands the topic and knows their immediate next action.'}`,
-            '',
-            keyPts ? ('GROUND TRUTH — use ONLY these approved facts:\n' + keyPts) : '',
-            forbidden ? ('DO NOT state or imply:\n' + forbidden) : '',
-            tone ? tone : '',
-            '',
-            '## WORD COUNT RULE — CRITICAL',
-            'The "script" field in your JSON output MUST contain between 68 and 80 words.',
-            'Count every word. If your script is fewer than 68 words, add more detail.',
-            'If your script is more than 80 words, cut the least important phrase.',
-            '68 words is approximately this many sentences: "You just signed in for the first time. Your Free Energy Blueprint is already calculated and waiting. In this video you will see exactly how to find your Energy Type, read your AI Synthesis, and set your first aligned goal. This process takes less than ten minutes. By the end you will know the single most important insight about how your energy works."',
-            '',
-            '## OUTPUT — STRICT JSON ONLY',
-            'Return ONLY a valid JSON object. No markdown. No code fences. No explanation before or after.',
-            '{',
-            '  "script": "<write 68 to 80 words of continuous narration here — what Eric says aloud>",',
-            `  "steps": ["<${numSteps}-word imperative step 1>", "<step 2>", ... (${numSteps} steps total)]`,
-            '}',
-            '',
-            'Script style: direct second-person, max 18 words per sentence, no em dashes, no ellipses.',
-          ].filter(Boolean).join('\n');
+          function buildMessages(topic, keyPts, forbidden, tone, learningGoal, numSteps) {
+            const systemPrompt = [
+              'You are Eric, the voice of Prime Self. Write narration scripts for training videos.',
+              'Prime Self is a Human Design intelligence platform that calculates a persons Free Energy Blueprint.',
+              'Always use second-person. Never use: journey, transformation, unlock, empower, amazing, leverage.',
+              'Speak with calm authority — confident, direct, no hedging.',
+              tone ? ('Tone guidance: ' + tone) : '',
+            ].filter(Boolean).join('\n');
 
-          const systemPrompt = contextSection + '\n\n' + taskSection;
-          const userPrompt   = `Topic: "${topic}"\n\nWrite the JSON now. Remember: the "script" field must be 68 to 80 words.`;
+            const keyPointsText = keyPts
+              ? 'Cover these points in the script:\n' + keyPts
+              : '';
 
-          const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
-              max_tokens: 800,
-              temperature: 0.3,
-              messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user',   content: userPrompt   },
-              ],
-            }),
-          });
+            const forbiddenText = forbidden
+              ? 'Do not state or imply:\n' + forbidden
+              : '';
 
-          if (!resp.ok) {
-            const err = await resp.text().catch(() => '(unreadable)');
-            throw new Error('Groq call failed: ' + resp.status + ' — ' + err);
+            const userPrompt = [
+              `Write a 30-second narration script for this Prime Self training video topic: "${topic}"`,
+              '',
+              `Learning goal: ${learningGoal || 'Viewer understands the topic and knows their next action.'}`,
+              keyPointsText,
+              forbiddenText,
+              '',
+              'Script rules:',
+              '- Write 5 complete sentences',
+              '- Each sentence must be 12 to 16 words long (this ensures the correct 60-80 word total)',
+              '- Use second-person (you, your)',
+              '- No em dashes, no ellipses, no exclamation marks',
+              '- Continuous narration, not a list',
+              '',
+              `Also write ${numSteps} action steps. Each step: an imperative verb phrase, 5 to 7 words.`,
+              '',
+              'Return ONLY a valid JSON object. No markdown. No explanation. Just the JSON:',
+              '{',
+              '  "script": "<5 sentences of narration, 12-16 words each>",',
+              `  "steps": ["<step 1>", "<step 2>", ... (exactly ${numSteps} steps)]`,
+              '}',
+            ].filter(Boolean).join('\n');
+
+            return [
+              { role: 'system', content: systemPrompt },
+              { role: 'user',   content: userPrompt   },
+            ];
           }
 
-          const data = await resp.json();
-          const raw = data.choices?.[0]?.message?.content?.trim() ?? '{}';
+          async function callGroq(messages, maxTokens) {
+            const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: 'llama-3.3-70b-versatile',
+                max_tokens: maxTokens,
+                temperature: 0.4,
+                messages,
+              }),
+            });
+            if (!resp.ok) {
+              const err = await resp.text().catch(() => '(unreadable)');
+              throw new Error('Groq call failed: ' + resp.status + ' — ' + err);
+            }
+            const data = await resp.json();
+            const raw = data.choices?.[0]?.message?.content?.trim() ?? '{}';
+            const cleaned = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+            return JSON.parse(cleaned);
+          }
 
-          // Strip markdown code fences if the model wraps output
-          const cleaned = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-          const parsed = JSON.parse(cleaned);
-          const script = (parsed.script ?? '').replace(/\n/g, ' ').trim();
-          const steps  = Array.isArray(parsed.steps) ? parsed.steps : [];
+          // First attempt
+          let messages = buildMessages(topic, keyPts, forbidden, tone, learningGoal, numSteps);
+          let parsed = await callGroq(messages, 800);
+          let script = (parsed.script ?? '').replace(/\n/g, ' ').trim();
+          let steps  = Array.isArray(parsed.steps) ? parsed.steps : [];
+
+          // Self-correction: if script is too short, retry with explicit feedback
+          const wc = wordCount(script);
+          console.error('First attempt word count:', wc);
+          if (wc < 60) {
+            console.error('Script too short, retrying with correction...');
+            const correctionMsg = {
+              role: 'user',
+              content: `Your script was ${wc} words — it needs to be 60 to 80 words (5 sentences of 12-16 words each). ` +
+                       `Here is what you wrote: "${script}". ` +
+                       `Please expand it to 5 full sentences (12-16 words each) and return the same JSON format.`,
+            };
+            const retryMessages = [...messages, { role: 'assistant', content: JSON.stringify(parsed) }, correctionMsg];
+            const retryParsed = await callGroq(retryMessages, 900);
+            const retryScript = (retryParsed.script ?? '').replace(/\n/g, ' ').trim();
+            console.error('Retry word count:', wordCount(retryScript));
+            if (wordCount(retryScript) > wc) {
+              script = retryScript;
+              steps  = Array.isArray(retryParsed.steps) ? retryParsed.steps : steps;
+            }
+          }
 
           process.stdout.write(JSON.stringify({ script, steps }));
           SCRIPT_EOF
