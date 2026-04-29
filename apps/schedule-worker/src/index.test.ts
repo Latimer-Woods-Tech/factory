@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@adrper79-dot/neon', () => ({
   createDb: vi.fn(() => mocks.db),
+  sql: { raw: vi.fn((statement: string) => ({ statement })) },
 }));
 
 vi.mock('@adrper79-dot/schedule', () => ({

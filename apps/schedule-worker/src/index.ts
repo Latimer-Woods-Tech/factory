@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { createDb } from '@adrper79-dot/neon';
+import { createDb, sql } from '@adrper79-dot/neon';
 import { toErrorResponse, ValidationError, AuthError } from '@adrper79-dot/errors';
 import {
   getPendingJobs,
@@ -209,7 +209,7 @@ app.post('/migrate', async (c) => {
   }
   const db = createDb(c.env.DB);
   for (const statement of VIDEO_CALENDAR_MIGRATION_STATEMENTS) {
-    await db.execute(statement);
+    await db.execute(sql.raw(statement));
   }
   return c.json({ data: { migrated: true, statements: VIDEO_CALENDAR_MIGRATION_STATEMENTS.length } });
 });
