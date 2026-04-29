@@ -1,13 +1,19 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:base"],
-  "registryUrls": ["https://npm.pkg.github.com"],
+  "extends": ["config:recommended"],
   "packageRules": [
     {
       "matchPackagePrefixes": ["@adrper79-dot/"],
+      "registryUrls": ["https://npm.pkg.github.com"],
       "pinVersions": true,
       "automerge": false,
       "labels": ["factory-core-update"],
+      "commitMessagePrefix": "chore(deps):"
+    },
+    {
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
       "commitMessagePrefix": "chore(deps):"
     }
   ],
