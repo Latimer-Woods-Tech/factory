@@ -116,7 +116,7 @@ Detailed ownership and app/repo mapping lives in `docs/operations/WORLD_CLASS_36
 | W360-021 | Analytics event verification gate | Observability team | analytics tests, PostHog/factory_events schemas | W360-005, W360-014 | critical journeys emit required events; tests fail on missing event shape |
 | W360-022 | User-journey SLOs | Observability team | docs/runbooks/slo, synthetic monitor | W360-007, W360-014 | checkout, first render, booking, webhook, dashboard journeys have SLOs and probes |
 | W360-023 | Cost guardrails | Revenue + observability | credit quotas, render estimates, budget alerts | W360-005 | render cost limits, quotas, kill switch, and alerts are verified |
-| W360-024 | Function manifest adoption | Platform + Admin Studio | `packages/studio-core`, Workers | W360-006 | live Workers expose machine-readable manifest with auth/reversibility/SLO/smoke metadata |
+| W360-024 | Function manifest adoption | Platform + Admin Studio | `packages/studio-core`, Workers | W360-006 | ✅ DONE 2026-04-29 — `GET /manifest` added to admin-studio (typed, studio-core), schedule-worker (inline, 6ε2f17a), and video-cron (inline, 04b106d); all three return `{ manifestVersion:1, app, env, entries[] }` with auth/reversibility/SLO/smoke per route |
 | W360-025 | Cross-repo release train | DevOps + package team | package publish, app lockfile updates, Studio view | W360-002 | package bump → app lockfiles → staging deploy → smoke → production path is documented and automatable |
 
 ### P2 — Growth, launch, and tranche packaging
