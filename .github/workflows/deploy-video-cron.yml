@@ -55,4 +55,10 @@ jobs:
           echo "🚀 Deployment complete"
           echo "⏰ Cron job configured: hourly (0 * * * *)"
           echo "📋 Cron jobs are managed by Cloudflare and run automatically"
-          curl -f https://video-cron.adrper79.workers.dev/health
+          node scripts/verify-http-endpoint.mjs \
+            --url https://video-cron.adrper79.workers.dev/health \
+            --status 200 \
+            --json-field status \
+            --json-equals ok \
+            --retries 8 \
+            --delay-ms 5000

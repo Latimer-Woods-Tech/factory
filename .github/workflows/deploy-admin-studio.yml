@@ -77,15 +77,10 @@ jobs:
           else
             url="https://admin-studio-staging.adrper79.workers.dev/health"
           fi
-          echo "Curling $url"
-          status=$(curl -s -o /tmp/health.json -w "%{http_code}" "$url")
-          cat /tmp/health.json
-          if [ "$status" != "200" ]; then
-            echo "::error::Health check failed: HTTP $status"
-            exit 1
-          fi
-          actual_env=$(jq -r .env /tmp/health.json)
-          if [ "$actual_env" != "$target_env" ]; then
-            echo "::error::Env mismatch — expected $target_env, got $actual_env"
-            exit 1
-          fi
+          node scripts/verify-http-endpoint.mjs \
+            --url "$url" \
+            --status 200 \
+            --json-field env \
+            --json-equals "$target_env" \
+            --retries 8 \
+            --delay-ms 5000

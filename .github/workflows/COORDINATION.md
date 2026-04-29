@@ -29,7 +29,7 @@ Before any production deploy workflow is considered complete:
 
 1. Confirm current production health for upstream dependencies.
 2. Deploy the target service.
-3. Run direct HTTP health checks.
+3. Run direct HTTP health checks with `scripts/verify-http-endpoint.mjs` so propagation retries, expected status, and JSON env/status assertions fail the workflow instead of being warning-only.
 4. Run critical-route smoke checks where available.
 5. Update `docs/service-registry.yml` if URLs, consumers, secrets, or worker names changed.
 6. Update `WORLD_CLASS_IMPLEMENTATION_DASHBOARD.md` with run ID and observed status.

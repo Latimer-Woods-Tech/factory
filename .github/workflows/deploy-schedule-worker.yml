@@ -53,5 +53,10 @@ jobs:
         run: |
           echo "🚀 Deployment complete"
           echo "📍 Health check: https://schedule-worker.adrper79.workers.dev/health"
-          sleep 10
-          curl -f https://schedule-worker.adrper79.workers.dev/health || echo "⚠️  Health check failed - may need time to propagate"
+          node scripts/verify-http-endpoint.mjs \
+            --url https://schedule-worker.adrper79.workers.dev/health \
+            --status 200 \
+            --json-field status \
+            --json-equals ok \
+            --retries 8 \
+            --delay-ms 5000
