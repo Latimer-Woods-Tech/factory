@@ -244,7 +244,7 @@ export async function recordProcessedEvent(
  * 5. Refresh entitlements
  */
 export async function handleSubscriptionCreated(db: FactoryDb, event: StripeEvent): Promise<void> {
-  const sub = event.data.object as StripeSubscription;
+  const sub = event.data.object;
   const stripeCustomerId = sub.customer;
   const stripePriceId = sub.items.data[0]?.price.id;
 
@@ -285,7 +285,7 @@ export async function handleSubscriptionCreated(db: FactoryDb, event: StripeEven
   }
 
   // Map Stripe status to our enum
-  const status = sub.status as string;
+  const status = sub.status;
 
   // Insert subscription
   const subscriptionId = crypto.randomUUID();
@@ -328,7 +328,7 @@ export async function handleSubscriptionCreated(db: FactoryDb, event: StripeEven
  * Refresh entitlements
  */
 export async function handleSubscriptionUpdated(db: FactoryDb, event: StripeEvent): Promise<void> {
-  const sub = event.data.object as StripeSubscription;
+  const sub = event.data.object;
   const stripeSubscriptionId = sub.id;
   const stripePriceId = sub.items.data[0]?.price.id;
 
@@ -353,7 +353,7 @@ export async function handleSubscriptionUpdated(db: FactoryDb, event: StripeEven
       const planId = planResult.rows[0].id;
 
       // Update subscription: plan, credits, status, period
-      const status = sub.status as string;
+      const status = sub.status;
 
       await db.execute(sql`
         UPDATE studio_subscriptions SET
@@ -379,7 +379,7 @@ export async function handleSubscriptionUpdated(db: FactoryDb, event: StripeEven
  * If subscription: disable rendering (set entitlements to 0).
  */
 export async function handleSubscriptionDeleted(db: FactoryDb, event: StripeEvent): Promise<void> {
-  const sub = event.data.object as StripeSubscription;
+  const sub = event.data.object;
   const stripeSubscriptionId = sub.id;
 
   // Find subscription
@@ -479,17 +479,20 @@ export async function refreshEntitlements(
   const canPublishPublic = canRender && planFeatures?.public_publish_allowed;
 
   // Upsert entitlements
+  const monthlyQuota = planFeatures?.monthly_render_quota ?? null;
+  const maxSeconds = planFeatures?.max_video_seconds ?? 300;
+  const maxRetries = planFeatures?.max_retries_per_job ?? 3;
   await db.execute(sql`
     INSERT INTO studio_entitlements (
       id, customer_id, subscription_id, plan_id, available_credits,
       can_render, can_publish_public, monthly_render_quota,
       max_video_seconds, max_retries_per_job, last_refreshed_at, created_at, updated_at
     ) VALUES (
-      ${entitlementId}, ${customerId}, ${null}, ${planIdToUse || null},
-      ${availableCredits}, ${canRender}, ${canPublishPublic || false},
-      ${planFeatures?.monthly_render_quota || null},
-      ${planFeatures?.max_video_seconds || 300},
-      ${planFeatures?.max_retries_per_job || 3},
+      ${entitlementId}, ${customerId}, ${null}, ${planIdToUse ?? null},
+      ${availableCredits}, ${canRender}, ${canPublishPublic === true},
+      ${monthlyQuota},
+      ${maxSeconds},
+      ${maxRetries},
       NOW(), NOW(), NOW()
     )
     ON CONFLICT (customer_id) DO UPDATE SET
@@ -581,8 +584,7 @@ export async function handleStripeWebhook(
           await handleSubscriptionDeleted(db, event);
           break;
 
-        default:
-          console.info(`[webhook] Ignoring event type: ${event.type}`);
+        default:\n          // Unknown event type - ignore silently\n          break;
       }
 
       // 5. Record event as processed
