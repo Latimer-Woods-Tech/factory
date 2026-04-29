@@ -4,7 +4,7 @@
  * Loading spinners and skeleton loaders.
  */
 
-import React, { forwardRef, type HTMLAttributes, type ReactNode } from 'react';
+import React, { forwardRef, type HTMLAttributes } from 'react';
 import { colors, spacing, radii } from '@adrper79-dot/design-tokens';
 
 export interface LoadingStateProps extends HTMLAttributes<HTMLDivElement> {

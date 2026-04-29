@@ -23,7 +23,6 @@ describe('Label Component', () => {
 
   it('does not show required indicator by default', () => {
     const { container } = render(<Label>Name</Label>);
-    const indicator = container.querySelector('[style*="color: rgb"]');
     // Should only have label text, no asterisk
     expect(container.textContent).toBe('Name');
   });

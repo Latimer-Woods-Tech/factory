@@ -5,7 +5,7 @@
  */
 
 import React, { forwardRef, type HTMLAttributes, type ReactNode } from 'react';
-import { colors, spacing, typography, motion, focus, radii, shadows } from '@adrper79-dot/design-tokens';
+import { colors, spacing, typography, motion, radii, shadows } from '@adrper79-dot/design-tokens';
 
 export interface DialogProps extends HTMLAttributes<HTMLDivElement> {
   /** Dialog title */
