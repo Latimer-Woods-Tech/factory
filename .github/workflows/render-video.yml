@@ -63,6 +63,10 @@ jobs:
     outputs:
       real_job_id: ${{ steps.register_job.outputs.real_job_id }}
 
+    # Opt into Node.js 24 action runtime before the June 2026 forced migration.
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
     steps:
       # -----------------------------------------------------------------------
       # 1. Checkout
