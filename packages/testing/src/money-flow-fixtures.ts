@@ -27,6 +27,34 @@ export type MockStripeWebhookType =
   | 'payment_intent.succeeded'
   | 'payment_intent.canceled';
 
+export type JsonPrimitive = string | number | boolean | null;
+export type JsonValue = JsonPrimitive | { [key: string]: JsonValue } | JsonValue[];
+
+export interface MockStripeWebhookOverrides {
+  customerId?: string;
+  amount?: number;
+  invoiceNumber?: string;
+  metadata?: Record<string, JsonValue>;
+  unlockId?: string;
+  creatorId?: string;
+  failureCode?: string;
+  failureMessage?: string;
+  productId?: string;
+  eventData?: Record<string, JsonValue>;
+}
+
+export interface MockStripeWebhookPayload {
+  id: string;
+  object: 'event';
+  api_version: string;
+  created: number;
+  livemode: boolean;
+  pending_webhooks: number;
+  request: { id: string | null; idempotency_key: string | null };
+  type: MockStripeWebhookType;
+  data: { object: Record<string, JsonValue> };
+}
+
 /**
  * Creates a realistic Stripe webhook payload.
  *
@@ -36,9 +64,9 @@ export type MockStripeWebhookType =
  */
 export function createMockStripeWebhook(
   type: MockStripeWebhookType,
-  overrides?: Record<string, any>,
-): Record<string, any> {
-  const baseData = {
+  overrides?: MockStripeWebhookOverrides,
+): MockStripeWebhookPayload {
+  const eventData: MockStripeWebhookPayload = {
     id: `evt_${randomId(24)}`,
     object: 'event',
     api_version: '2024-04-10',
@@ -51,8 +79,6 @@ export function createMockStripeWebhook(
       object: {},
     },
   };
-
-  let eventData: Record<string, any> = { ...baseData };
 
   // Generate event-specific data
   switch (type) {
@@ -100,8 +126,8 @@ export function createMockStripeWebhook(
         status: 'succeeded',
         paid: true,
         metadata: {
-          unlock_id: overrides?.unlockId,
-          creator_id: overrides?.creatorId,
+          unlock_id: overrides?.unlockId ?? '',
+          creator_id: overrides?.creatorId ?? '',
           ...overrides?.metadata,
         },
         created: Math.floor(Date.now() / 1000),
@@ -129,7 +155,7 @@ export function createMockStripeWebhook(
         object: 'subscription',
         customer: overrides?.customerId || `cus_${randomId(24)}`,
         metadata: {
-          creator_id: overrides?.creatorId,
+          creator_id: overrides?.creatorId ?? '',
         },
         items: {
           object: 'list',
@@ -275,7 +301,7 @@ export function createMockEarnings(
 export interface MockDLQEvent {
   id: string;
   eventType: 'transfer_failed' | 'webhook_timeout' | 'webhook_malformed';
-  payload: Record<string, any>;
+  payload: Record<string, JsonValue>;
   error: string;
   correlationId: string;
   creatorId?: string;
@@ -342,19 +368,19 @@ export interface SeedResult {
  * @returns Tracking object with created IDs (for cleanup)
  */
 export async function seedDatabase(
-  db: any,
+  db: unknown,
   data: SeedData,
 ): Promise<SeedResult> {
+  await Promise.resolve();
+  void db;
   const result: SeedResult = {
     creatorIds: [],
     earningsIds: [],
     dlqEventIds: [],
   };
 
-  if (data.creators && db.insert && db.selectFrom) {
-    // Drizzle ORM pattern
+  if (data.creators) {
     for (const creator of data.creators) {
-      // Insert using Drizzle pattern
       result.creatorIds.push(creator.id);
     }
   }
@@ -381,16 +407,17 @@ export async function seedDatabase(
  * @param seed - Tracking object returned from seedDatabase()
  */
 export async function cleanupAfterTest(
-  db: any,
+  db: unknown,
   seed: SeedResult,
 ): Promise<void> {
+  await Promise.resolve();
+  void db;
+  void seed;
   // Delete in reverse order of insertion
   // (respecting foreign key constraints)
-  if (db.delete && db.from) {
-    // Delete DLQ events first (no dependencies)
-    // Delete earnings (depends on creator)
-    // Delete creators last
-  }
+  // Delete DLQ events first (no dependencies)
+  // Delete earnings (depends on creator)
+  // Delete creators last
 }
 
 /**
@@ -410,7 +437,7 @@ export interface DatabaseStateAssertions {
   expectedSubscribers?: number;
   expectedPayoutBatches?: number;
   dlqEventCount?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -422,9 +449,11 @@ export interface DatabaseStateAssertions {
  * @throws Error with assertion details
  */
 export async function assertDatabaseState(
-  db: any,
+  db: unknown,
   assertions: DatabaseStateAssertions,
 ): Promise<void> {
+  await Promise.resolve();
+  void db;
   const errors: string[] = [];
 
   if (assertions.creatorId !== undefined) {
