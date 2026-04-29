@@ -317,11 +317,10 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Register video with Cloudflare Stream
         id: register_stream
-        continue-on-error: true  # Stream token needs Stream:Edit scope — set CF_STREAM_TOKEN secret
         run: |
           RESPONSE=$(curl -s -X POST \
             "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/stream/copy" \
-            -H "Authorization: Bearer ${CF_STREAM_TOKEN}" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
             -H "Content-Type: application/json" \
             -d "{
               \"url\": \"${VIDEO_URL}\",
@@ -343,7 +342,7 @@ jobs:
           echo "Registered Stream UID: $STREAM_UID"
         env:
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CF_STREAM_TOKEN: ${{ secrets.CF_STREAM_TOKEN }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           VIDEO_URL: ${{ steps.upload_video.outputs.video_url }}
 
       # -----------------------------------------------------------------------
