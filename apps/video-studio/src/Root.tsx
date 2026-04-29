@@ -1,4 +1,4 @@
-import { Composition } from 'remotion';
+import { Composition, registerRoot } from 'remotion';
 import { MarketingVideo, marketingSchema } from './compositions/MarketingVideo.js';
 import { TrainingVideo, trainingSchema } from './compositions/TrainingVideo.js';
 import { WalkthroughVideo, walkthroughSchema } from './compositions/WalkthroughVideo.js';
@@ -76,3 +76,5 @@ export const RemotionRoot: React.FC = () => {
     </>
   );
 };
+
+registerRoot(RemotionRoot);
