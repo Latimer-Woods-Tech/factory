@@ -106,19 +106,18 @@ Current live foundation verification:
 
 | Endpoint | Observed result | Action |
 |---|---:|---|
-| `https://schedule-worker.adrper79.workers.dev/health` | `404` | Deploy with required Wrangler secrets, then verify `/health` returns `200` |
-| `https://video-cron.adrper79.workers.dev/health` | `404` | Deploy with required Wrangler secrets, then verify `/health` returns `200` |
+| `https://schedule-worker.adrper79.workers.dev/health` | `200` | Live verified on 2026-04-29 |
+| `https://video-cron.adrper79.workers.dev/health` | `200` | Live verified on 2026-04-29 |
 
-**Execution status:** Phase 0 is not yet complete. Product-facing SelfPrime video work must not start until both shared Factory video Workers are listed in the service registry, deployed, and verified with live HTTP `200` responses.
+**Execution status:** Shared Phase 0 infrastructure is live-smoke verified. `Smoke Video Phase 0` run `25094160617` verified health, anonymous `401` protections, idempotent migration, synthetic job creation/read/update-to-failed audit trail, authenticated pending queue access, and the `video-cron` trigger path.
 
-Implementation progress as of 2026-04-28:
+Implementation progress as of 2026-04-29:
 
 - Shared schedule package supports app-scoped queue reads/updates and retry-safe `idempotencyKey` job creation.
 - `schedule-worker` uses Hyperdrive/Neon through the shared database package instead of prototype raw DB fetches.
 - `schedule-worker` supports an internal Factory token plus optional app-scoped tokens through `APP_SERVICE_TOKENS`.
-- `video-cron` fetches app-scoped pending jobs, wraps outbound fetches with timeouts, and records failed dispatches explicitly.
-- App-level smoke tests exist for both video Workers.
-- Live deployment and `curl` verification remain blocked in this local session because Cloudflare credentials and GitHub Packages credentials are not available in the terminal environment.
+- `video-cron` fetches app-scoped pending jobs through a Cloudflare service binding, wraps outbound fetches with timeouts, and records failed dispatches explicitly.
+- The repeatable `Smoke Video Phase 0` workflow verifies both live Workers beyond shallow `/health` checks.
 
 ---
 
@@ -444,7 +443,7 @@ Exit criteria:
 
 Phase gate:
 
-- Phase 1 is blocked until `https://schedule-worker.adrper79.workers.dev/health` and `https://video-cron.adrper79.workers.dev/health` both return `200` via direct `curl` verification.
+- Phase 1 may start only from the shared-infrastructure side after `Smoke Video Phase 0` remains green on the target branch; SelfPrime product work still needs its own privacy, UX, and telemetry acceptance gates.
 - The corresponding service registry entries must remain current before any Worker rename or consumer URL change.
 
 ### Phase 1 — Public SelfPrime walkthrough

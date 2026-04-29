@@ -1,6 +1,6 @@
 # World-Class Implementation Dashboard
 
-**Last Updated:** April 29, 2026 (CONTROL PLANE + OPEN WORK REGISTER ADDED)  
+**Last Updated:** April 29, 2026 (DEEP DIVE ASSESSMENT + WORLD-CLASS BACKLOG ADDED)  
 **Phase B Progress:** 28/28 (100% Complete) 🎉  
 **Status:** Canonical execution dashboard, work register, and coordination process  
 **Scope:** Factory support platform + core application delivery model  
@@ -281,6 +281,118 @@ The Admin Studio should eventually manage this process through GUI AI commands, 
 
 ---
 
+## Deep Dive Assessment Format and World-Class Backlog
+
+This section is the required format for all cross-Factory opportunity, gap, and maturity findings.
+
+### Assessment Item Format
+
+Every major finding must be captured with these fields before it is treated as executable work:
+
+| Field | Required meaning |
+|---|---|
+| ID | Stable identifier using `WCA-###` for world-class assessment items |
+| Domain | One primary domain: UI/UX, Security, Error Management, Observability, Platform, C-Suite, Release, Data, Compliance, Monetization, or Developer Experience |
+| Priority | `P0` blocks safe scale, `P1` blocks mature operation, `P2` improves leverage, `P3` optimizes later |
+| Finding | The concrete gap, risk, or opportunity |
+| Recommendation | Mature engineering action to take, phrased as an outcome not a vague improvement |
+| Evidence / source | Current repo evidence, current operating signal, or documented gap that motivated the item |
+| Owner mode | Coordinator, platform specialist, app specialist, product/design, security, ops, finance, or executive sponsor |
+| Exit criteria | Observable, testable condition required to close the item |
+| Verification | The proof required: CI, tests, direct endpoint checks, dashboard metric, audit event, or approved document |
+
+### Executive Assessment Summary
+
+Factory is strong as an infrastructure accelerator, but it is not yet operating as a fully mature portfolio platform. The biggest opportunity is to convert scattered scaffolding, runbooks, and package primitives into a measurable operating system with executive visibility, product-quality controls, reusable UI patterns, reliable async processing, and auditable revenue/compliance workflows.
+
+The highest-value improvements are:
+
+1. Establish a single executive and engineering health view that separates **documented**, **implemented**, **deployed**, and **verified** status.
+2. Convert `packages/design-system` from tokens-only into reusable, accessible UI primitives that every Factory app can consume.
+3. Add shared resilience primitives for retries, backoff, circuit breakers, idempotency, DLQs, and async correlation IDs.
+4. Formalize package API stability, versioning, changelogs, compatibility windows, and cross-package integration tests.
+5. Harden Admin Studio into an audited command plane with RBAC policy, operator dashboards, scenario runbooks, and production approval controls.
+6. Build C-suite reporting for portfolio health, revenue, risk, compliance, release quality, and app-by-app readiness.
+7. Treat security and compliance as scheduled operating systems, not one-time checklists.
+
+### World-Class Assessment Register
+
+| ID | Domain | Priority | Finding | Recommendation | Evidence / source | Owner mode | Exit criteria | Verification |
+|---|---|---|---|---|---|---|---|---|
+| WCA-001 | C-Suite | P0 | Status is fragmented across many root and docs artifacts, and "complete" can mean scaffolded, documented, deployed, or live-verified. | Add an executive health model with four explicit states: documented, implemented, deployed, verified. Archive or mark historical status docs as non-authoritative. | This dashboard is canonical, while `PROJECT_STATUS.md`, scorecards, ready-state docs, and completion summaries still carry parallel status narratives. | Coordinator + executive sponsor | One source-of-truth policy is published; each status item has a state and last verification timestamp. | Dashboard review plus doc links updated; no active root summary claims live task-board authority. |
+| WCA-002 | UI/UX | P0 | Factory has design tokens and rubrics, but no reusable component layer for apps. | Promote `packages/design-system` from tokens-only to accessible UI primitives: buttons, inputs, forms, dialogs, banners, cards, tables, status chips, toasts, empty states, loading states. | `packages/design-system` exists, Admin Studio UI has reusable patterns, but apps still compose UI independently. | Product/design + platform specialist | First component set ships with tests, WCAG checks, usage docs, and app adoption guide. | Component tests pass; accessibility checks pass; at least Admin Studio UI consumes the shared primitives. |
+| WCA-003 | UI/UX | P1 | Premium user journey quality is documented but not enforced per app or release. | Add journey-level UX gates for signup, login, checkout, creator onboarding, upload, video playback, payout operations, moderation, and admin command execution. | `docs/DESIGN_QUALITY_RUBRIC.md` exists; app-level journey verification is not yet a release gate. | Product/design + app specialists | Every critical journey has task success criteria, analytics events, accessibility acceptance, error states, and mobile checks. | Release checklist includes UX evidence; journey instrumentation appears in PostHog or `factory_events`. |
+| WCA-004 | Error Management | P0 | Retry, backoff, circuit breaker, and fallback patterns are not centralized. | Add a shared resilience module in `@adrper79-dot/monitoring` or a dedicated package that provides `withRetry`, jittered exponential backoff, circuit breaker state, timeout wrappers, and typed error classification. | Inter-worker and third-party calls exist across Admin Studio, video-cron, schedule-worker, email, social, analytics, and video packages. | Platform specialist | Shared resilience API exists and is adopted by at least video-cron, schedule-worker, Admin Studio GitHub calls, and external SaaS clients. | Unit tests, integration tests, and failure-mode tests prove retry limits, backoff, timeout, and circuit-open behavior. |
+| WCA-005 | Error Management | P0 | Async failures do not have a consistent DLQ and replay model across apps. | Standardize a reusable DLQ pattern for audit writes, webhook processing, render dispatch, payout operations, email sends, and analytics delivery. | VideoKing has strong payout DLQ patterns; Admin Studio audit and video pipelines do not share a common abstraction. | Platform + app specialists | DLQ schema, helpers, replay policy, operator UI expectations, and alert thresholds are defined and adopted by first two flows. | Synthetic failure creates a DLQ row; operator replay succeeds; audit event and Sentry breadcrumbs are present. |
+| WCA-006 | Observability | P0 | Correlation IDs are not reliably propagated through browser, Worker, DB, cron, GitHub Actions, R2, Cloudflare Stream, and third-party APIs. | Define and implement an end-to-end correlation contract, including `X-Request-Id`, job IDs, workflow dispatch inputs, render artifact metadata, and `factory_events` references. | Request IDs exist in Admin Studio, but async video/render workflows and GitHub Actions remain weakly connected. | Platform + ops | Correlation ID is visible in logs, audit entries, events, workflow inputs, and render job records. | A synthetic render or payout can be traced from initiating action to final status using one ID. |
+| WCA-007 | Security | P0 | JWT and API token rotation are documented but not engineered for graceful dual-key windows. | Add dual-key verification with `kid`, old/new key acceptance windows, forced revocation support, and session invalidation runbook. | `@adrper79-dot/auth` uses Web Crypto JWT; rotation is primarily runbook-driven. | Security + platform specialist | Auth supports rolling secret rotation without mass outage; Admin Studio exposes active key epoch metadata without secrets. | Tests validate old/new token windows, expired key rejection, and emergency revocation behavior. |
+| WCA-008 | Security | P0 | Confirmation tokens and operator actions need anti-replay and stronger approval policy. | Add nonce-backed one-time confirmation tokens, production type-to-confirm, risk tiers, two-person approval for irreversible or money-moving actions, and audit policy enforcement. | Admin Studio has confirmation UX and audit foundations; tokens are not enough as a security boundary. | Security + Admin Studio specialist | Risk-tier policy is enforced server-side and stored in audit records. | Replay attempt fails; production destructive action requires required approvals and records request ID. |
+| WCA-009 | Security | P1 | API tokens for app-to-app calls and render dispatch need explicit scopes, quotas, and revocation. | Replace broad service tokens with scoped tokens carrying app, allowed endpoints/actions, rate limits, expiration, and revocation IDs. | schedule-worker and video-cron use token-based worker communication and dispatch workflows. | Security + video platform specialist | Tokens are parsed, validated, scoped, rate-limited, and auditable. | Unauthorized scope returns `403`; quota exhaustion returns `429`; token revocation is observed without redeploy. |
+| WCA-010 | Compliance | P0 | Compliance package is not yet an operational system for GDPR/CCPA deletion, export, consent, and processor tracking. | Implement data subject request workflows, retention schedules, consent reconciliation, processor inventory, breach notification SOP, and monthly compliance calendar. | `packages/compliance` exists; docs identify security/compliance posture but operational workflows are incomplete. | Security + compliance owner | Compliance calendar exists; DSR workflow is executable; vendor processor register is maintained. | Quarterly audit drill produces evidence package and closes no critical gaps. |
+| WCA-011 | Platform | P0 | Package API stability, compatibility windows, and deprecation policy are not mature enough for many apps. | Adopt SemVer, per-package stability grades, changelogs, migration guides, public API extraction checks, and consumer compatibility tests. | Packages are published, but active/staging maturity and breaking-change policy are uneven. | Platform lead | Every package has stability metadata, changelog, deprecation policy, and public API contract tests. | CI blocks breaking public API changes unless migration policy and version bump are present. |
+| WCA-012 | Platform | P0 | Cross-package and app-package integration tests are not sufficient as package count grows. | Add monorepo integration suite that imports all packages together, validates dependency order, checks Worker-safe constraints, and tests app scaffold compatibility. | Existing quality gates focus heavily on individual packages. | Platform specialist | Integration workflow runs on every PR and before publish tags. | CI job passes; deliberate dependency-order or Node built-in violation fails. |
+| WCA-013 | Observability | P1 | SLOs, DORA metrics, Sentry, PostHog, Cloudflare analytics, and first-party events are documented but not unified. | Build an Admin Studio observability dashboard with availability, p95/p99 latency, error rate, error budget burn, deployment frequency, lead time, change failure rate, MTTR, and top incidents. | `docs/runbooks/slo.md` and `docs/DELIVERY_KPI_DASHBOARD.md` define targets, but executive rollup is not automated. | Ops + Admin Studio specialist | One dashboard shows portfolio and per-app health with red/amber/green status. | Automated refresh records timestamps; stale data is flagged. |
+| WCA-014 | C-Suite | P0 | No board-ready one-page operating summary exists for portfolio health, risks, revenue, delivery, and compliance. | Create executive dashboard section or generated artifact with RAG health, top risks, mitigations, release forecast, MRR/ARR, runway-relevant KPIs, compliance dates, and decision requests. | Existing docs are technically rich but not board/CFO/CISO/CMO optimized. | Executive sponsor + product lead | Executive summary is readable in 60 seconds and linked from `MASTER_INDEX.md`. | Weekly generated or reviewed artifact includes trend arrows and owner names. |
+| WCA-015 | Monetization | P0 | Revenue integrity is documented as a cadence, but CFO-grade reconciliation and payout evidence are not yet visible as a system. | Build revenue control plane: MRR/ARR by app, churn, failed payments, payout success rate, DLQ queue depth, Stripe reconciliation, audit exports, and exception aging. | T3 work exists; operator and finance visibility remains a gap. | Finance + monetization specialist | Finance can answer revenue, liability, payout, and exception questions without ad hoc SQL. | Monthly reconciliation package matches Stripe, database, and `factory_events` evidence. |
+| WCA-016 | Release | P0 | Release governance has strong documentation but needs automated enforcement and deeper smoke probes. | Replace shallow `/health`-only checks with tiered smoke tests: health, DB read/write safety, auth negative test, key third-party readiness, critical route probes, rollback eligibility, and canary metrics. | Standing orders require direct HTTP verification; deeper checks are not uniformly active. | Ops + release lead | Every deploy records smoke evidence and rollback plan before done. | Workflow artifact includes endpoints, status codes, timestamps, and failure analysis. |
+| WCA-017 | Release | P1 | Canary and rollback procedures are described but not proven as regular drills. | Schedule monthly release fire drills covering staged rollout, failed canary, rollback, migration safety, incident notification, and postmortem. | Release docs exist; execution confidence is unproven. | Ops lead | Drill calendar and evidence log exist. | First drill completes and updates runbooks based on lessons learned. |
+| WCA-018 | Developer Experience | P1 | There is no single CLI/control plane for common Factory operations. | Add Admin Studio or CLI workflows for app registration, package publish order, dependency graph, lockfile update, status update, secret verification, smoke checks, and release readiness. | Automation exists as scripts, workflows, and docs, but operator experience is fragmented. | Platform + Admin Studio specialists | Common operations are discoverable from one interface with dry-run and audit support. | Operator completes app registration and smoke verification without reading multiple root docs. |
+| WCA-019 | Data | P1 | Portfolio dependency graph is still unrealized. | Build machine-readable graph of apps, packages, Workers, Pages, DBs, R2 buckets, secrets, workflows, events, consumers, owners, and criticality. | Unrealized section already names this gap. | Platform + coordinator | Graph is queryable by Admin Studio and checked during worker rename/deploy. | Changing a Worker or package shows impacted consumers before merge. |
+| WCA-020 | Security | P1 | PII redaction and field-level privacy controls are not standardized across apps and packages. | Export `redactPII`, `redactSecrets`, safe log context builders, and optional field encryption helpers from compliance/studio-core/auth-adjacent packages. | Redaction exists in places but is not a universal public API. | Security + platform specialist | Shared redaction API is adopted by logger, monitoring, Admin Studio, and app templates. | Tests prove emails, phones, tokens, keys, and sensitive identifiers are redacted from logs/events. |
+| WCA-021 | UI/UX | P1 | Error, empty, loading, partial failure, and permission-denied states are not standardized. | Add UX state taxonomy and components for every app: skeleton, empty state, warning, recoverable error, irreversible error, retry prompt, support escalation, and permission denied. | Design rubric exists; components and app adoption are incomplete. | Product/design + platform | State components are documented, tested, and applied to Admin Studio and one app flow. | UX review verifies all states in one critical journey. |
+| WCA-022 | Admin Studio | P0 | Admin Studio command plane is planned but not production-safe for AI-driven changes. | Implement structured command object model with intent, target, environment, risk tier, dry-run diff, tests, approvals, audit entry, branch/PR linkage, deployment evidence, and rollback plan. | Command-plane requirements exist above; production-grade execution remains future work. | Admin Studio specialist | Commands cannot mutate production or `main` without policy and evidence. | Dry-run and approval tests pass; audit log links command to PR/workflow/endpoint verification. |
+| WCA-023 | App Portfolio | P1 | Six planned apps have repo status but lack per-app product roadmaps, journey maps, KPI ownership, and launch risk registers. | Add per-app roadmap template and status rows: outcome, phase, owner, dependencies, core journeys, KPIs, risks, required Factory packages, launch gates. | App repos exist; Phase 6/7 readiness is tracked, but app-specific product execution is not visible. | Product + app specialists | Each app has a one-page delivery plan linked from this dashboard. | Coordinator review confirms every app has owner, next milestone, and blocking dependencies. |
+| WCA-024 | Video Platform | P0 | Shared video scheduling/cron Workers are smoke-verified; render workflow, R2/Stream secret validation, Stream UID, and SelfPrime embed remain incomplete. | Continue from verified Phase 0 into first render: validate R2/Stream secrets, run render workflow, persist Stream UID, and embed on SelfPrime landing. | `Smoke Video Phase 0` run `25094160617`; open work register has OWR-006 through OWR-008. | Video platform specialist | First end-to-end render produces Stream UID and landing page serves video. | Render workflow succeeds; `curl` verifies worker health and landing page status. |
+| WCA-025 | Docs | P1 | Runbooks are numerous and partially overlapping. | Create runbook taxonomy and navigator: setup, release, incident, data, security, app onboarding, troubleshooting, compliance, and executive reporting. | Multiple SLO, release, status, and phase docs overlap. | Tech writer + coordinator | Every runbook has purpose, owner, last verified date, time-to-execute, and replacement/deprecation links. | Doc freshness audit fails stale or orphaned runbooks. |
+| WCA-026 | Testing | P1 | Accessibility, performance, and critical user journey tests are not enforced uniformly. | Add test harness standards: Axe/keyboard checks, Lighthouse budgets, route smoke, payment webhook contract tests, auth negative tests, and revenue workflow regression tests. | Quality gates emphasize unit coverage; journey and UX automation are uneven. | QA + platform + app specialists | Templates include these tests and first two apps adopt them. | CI outputs accessibility/performance/journey artifacts. |
+| WCA-027 | AI/LLM | P1 | LLM package lacks mature cost, safety, prompt versioning, and evaluation controls. | Add prompt registry, model fallback policy, token/cost accounting, red-team evals, content safety gates, PII guardrails, and output quality scoring. | LLM chain is specified as Anthropic → Grok → Groq; operational controls are not fully visible. | AI platform specialist | LLM usage is costed, auditable, versioned, and safety-tested. | Monthly eval run produces pass/fail report and cost trend. |
+| WCA-028 | Vendor Risk | P1 | Critical external processors and APIs lack a visible vendor risk and renewal calendar. | Build vendor register for Cloudflare, Neon, Stripe, Sentry, PostHog, Anthropic, Grok, Groq, Telnyx, Deepgram, ElevenLabs, Resend, and GitHub. | Standing orders list vendors; risk/processor calendar is not centralized. | Security + ops + finance | Vendor owner, data category, SLA, DPA status, renewal, key rotation, and incident contact are tracked. | Quarterly vendor review evidence is stored and exceptions have owners. |
+
+### Recommended Sequencing for the Assessment Backlog
+
+#### First 7 Days
+
+1. Close WCA-001 by making status semantics explicit and linking historical docs back to this dashboard.
+2. Start WCA-014 with a board-ready executive scorecard skeleton.
+3. Start WCA-024 to finish the video phase-zero proof path already in progress.
+4. Start WCA-007 and WCA-009 design specs before more production token usage spreads.
+5. Start WCA-011 and WCA-012 so package scale does not outrun compatibility discipline.
+
+#### First 30 Days
+
+1. Ship initial design-system components for WCA-002 and enforce WCA-003 journey gates on one app.
+2. Ship resilience primitives for WCA-004 and adopt in video-cron/schedule-worker.
+3. Ship cross-service correlation for WCA-006 and prove it with one render or payout scenario.
+4. Stand up Admin Studio operator health dashboard for WCA-013.
+5. Publish runbook taxonomy for WCA-025 and incident drill calendar for WCA-017.
+
+#### First 60 Days
+
+1. Complete revenue integrity dashboard for WCA-015.
+2. Complete compliance operating calendar and DSR workflow for WCA-010.
+3. Complete app portfolio roadmaps for WCA-023.
+4. Convert Admin Studio command execution to policy-backed dry-run/PR/deploy/audit flow for WCA-022.
+5. Add AI/LLM cost, safety, and eval controls for WCA-027.
+
+### Immediate Dashboard Workflow Additions
+
+| ID | Work item | Owner mode | Current state | Next verification |
+|---|---|---|---|---|
+| OWR-013 | Establish explicit status semantics for documented/implemented/deployed/verified | Coordinator | New from deep-dive assessment | Dashboard state model added and historical docs linked back here |
+| OWR-014 | Create board-ready executive scorecard | Executive sponsor + product lead | New | One-page RAG summary with top risks, revenue, release, compliance, and portfolio health |
+| OWR-015 | Promote design-system from tokens to reusable accessible components | Product/design + platform specialist | New | First component set tested, documented, and consumed by Admin Studio UI |
+| OWR-016 | Add shared resilience primitives | Platform specialist | New | Retry/backoff/circuit breaker utilities adopted by video-cron and schedule-worker |
+| OWR-017 | Add package API stability and integration test policy | Platform lead | New | SemVer/stability metadata/changelogs plus cross-package integration CI |
+| OWR-018 | Build end-to-end correlation contract | Platform + ops | New | One synthetic flow traceable from UI/Worker through async job and audit/event records |
+| OWR-019 | Harden JWT/API token rotation and scoped service tokens | Security + platform | New | Dual-key JWT tests and scoped service token tests pass |
+| OWR-020 | Build revenue integrity and payout evidence dashboard | Finance + monetization specialist | New | Monthly reconciliation artifact matches Stripe, database, and event evidence |
+| OWR-021 | Create compliance calendar and vendor risk register | Security + ops + finance | New | Calendar contains processor, rotation, audit, breach drill, and renewal checkpoints |
+| OWR-022 | Build Admin Studio operator health dashboard | Admin Studio specialist + ops | New | DLQ depth, Sentry errors, payout/video queue state, and oldest stuck item visible |
+| OWR-023 | Add per-app delivery roadmap template and first app plans | Product + app specialists | New | Six app rows have owner, phase, dependencies, KPIs, risks, and launch gates |
+| OWR-024 | Create runbook taxonomy and freshness enforcement | Tech writer + coordinator | New | Runbook index lists purpose, owner, last verified date, and deprecation links |
+
+---
+
 ## Implementation Dashboard
 
 ### Phase E Addendum — SelfPrime × VideoKing Synergy
@@ -289,7 +401,7 @@ The Admin Studio should eventually manage this process through GUI AI commands, 
 |---|---|---|---|---|---|---|
 | E0.1 | Reconcile shared video Worker registry | Prevents hidden dependencies and broken rename/deploy flows | Add `schedule-worker` and `video-cron` to the service registry with owners, consumers, endpoints, and secrets | Confirm SelfPrime and admin consumers use registry-approved URLs | Registry entries exist and remain current | ✅ Complete |
 | E0.2 | Verify shared video Worker health | Product rollout must not depend on undeployed or unreachable services | Deploy Workers after Hyperdrive IDs and secrets are configured | Block SelfPrime video UX until shared services return live `200` health checks | Both `/health` URLs return `200` via direct HTTP verification | ✅ Complete: both health checks returned `200` on Apr 29 |
-| E0.3 | Harden schedule pipeline for app tenancy | Private SelfPrime data must not leak into shared services | Add app-scoped auth, sanitized context refs, structured logs, and events | SelfPrime sends minimal generation briefs and owns private chart data | Synthetic job completes or fails with audit trail; no raw private chart payload in shared queue | 🔄 In Progress: deploy complete; migration + synthetic job still pending |
+| E0.3 | Harden schedule pipeline for app tenancy | Private SelfPrime data must not leak into shared services | Add app-scoped auth, sanitized context refs, structured logs, and events | SelfPrime sends minimal generation briefs and owns private chart data | Synthetic job completes or fails with audit trail; no raw private chart payload in shared queue | ✅ Complete: `Smoke Video Phase 0` run `25094160617` verified migration, synthetic job audit trail, pending queue auth, and video-cron trigger |
 
 ### T1 — Product + UX Operating System
 

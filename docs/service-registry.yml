@@ -48,7 +48,7 @@ workers:
     url: https://schedule-worker.adrper79.workers.dev      # canonical workers.dev URL
     custom_domain: null
     health_endpoint: /health
-    deployment_status: live_health_verified_2026-04-29
+    deployment_status: phase0_smoke_verified_2026-04-29
     critical_endpoints:
       - /jobs
       - /jobs/pending
@@ -82,12 +82,13 @@ workers:
     url: https://video-cron.adrper79.workers.dev           # canonical workers.dev URL
     custom_domain: null
     health_endpoint: /health
-    deployment_status: live_health_verified_2026-04-29
+    deployment_status: phase0_smoke_verified_2026-04-29
     critical_endpoints:
       - /health
       - /trigger
     required_bindings:
       - DB
+      - SCHEDULE_WORKER
     required_secrets:
       - WORKER_API_TOKEN
       - GITHUB_TOKEN
