@@ -72,6 +72,17 @@ jobs:
           echo "$failed"
           STATUS_PAYLOAD="$failed" node -e "const r=JSON.parse(process.env.STATUS_PAYLOAD); if (r.data.status !== 'failed') throw new Error('job did not reach failed status')"
 
+      - name: Verify authenticated pending queue path
+        run: |
+          set -euo pipefail
+          body_file=$(mktemp)
+          status_code=$(curl -sS -o "$body_file" -w '%{http_code}' \
+            "$SCHEDULE_WORKER_URL/jobs/pending?limit=1&appId=selfprime" \
+            -H "Authorization: Bearer $WORKER_API_TOKEN")
+          cat "$body_file"
+          echo
+          test "$status_code" = "200"
+
       - name: Verify video-cron authenticated trigger path
         run: |
           set -euo pipefail
