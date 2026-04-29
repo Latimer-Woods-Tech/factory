@@ -378,3 +378,21 @@ export function createTestRequest(opts: CreateTestRequestOptions): Request {
   const url = opts.path.startsWith('http') ? opts.path : `https://example.test${opts.path}`;
   return new Request(url, init);
 }
+
+// ---------- W360-042: UI Regression Gates ----------
+
+/**
+ * Re-export regression testing utilities (Lighthouse, screenshot diffing, performance budgets).
+ * See regression-gates README for usage patterns.
+ */
+export {
+  collectLighthouse,
+  compareScreenshots,
+  captureScreenshots,
+  assertLighthouseBudget,
+  DEFAULT_PERFORMANCE_BUDGETS,
+  type LighthouseMetrics,
+  type ScreenshotDiffResult,
+  type PerformanceBudget,
+  type CapturedScreenshots,
+} from './regression-gates.js';

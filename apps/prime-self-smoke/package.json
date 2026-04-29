@@ -8,6 +8,9 @@
     "test:headed": "playwright test --headed",
     "test:report": "playwright show-report"
   },
+  "dependencies": {
+    "@adrper79-dot/testing": "workspace:*"
+  },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.2",
     "@playwright/test": "^1.44.0"
