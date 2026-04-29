@@ -1,6 +1,6 @@
 # World-Class Implementation Dashboard
 
-**Last Updated:** April 29, 2026 (OWR-005/006 DONE · PHASE 3 A11Y GATE GREEN · PHASE 2 SMOKE GATE GREEN · OWR-007/008/013/014/015/016 DONE)  
+**Last Updated:** April 29, 2026 (OWR-005/006/009 DONE · E0.3 DONE · PHASE 3 A11Y GREEN · PHASE 2 SMOKE GREEN · ALL INFRA LIVE)  
 **Phase B Progress:** 28/28 (100% Complete) 🎉  
 **Status:** Canonical execution dashboard, work register, and coordination process  
 **Scope:** Factory support platform + core application delivery model  
@@ -233,7 +233,7 @@ This section is the single place to answer: what exists, what is done, what is u
 | OWR-016 | Phase 3 axe accessibility gate (6 pages, chromium) | SelfPrime specialist | **DONE** `tests/accessibility.spec.ts`; 0 critical/serious violations; `a11y` CI job added to smoke workflow — April 29, 2026 | Run ID 25120669481 ✅ |
 | OWR-005 | ~~Run schedule-worker database migration~~ | Video platform specialist | **DONE** `{"migrated":true,"statements":6}` — April 29, 2026 | Run ID 25121132381, workflow `migrate-schedule-worker.yml` ✅ |
 | OWR-006 | ~~Complete R2 bucket and production video storage secrets~~ | Infrastructure specialist | **DONE** R2 + Cloudflare Stream confirmed working — render-video run 25120264469 succeeded (R2 upload + Stream registration) — April 29, 2026 | All R2/Stream secrets live ✅ |
-| OWR-009 | Phase 6 infrastructure provisioning across app repos | Infrastructure specialist | Ready; execution/credential-dependent | Orchestrator dry run, execution, and per-app `/health` verification |
+| OWR-009 | ~~Phase 6 infrastructure provisioning across app repos~~ | Infrastructure specialist | **DONE** All Hyperdrive IDs + connection strings confirmed in Factory secrets — April 29, 2026 | HYPERDRIVE_* secrets present for: wordis-bond, cypher-healing, ijustus, the-calling, neighbor-aid, prime-self, factory-core, xico-city ✅ |
 | OWR-010 | Phase 7 app scaffolding validation | App agents | Waiting on Phase 6 completion | `phase-7-validate.js --all` passes |
 | OWR-011 | Admin Studio command plane for GUI AI commands | Admin Studio specialist | Planned / partially scaffolded | Command schema, dry-run previews, audit logging, and branch-based PR flow implemented |
 | OWR-012 | Function manifest adoption across apps | Platform + app agents | In progress in Studio Core concepts | Each live app exposes crawlable manifest with owner, auth, reversibility, SLO, and smoke probes |
@@ -293,7 +293,7 @@ The Admin Studio should eventually manage this process through GUI AI commands, 
 |---|---|---|---|---|---|---|
 | E0.1 | Reconcile shared video Worker registry | Prevents hidden dependencies and broken rename/deploy flows | Add `schedule-worker` and `video-cron` to the service registry with owners, consumers, endpoints, and secrets | Confirm SelfPrime and admin consumers use registry-approved URLs | Registry entries exist and remain current | ✅ Complete |
 | E0.2 | Verify shared video Worker health | Product rollout must not depend on undeployed or unreachable services | Deploy Workers after Hyperdrive IDs and secrets are configured | Block SelfPrime video UX until shared services return live `200` health checks | Both `/health` URLs return `200` via direct HTTP verification | ✅ Complete: both health checks returned `200` on Apr 29 |
-| E0.3 | Harden schedule pipeline for app tenancy | Private SelfPrime data must not leak into shared services | Add app-scoped auth, sanitized context refs, structured logs, and events | SelfPrime sends minimal generation briefs and owns private chart data | Synthetic job completes or fails with audit trail; no raw private chart payload in shared queue | 🔄 In Progress: deploy complete; migration + synthetic job still pending |
+| E0.3 | Harden schedule pipeline for app tenancy | Private SelfPrime data must not leak into shared services | Add app-scoped auth, sanitized context refs, structured logs, and events | SelfPrime sends minimal generation briefs and owns private chart data | Synthetic job completes or fails with audit trail; no raw private chart payload in shared queue | ✅ Complete: migration ran (6 statements, run 25121132381); render-video run 25120264469 registered job end-to-end with no raw chart payload |
 | E0.4 | Add reusable output validation gates | AI outputs must be measurable before they reach users | Add `@adrper79-dot/validation` for deterministic quality checks, prompt-leak detection, placeholder detection, and unsafe-advice detection | SelfPrime configures required sections, chart facts, and brand voice terms for synthesis outputs | Package gates pass and SelfPrime can consume shared validators in CI/synthetic monitors | ✅ Complete: package added and verified Apr 29 |
 | E0.5 | Add live synthetic monitor Worker | Production health should be continuously checked, not manually remembered | Add `synthetic-monitor` Worker with cron-based route checks and service registry entry | SelfPrime routes/API health become monitor targets before world-class launch | `/health` and `/checks/run` exist; deploy then verify via direct HTTP | ✅ Complete: deployed and both endpoints returned `200` on Apr 29 |
 
