@@ -35,6 +35,7 @@ jobs:
             admin
             video
             schedule
+            validation
           )
 
           for package in "${packages[@]}"; do

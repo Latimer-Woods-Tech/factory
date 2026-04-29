@@ -18,7 +18,7 @@
       },
       "vars": {
         "ENVIRONMENT": "production",
-        "TARGETS_JSON": "[]"
+        "TARGETS_JSON": "[{\"id\":\"selfprime.home\",\"url\":\"https://selfprime.net/\",\"contains\":\"Prime Self\"},{\"id\":\"selfprime.pricing\",\"url\":\"https://selfprime.net/pricing.html\",\"contains\":\"Plans\"},{\"id\":\"selfprime.practitioners\",\"url\":\"https://selfprime.net/practitioners.html\",\"contains\":\"Practitioner\"},{\"id\":\"selfprime.api.health\",\"url\":\"https://prime-self.adrper79.workers.dev/health\",\"contains\":\"ok\"},{\"id\":\"prime-self.api\",\"url\":\"https://prime-self.adrper79.workers.dev/health\",\"expectedStatus\":200}]"
       }
     }
   }

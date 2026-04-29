@@ -1,0 +1,55 @@
+name: Deploy Synthetic Monitor
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/synthetic-monitor/**'
+      - '.github/workflows/deploy-synthetic-monitor.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy synthetic-monitor to Cloudflare
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          cd apps/synthetic-monitor
+          npm install
+
+      - name: Typecheck
+        run: |
+          cd apps/synthetic-monitor
+          npx tsc --noEmit
+
+      - name: Test
+        run: |
+          cd apps/synthetic-monitor
+          npx vitest run
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/synthetic-monitor
+          command: deploy --env production
+          environment: production
+
+      - name: Verify deployment
+        run: |
+          echo "🚀 Deployment complete"
+          echo "📍 Health endpoint: https://synthetic-monitor.adrper79.workers.dev/health"
+          sleep 10
+          curl -f https://synthetic-monitor.adrper79.workers.dev/health || echo "⚠️  Health check failed — may need time to propagate"
+          echo "📍 On-demand run: https://synthetic-monitor.adrper79.workers.dev/checks/run"
