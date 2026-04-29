@@ -5,11 +5,17 @@ the safety design lives in [01-ENVIRONMENT-SAFETY.md](./01-ENVIRONMENT-SAFETY.md
 
 ## URLs
 
+Observed on 2026-04-29:
+
+- Staging API Worker is live and `/health` returns `200` with `env: "staging"`.
+- Staging UI is live at `https://staging.admin-studio-ui.pages.dev` and returns the expected `Factory Admin Studio` page marker.
+- Production API Worker URL is configured in Wrangler and workflows, but `https://admin-studio-production.adrper79.workers.dev/health` returned `404` during direct verification, so treat production as configured, not live-verified.
+
 | Surface          | Staging                                                 | Production                                            |
 | ---------------- | ------------------------------------------------------- | ----------------------------------------------------- |
 | API Worker       | `https://admin-studio-staging.adrper79.workers.dev`     | `https://admin-studio-production.adrper79.workers.dev` |
-| UI (Pages)       | `https://studio-staging.thefactory.dev`                 | `https://studio.thefactory.dev`                       |
-| Health check     | `GET /health` (returns `env` field — verify by eye)     | same                                                  |
+| UI (Pages)       | `https://staging.admin-studio-ui.pages.dev`             | `https://studio.thefactory.dev`                       |
+| Health check     | `GET /health` returns `200` with `env: "staging"`     | URL configured, but direct `/health` verification still pending |
 
 Always confirm env via `curl`:
 
@@ -80,7 +86,7 @@ The `env` claim is **non-negotiable** — every authenticated route rejects toke
 ### Deploy to production
 1. Owner role required (admins cannot)
 2. Type-to-confirm dialog (tier 2)
-3. Wait for `Verify health post-deploy` step in GH Actions
+3. Do not treat production as live until `Verify health post-deploy` passes and `/health` returns `200` from the production URL
 4. Tail Sentry for the next 5 minutes — abort with rollback if errors spike
 
 ### Rotate a secret

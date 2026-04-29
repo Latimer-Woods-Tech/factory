@@ -1,9 +1,9 @@
 # Factory Admin Studio — Master Plan
 
 **Date:** 2026-04-28  
-**Status:** Design Approved → Execution In Progress  
+**Status:** Design Approved → Execution In Progress; staging surfaces live-verified, production Worker not yet live-verified  
 **Codename:** `factory-admin-studio`  
-**URL:** `https://studio.thefactory.dev` (planned)
+**URL:** `https://studio.thefactory.dev` (production target; custom domain documented, not yet treated as live-verified in the service registry)
 
 ---
 
