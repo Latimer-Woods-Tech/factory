@@ -1,6 +1,6 @@
 # World-Class Implementation Dashboard
 
-**Last Updated:** April 29, 2026 (CONTROL PLANE + OPEN WORK REGISTER ADDED)  
+**Last Updated:** April 29, 2026 (SYNTHETIC MONITOR DEPLOY WORKFLOW WIRED)  
 **Phase B Progress:** 28/28 (100% Complete) 🎉  
 **Status:** Canonical execution dashboard, work register, and coordination process  
 **Scope:** Factory support platform + core application delivery model  
@@ -225,6 +225,7 @@ This section is the single place to answer: what exists, what is done, what is u
 | OWR-002 | Clean multi-agent collision risk | Coordinator + specialist agents | Required; multiple agents have touched overlapping areas | Assign path ownership before further edits |
 | OWR-003 | Review uncommitted Admin Studio / Studio Core local changes | Admin Studio specialist | Required; local changes exist in `apps/admin-studio-ui` and `packages/studio-core` | Decide commit, stash, or discard before master updates |
 | OWR-004 | Exclude generated dependency/build artifacts from commits | Coordinator | Required; local `node_modules/`, `dist/`, and build info are present | Ensure `.gitignore` coverage and do not stage generated files |
+| OWR-013 | Deploy synthetic-monitor to production and verify `/health` | Platform specialist | Ready: deploy-synthetic-monitor.yml added; push triggers deploy | `curl https://synthetic-monitor.adrper79.workers.dev/health` must return `200` |
 | OWR-005 | Run schedule-worker database migration | Video platform specialist | Pending after Worker deploy | `POST /migrate` with valid `WORKER_API_TOKEN`, then verify logs/status |
 | OWR-006 | Complete R2 bucket and production video storage secrets | Infrastructure specialist | Pending / verify placeholders | Confirm bucket, API keys, public domain, and GitHub secrets are real |
 | OWR-007 | Trigger first `render-video.yml` end-to-end run | Video platform specialist | Pending R2 + migration verification | Workflow completes and returns Cloudflare Stream UID |
