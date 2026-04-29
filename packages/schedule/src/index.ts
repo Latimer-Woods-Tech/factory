@@ -6,6 +6,11 @@ import type { RenderJob, RenderJobType, RenderJobStatus } from '@adrper79-dot/vi
 // Re-export the job types so consumers only need one import
 export type { RenderJob, RenderJobType, RenderJobStatus } from '@adrper79-dot/video';
 
+// Practitioner Studio entitlements + Stripe webhook (W360-005)
+export * from './studio-entitlements.js';
+export { handleStripeWebhook } from './stripe-webhook.js';
+export type { StripeEvent, StripeSubscription, StripeInvoice } from './stripe-webhook.js';
+
 // ---------------------------------------------------------------------------
 // Domain types
 // ---------------------------------------------------------------------------
