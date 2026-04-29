@@ -124,6 +124,85 @@ workers:
       - TARGETS_JSON
     consumers: []
 
+  - id: admin-studio-staging
+    name: admin-studio-staging                             # matches apps/admin-studio/wrangler.jsonc env.staging.name
+    repo: adrper79-dot/factory
+    url: https://admin-studio-staging.adrper79.workers.dev
+    custom_domain: null
+    health_endpoint: /health
+    deployment_status: live_health_verified_2026-04-29
+    critical_endpoints:
+      - /health
+      - /auth/login
+      - /manifest
+      - /smoke
+    required_bindings:
+      - DB
+    required_secrets:
+      - JWT_SECRET
+      - STUDIO_ADMIN_EMAIL
+      - STUDIO_ADMIN_PASSWORD_SHA256
+      - GITHUB_TOKEN
+      - ANTHROPIC_API_KEY
+    required_vars:
+      - STUDIO_ENV
+      - ALLOWED_ORIGINS
+    consumers:
+      - repo: adrper79-dot/factory
+        file: .github/workflows/deploy-admin-studio.yml
+        line: ~77
+        pattern: "https://admin-studio-staging.adrper79.workers.dev/health"
+      - repo: adrper79-dot/factory
+        file: .github/workflows/deploy-admin-studio-ui.yml
+        line: ~52
+        pattern: "https://admin-studio-staging.adrper79.workers.dev"
+      - repo: adrper79-dot/factory
+        file: docs/admin-studio/02-OPERATOR-QUICK-REF.md
+        line: ~10
+        pattern: "https://admin-studio-staging.adrper79.workers.dev"
+
+  - id: admin-studio-production
+    name: admin-studio-production                          # matches apps/admin-studio/wrangler.jsonc env.production.name
+    repo: adrper79-dot/factory
+    url: https://admin-studio-production.adrper79.workers.dev
+    custom_domain: null
+    health_endpoint: /health
+    deployment_status: configured_not_live_verified_2026-04-29
+    notes: >
+      Production worker name and URL are configured in wrangler, but `/health`
+      returned `404` when checked on 2026-04-29. Treat this as a configured
+      target, not a live-verified production surface, until a production deploy
+      plus direct health verification succeeds.
+    critical_endpoints:
+      - /health
+      - /auth/login
+      - /manifest
+      - /smoke
+    required_bindings:
+      - DB
+    required_secrets:
+      - JWT_SECRET
+      - STUDIO_ADMIN_EMAIL
+      - STUDIO_ADMIN_PASSWORD_SHA256
+      - GITHUB_TOKEN
+      - ANTHROPIC_API_KEY
+    required_vars:
+      - STUDIO_ENV
+      - ALLOWED_ORIGINS
+    consumers:
+      - repo: adrper79-dot/factory
+        file: .github/workflows/deploy-admin-studio.yml
+        line: ~75
+        pattern: "https://admin-studio-production.adrper79.workers.dev/health"
+      - repo: adrper79-dot/factory
+        file: .github/workflows/deploy-admin-studio-ui.yml
+        line: ~52
+        pattern: "https://admin-studio-production.adrper79.workers.dev"
+      - repo: adrper79-dot/factory
+        file: docs/admin-studio/02-OPERATOR-QUICK-REF.md
+        line: ~10
+        pattern: "https://admin-studio-production.adrper79.workers.dev"
+
   - id: videoking
     name: videoking                                        # NOT a deployed worker — architecture reference only
     repo: adrper79-dot/factory
@@ -148,6 +227,20 @@ pages:
     deploy_dir: public
     worker_dependencies:
       - prime-self                                        # must be deployed and healthy first
+    required_secrets:
+      - CF_API_TOKEN
+      - CF_ACCOUNT_ID
+
+  - id: admin-studio-ui
+    repo: adrper79-dot/factory
+    project_name: admin-studio-ui
+    custom_domain: studio.thefactory.dev
+    staging_url: https://staging.admin-studio-ui.pages.dev
+    root_file: apps/admin-studio-ui/index.html
+    deploy_dir: apps/admin-studio-ui/dist
+    worker_dependencies:
+      - admin-studio-staging
+      - admin-studio-production
     required_secrets:
       - CF_API_TOKEN
       - CF_ACCOUNT_ID
