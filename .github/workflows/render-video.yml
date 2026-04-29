@@ -88,21 +88,25 @@ jobs:
         id: generate_script
         run: |
           SCRIPT=$(node --input-type=module << 'SCRIPT_EOF'
-          const resp = await fetch('https://api.anthropic.com/v1/messages', {
+          const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
-              'x-api-key': process.env.ANTHROPIC_API_KEY,
-              'anthropic-version': '2023-06-01',
-              'content-type': 'application/json',
+              'Authorization': 'Bearer ' + process.env.GROQ_API_KEY,
+              'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'claude-3-haiku-20240307',
+              model: 'llama3-70b-8192',
               max_tokens: 300,
-              system: 'You are a concise copywriter. Write a punchy, direct narration script for a 15-second video. Output only the script text, no labels.',
-              messages: [{
-                role: 'user',
-                content: `Write a 15-second narration script for a ${process.env.COMPOSITION_TYPE} video about: ${process.env.TOPIC}. App voice: ${process.env.APP_ID}. Be specific and compelling.`,
-              }],
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are a concise copywriter. Write a punchy, direct narration script for a 15-second video. Output only the script text, no labels.',
+                },
+                {
+                  role: 'user',
+                  content: `Write a 15-second narration script for a ${process.env.COMPOSITION_TYPE} video about: ${process.env.TOPIC}. App voice: ${process.env.APP_ID}. Be specific and compelling.`,
+                },
+              ],
             }),
           });
           if (!resp.ok) {
@@ -110,14 +114,14 @@ jobs:
             throw new Error('LLM call failed: ' + resp.status + ' — ' + errBody);
           }
           const data = await resp.json();
-          const text = data.content?.[0]?.text ?? '';
+          const text = data.choices?.[0]?.message?.content ?? '';
           // Output as single line for GitHub Actions
           process.stdout.write(text.replace(/\n/g, ' '));
           SCRIPT_EOF
           )
           echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           TOPIC: ${{ github.event.inputs.topic }}
           APP_ID: ${{ github.event.inputs.app_id }}
           COMPOSITION_TYPE: ${{ github.event.inputs.composition_id }}
