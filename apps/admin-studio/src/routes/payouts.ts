@@ -13,6 +13,7 @@
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 import type { AppEnv } from '../types.js';
+import { requireConfirmation } from '../middleware/require-confirmation.js';
 import {
   ValidationError,
   ErrorCodes,
@@ -174,8 +175,19 @@ router.get('/batches/:id', requireAdmin, async (c) => {
 /**
  * POST /api/admin/payouts/batches/:id/execute
  * Operator: Execute payout batch. Streams status updates as payouts are processed.
+ *
+ * Requires type-to-confirm for production (tier 2 / manual-rollback).
+ * Supports ?dryRun=true to return execution plan without transferring funds.
  */
-router.post('/batches/:id/execute', requireAdmin, async (c) => {
+router.post(
+  '/batches/:id/execute',
+  requireConfirmation({
+    action: 'payout.batch.execute',
+    reversibility: 'manual-rollback',
+    minRole: 'admin',
+    allowDryRun: true,
+  }),
+  async (c) => {
   try {
     const batchId = c.req.param('id');
     const { excludeCreators } = await c.req.json<{ excludeCreators?: string[] }>();
@@ -199,6 +211,28 @@ router.post('/batches/:id/execute', requireAdmin, async (c) => {
     if (!batch || batch.status !== 'pending') {
       throw new ValidationError('Batch not pending or not found', {
         code: ErrorCodes.VALIDATION_ERROR,
+      });
+    }
+
+    // Dry-run: return execution plan without touching Stripe or the DB.
+    if (c.req.query('dryRun') === 'true' || c.req.header('X-Dry-Run') === 'true') {
+      const eligible = await db.query.payouts.findMany({
+        where: (p) => eq(p.batchId, batchId),
+        columns: { creatorId: true, amountUsd: true },
+      });
+      const filtered = eligible.filter(
+        (p) => !excludeCreators?.includes(p.creatorId),
+      );
+      const totalUsd = filtered.reduce((s, p) => s + p.amountUsd, 0);
+      return c.json({
+        dryRun: true,
+        plan: {
+          batchId,
+          periodDate: batch.periodDate.toISOString(),
+          totalCreators: filtered.length,
+          totalAmountUsd: totalUsd,
+          excluded: excludeCreators ?? [],
+        },
       });
     }
 
