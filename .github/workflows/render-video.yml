@@ -317,6 +317,7 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Register video with Cloudflare Stream
         id: register_stream
+        continue-on-error: true  # Cloudflare Stream must be enabled on account (paid add-on)
         run: |
           RESPONSE=$(curl -s -X POST \
             "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/stream/copy" \
@@ -349,6 +350,7 @@ jobs:
       # 11. Update video_calendar via the schedule Worker
       # -----------------------------------------------------------------------
       - name: Update job status in database
+        if: always()
         run: |
           curl -s -X PATCH \
             "${SCHEDULE_WORKER_URL}/jobs/${{ github.event.inputs.job_id }}" \
