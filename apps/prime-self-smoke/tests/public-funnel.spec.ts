@@ -76,7 +76,8 @@ test.describe('Route redirects', () => {
 test.describe('Marketing pages', () => {
   test('pricing page loads with plan copy', async ({ page }) => {
     await page.goto('/pricing.html');
-    await expect(page).toHaveTitle(/pricing/i);
+    expect(page.url()).toContain('pricing.html');
+    await expect(page).toHaveTitle(/Prime Self/i);
   });
 
   test('practitioners page loads', async ({ page }) => {
