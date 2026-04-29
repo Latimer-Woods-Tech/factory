@@ -88,23 +88,20 @@ jobs:
         id: generate_script
         run: |
           SCRIPT=$(node --input-type=module << 'SCRIPT_EOF'
-          const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          const resp = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
-              'Authorization': 'Bearer ' + process.env.GROQ_API_KEY,
+              'x-api-key': process.env.ANTHROPIC_API_KEY,
+              'anthropic-version': '2023-06-01',
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
+              model: 'claude-3-5-haiku-20241022',
               max_tokens: 300,
               messages: [
                 {
-                  role: 'system',
-                  content: 'You are a concise copywriter. Write a punchy, direct narration script for a 15-second video. Output only the script text, no labels.',
-                },
-                {
                   role: 'user',
-                  content: `Write a 15-second narration script for a ${process.env.COMPOSITION_TYPE} video about: ${process.env.TOPIC}. App voice: ${process.env.APP_ID}. Be specific and compelling.`,
+                  content: `You are a concise copywriter. Write a punchy, direct 15-second narration script for a ${process.env.COMPOSITION_TYPE} video about: ${process.env.TOPIC}. App voice: ${process.env.APP_ID}. Be specific and compelling. Output only the script text, no labels.`,
                 },
               ],
             }),
@@ -114,14 +111,14 @@ jobs:
             throw new Error('LLM call failed: ' + resp.status + ' — ' + errBody);
           }
           const data = await resp.json();
-          const text = data.choices?.[0]?.message?.content ?? '';
+          const text = data.content?.[0]?.text ?? '';
           // Output as single line for GitHub Actions
           process.stdout.write(text.replace(/\n/g, ' '));
           SCRIPT_EOF
           )
           echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
         env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           TOPIC: ${{ github.event.inputs.topic }}
           APP_ID: ${{ github.event.inputs.app_id }}
           COMPOSITION_TYPE: ${{ github.event.inputs.composition_id }}
@@ -192,8 +189,8 @@ jobs:
           echo "narration_url=$NARRATION_URL" >> "$GITHUB_OUTPUT"
           echo "narration_key=$NARRATION_KEY" >> "$GITHUB_OUTPUT"
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.FACTORY_R2_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.FACTORY_R2_SECRET_KEY }}
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           R2_PUBLIC_DOMAIN: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
@@ -299,8 +296,8 @@ jobs:
           echo "video_url=$VIDEO_URL" >> "$GITHUB_OUTPUT"
           echo "video_key=$VIDEO_KEY" >> "$GITHUB_OUTPUT"
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.FACTORY_R2_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.FACTORY_R2_SECRET_KEY }}
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           R2_PUBLIC_DOMAIN: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
