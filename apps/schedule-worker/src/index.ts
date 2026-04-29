@@ -182,7 +182,7 @@ app.patch('/jobs/:id', async (c) => {
   const body = await c.req.json<Body>();
   const { status, streamUid, videoUrl, narrationUrl, script } = body;
 
-  const validStatuses: RenderJobStatus[] = ['pending', 'rendering', 'done', 'failed'];
+  const validStatuses: RenderJobStatus[] = ['pending', 'rendering', 'uploading', 'done', 'failed'];
   if (typeof status !== 'string' || !validStatuses.includes(status as RenderJobStatus)) {
     throw new ValidationError(`status must be one of: ${validStatuses.join(', ')}`);
   }

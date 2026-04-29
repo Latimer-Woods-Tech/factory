@@ -2,6 +2,11 @@
 
 All notable changes to this package will be documented in this file.
 
+## [0.2.2] — 2026-04-29
+
+### Fixed
+- Build optional app-scope SQL filters conditionally instead of passing nullable scope parameters, avoiding Postgres type inference failures through Hyperdrive.
+
 ## [0.2.1] — 2026-04-28
 
 ### Added

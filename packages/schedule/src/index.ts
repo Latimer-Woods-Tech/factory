@@ -229,6 +229,7 @@ export async function getVideoJob(
   appId?: string,
 ): Promise<VideoCalendarRow> {
   const appScope = appId?.trim() || null;
+  const scopeFilter = appScope ? sql`AND app_id = ${appScope}` : sql``;
   const rows = await db.execute(
     sql`
       SELECT
@@ -237,7 +238,7 @@ export async function getVideoJob(
         created_at, updated_at
       FROM video_calendar
       WHERE id = ${id}
-        AND (${appScope} IS NULL OR app_id = ${appScope})
+        ${scopeFilter}
       LIMIT 1
     `,
   );
@@ -269,6 +270,7 @@ export async function getPendingJobs(
   }
 
   const appScope = appId?.trim() || null;
+  const scopeFilter = appScope ? sql`AND app_id = ${appScope}` : sql``;
   const rows = await db.execute(
     sql`
       SELECT
@@ -278,7 +280,7 @@ export async function getPendingJobs(
       FROM video_calendar
       WHERE status = 'pending'
         AND scheduled_at <= NOW()
-        AND (${appScope} IS NULL OR app_id = ${appScope})
+        ${scopeFilter}
       ORDER BY performance_score DESC, scheduled_at ASC
       LIMIT ${limit}
     `,
@@ -313,6 +315,7 @@ export async function updateJobStatus(
   appId?: string,
 ): Promise<VideoCalendarRow> {
   const appScope = appId?.trim() || null;
+  const scopeFilter = appScope ? sql`AND app_id = ${appScope}` : sql``;
   const rows = await db.execute(
     sql`
       UPDATE video_calendar
@@ -325,7 +328,7 @@ export async function updateJobStatus(
         error         = ${updates.error ?? null},
         updated_at    = NOW()
       WHERE id = ${id}
-        AND (${appScope} IS NULL OR app_id = ${appScope})
+        ${scopeFilter}
       RETURNING
         id, app_id, type, topic, script, narration_url, video_url, stream_uid,
         scheduled_at, status, performance_score, trigger_source, idempotency_key, error,

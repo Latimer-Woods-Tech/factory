@@ -62,10 +62,20 @@ function makeDb(rows: Record<string, unknown>[][] = [[]]) {
 
 type SqlMockCall = { strings: TemplateStringsArray; values: unknown[] };
 
+function flattenSqlValues(values: unknown[]): unknown[] {
+  return values.flatMap((value) => {
+    if (value && typeof value === 'object' && 'values' in value && Array.isArray((value as { values: unknown[] }).values)) {
+      return flattenSqlValues((value as { values: unknown[] }).values);
+    }
+    return [value];
+  });
+}
+
 function firstSqlCall(db: ReturnType<typeof makeDb>): SqlMockCall {
   const call = db.execute.mock.calls[0]?.[0];
   if (!call) throw new Error('Expected db.execute to be called');
-  return call as SqlMockCall;
+  const sqlCall = call as SqlMockCall;
+  return { ...sqlCall, values: flattenSqlValues(sqlCall.values) };
 }
 
 afterEach(() => {
