@@ -45,9 +45,11 @@ jobs:
           command: deploy --env production
           secrets: |
             GITHUB_TOKEN
+            SCHEDULE_WORKER_URL
             WORKER_API_TOKEN
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          SCHEDULE_WORKER_URL: https://schedule-worker.adrper79.workers.dev
           WORKER_API_TOKEN: ${{ secrets.WORKER_API_TOKEN }}
 
       - name: Verify deployment
