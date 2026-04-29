@@ -62,3 +62,43 @@ jobs:
             apps/prime-self-smoke/playwright-report/
             apps/prime-self-smoke/test-results/
           retention-days: 7
+
+  a11y:
+    name: Accessibility gate (axe)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/prime-self-smoke/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/prime-self-smoke
+        run: npm ci
+
+      - name: Install Playwright browsers (chromium)
+        working-directory: apps/prime-self-smoke
+        run: npx playwright install --with-deps chromium
+
+      - name: Run accessibility tests
+        working-directory: apps/prime-self-smoke
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url || 'https://selfprime.net' }}
+        run: npx playwright test tests/accessibility.spec.ts --project=chromium-desktop
+
+      - name: Upload a11y report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-report-${{ github.run_id }}
+          path: |
+            apps/prime-self-smoke/playwright-report/
+            apps/prime-self-smoke/test-results/
+          retention-days: 7
