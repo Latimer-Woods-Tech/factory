@@ -57,3 +57,18 @@ jobs:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           command: pages deploy apps/admin-studio-ui/dist --project-name=admin-studio-ui --branch=${{ github.event.inputs.env == 'production' && 'main' || 'staging' }}
+
+      - name: Verify Pages deployment
+        run: |
+          target_env="${{ github.event.inputs.env || 'staging' }}"
+          if [ "$target_env" = "production" ]; then
+            url="https://studio.thefactory.dev"
+          else
+            url="https://staging.admin-studio-ui.pages.dev"
+          fi
+          node scripts/verify-http-endpoint.mjs \
+            --url "$url" \
+            --status 200 \
+            --body-contains "Factory Admin Studio" \
+            --retries 8 \
+            --delay-ms 5000

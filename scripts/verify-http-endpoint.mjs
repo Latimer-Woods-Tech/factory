@@ -23,7 +23,10 @@ for (let attempt = 1; attempt <= retries; attempt += 1) {
     const jsonFailure = args.jsonField
       ? validateJsonField(result.body, args.jsonField, args.jsonEquals)
       : null;
-    if (!jsonFailure) {
+    const bodyFailure = args.bodyContains
+      ? validateBodyContains(result.body, args.bodyContains)
+      : null;
+    if (!jsonFailure && !bodyFailure) {
       console.log(JSON.stringify({
         ok: true,
         url: args.url,
@@ -35,7 +38,7 @@ for (let attempt = 1; attempt <= retries; attempt += 1) {
       verified = true;
       break;
     }
-    lastFailure = jsonFailure;
+    lastFailure = jsonFailure ?? bodyFailure ?? 'verification failed';
   } else {
     lastFailure = result.error ?? `expected HTTP ${expectedStatus}, got ${result.status}`;
   }
@@ -130,6 +133,12 @@ function validateJsonField(body, fieldPath, expectedValue) {
     return `JSON field ${fieldPath} expected ${expectedValue}, got ${String(actual)}`;
   }
   return null;
+}
+
+function validateBodyContains(body, expectedSubstring) {
+  return body.includes(expectedSubstring)
+    ? null
+    : `response body does not contain required text: ${expectedSubstring}`;
 }
 
 function delay(ms) {
