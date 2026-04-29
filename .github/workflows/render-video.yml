@@ -82,12 +82,52 @@ jobs:
           sudo apt-get install -y ffmpeg
 
       # -----------------------------------------------------------------------
-      # 4. Generate script via LLM (if not already in job payload)
+      # 4. Generate script via LLM — duration + structure vary by composition type
       # -----------------------------------------------------------------------
       - name: Generate narration script
         id: generate_script
         run: |
-          SCRIPT=$(node --input-type=module << 'SCRIPT_EOF'
+          if [ "$COMPOSITION_TYPE" = "TrainingVideo" ]; then
+            # Training: 30 s — return structured JSON {script, steps[]}
+            RESULT=$(node --input-type=module << 'SCRIPT_EOF'
+          const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Bearer ' + process.env.GROQ_API_KEY,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'llama-3.3-70b-versatile',
+              max_tokens: 500,
+              response_format: { type: 'json_object' },
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are a training video writer. Return ONLY valid JSON with this exact shape: {"script": "<30-second narration>", "steps": ["<step1>", "<step2>", "<step3>", "<step4>"]}. No markdown, no extra keys.',
+                },
+                {
+                  role: 'user',
+                  content: `Write a 30-second onboarding narration and 4 clear beginner steps for: ${process.env.TOPIC}. App: ${process.env.APP_ID}.`,
+                },
+              ],
+            }),
+          });
+          if (!resp.ok) {
+            const errBody = await resp.text().catch(() => '(unreadable)');
+            throw new Error('LLM call failed: ' + resp.status + ' — ' + errBody);
+          }
+          const data = await resp.json();
+          const content = data.choices?.[0]?.message?.content ?? '{}';
+          const parsed = JSON.parse(content);
+          process.stdout.write(JSON.stringify({ script: (parsed.script ?? '').replace(/\n/g, ' '), steps: parsed.steps ?? [] }));
+          SCRIPT_EOF
+            )
+            SCRIPT=$(echo "$RESULT" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); process.stdout.write(JSON.parse(d).script)")
+            STEPS=$(echo "$RESULT" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); process.stdout.write(JSON.stringify(JSON.parse(d).steps))")
+          else
+            # Marketing (15 s) / Walkthrough (40 s) — plain script
+            DURATION=$( [ "$COMPOSITION_TYPE" = "WalkthroughVideo" ] && echo 40 || echo 15 )
+            SCRIPT=$(node --input-type=module << 'SCRIPT_EOF'
           const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -100,11 +140,11 @@ jobs:
               messages: [
                 {
                   role: 'system',
-                  content: 'You are a concise copywriter. Write a punchy, direct narration script for a 15-second video. Output only the script text, no labels.',
+                  content: `You are a concise copywriter. Write a punchy, direct narration script for a ${process.env.DURATION}-second video. Output only the script text, no labels.`,
                 },
                 {
                   role: 'user',
-                  content: `Write a 15-second narration script for a ${process.env.COMPOSITION_TYPE} video about: ${process.env.TOPIC}. App voice: ${process.env.APP_ID}. Be specific and compelling.`,
+                  content: `Write a ${process.env.DURATION}-second narration script for a ${process.env.COMPOSITION_TYPE} video about: ${process.env.TOPIC}. App voice: ${process.env.APP_ID}. Be specific and compelling.`,
                 },
               ],
             }),
@@ -115,16 +155,19 @@ jobs:
           }
           const data = await resp.json();
           const text = data.choices?.[0]?.message?.content ?? '';
-          // Output as single line for GitHub Actions
           process.stdout.write(text.replace(/\n/g, ' '));
           SCRIPT_EOF
-          )
+            )
+            STEPS='[]'
+          fi
           echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
+          echo "steps=$STEPS" >> "$GITHUB_OUTPUT"
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           TOPIC: ${{ github.event.inputs.topic }}
           APP_ID: ${{ github.event.inputs.app_id }}
           COMPOSITION_TYPE: ${{ github.event.inputs.composition_id }}
+          DURATION: 15
 
       # -----------------------------------------------------------------------
       # 5. Generate narration audio via ElevenLabs
@@ -227,7 +270,7 @@ jobs:
               brandColor: process.env.BRAND_COLOR,
               brandAccent: process.env.BRAND_ACCENT,
               logoUrl: process.env.LOGO_URL,
-              steps: [],
+              steps: JSON.parse(process.env.STEPS || '[]'),
               screenshotUrls: [],
             });
             process.stdout.write(props);
@@ -238,6 +281,7 @@ jobs:
           APP_ID: ${{ github.event.inputs.app_id }}
           TOPIC: ${{ github.event.inputs.topic }}
           SCRIPT: ${{ steps.generate_script.outputs.script }}
+          STEPS: ${{ steps.generate_script.outputs.steps }}
           NARRATION_URL: ${{ steps.upload_narration.outputs.narration_url }}
           BRAND_COLOR: ${{ github.event.inputs.brand_color }}
           BRAND_ACCENT: ${{ github.event.inputs.brand_accent }}
@@ -317,7 +361,6 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Register video with Cloudflare Stream
         id: register_stream
-        continue-on-error: true  # Cloudflare Stream must be enabled on account (paid add-on)
         run: |
           RESPONSE=$(curl -s -X POST \
             "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/stream/copy" \
