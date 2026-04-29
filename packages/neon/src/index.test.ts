@@ -1,26 +1,26 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const mocks = vi.hoisted(() => {
-  const executeMock = vi.fn(() => Promise.resolve({ rows: [] }));
-  const drizzleClient = { execute: executeMock };
+  const executeMock = vi.fn(() => Promise.resolve([]));
+  const drizzleClient = { execute: executeMock, $client: { __postgres: true } };
   return {
     executeMock,
     drizzleClient,
     drizzleMock: vi.fn(() => drizzleClient),
-    neonMock: vi.fn(() => ({ __neon: true })),
+    postgresMock: vi.fn(() => ({ __postgres: true })),
     migrateMock: vi.fn(() => Promise.resolve()),
   };
 });
 
-vi.mock('@neondatabase/serverless', () => ({
-  neon: mocks.neonMock,
+vi.mock('postgres', () => ({
+  default: mocks.postgresMock,
 }));
 
-vi.mock('drizzle-orm/neon-http', () => ({
+vi.mock('drizzle-orm/postgres-js', () => ({
   drizzle: mocks.drizzleMock,
 }));
 
-vi.mock('drizzle-orm/neon-http/migrator', () => ({
+vi.mock('drizzle-orm/postgres-js/migrator', () => ({
   migrate: mocks.migrateMock,
 }));
 
@@ -29,17 +29,17 @@ import { createDb, runMigrations, withTenant } from './index';
 beforeEach(() => {
   mocks.executeMock.mockClear();
   mocks.drizzleMock.mockClear();
-  mocks.neonMock.mockClear();
+  mocks.postgresMock.mockClear();
   mocks.migrateMock.mockClear();
 });
 
 describe('neon', () => {
-  it('createDb wraps the neon HTTP client with drizzle', () => {
+  it('createDb wraps the Hyperdrive connection with postgres.js and drizzle', () => {
     const db = createDb({ connectionString: 'postgres://example' });
 
-    expect(mocks.neonMock).toHaveBeenCalledWith('postgres://example');
+    expect(mocks.postgresMock).toHaveBeenCalledWith('postgres://example', { prepare: false });
     expect(mocks.drizzleMock).toHaveBeenCalledTimes(1);
-    expect(db).toBe(mocks.drizzleClient);
+    expect(db.$client).toEqual({ __postgres: true });
   });
 
   it('createDb throws when connectionString is missing', () => {

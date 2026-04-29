@@ -1,13 +1,29 @@
-import { neon } from '@neondatabase/serverless';
-import { drizzle, type NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { migrate } from 'drizzle-orm/neon-http/migrator';
+import postgres from 'postgres';
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import type { SQLWrapper } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import { InternalError, ErrorCodes } from '@adrper79-dot/errors';
 
 /**
- * Drizzle client bound to a Neon HTTP connection.
+ * Query result shape consumed by Factory data packages.
  */
-export type FactoryDb = NeonHttpDatabase<Record<string, never>>;
+export interface FactoryQueryResult<TRow extends Record<string, unknown> = Record<string, unknown>> {
+  /** Rows returned by the SQL statement. */
+  rows: TRow[];
+}
+
+type HyperdriveDrizzleDb = PostgresJsDatabase<Record<string, never>> & {
+  $client: postgres.Sql;
+};
+
+/**
+ * Drizzle client bound to a Hyperdrive-routed Postgres connection.
+ */
+export type FactoryDb = Omit<HyperdriveDrizzleDb, 'execute'> & {
+  execute<TRow extends Record<string, unknown> = Record<string, unknown>>(
+    query: SQLWrapper | string,
+  ): Promise<FactoryQueryResult<TRow>>;
+};
 
 export { sql } from 'drizzle-orm';
 
@@ -34,14 +50,24 @@ export interface RunMigrationsOptions {
  * @returns A Drizzle client wrapping the Neon HTTP driver.
  */
 export function createDb(hyperdrive: HyperdriveBinding): FactoryDb {
-  if (!hyperdrive.connectionString) {
+  if (!hyperdrive?.connectionString) {
     throw new InternalError('Hyperdrive connectionString is required', {
       code: ErrorCodes.DB_CONNECTION_FAILED,
     });
   }
 
-  const client = neon(hyperdrive.connectionString);
-  return drizzle(client);
+  const client = postgres(hyperdrive.connectionString, { prepare: false });
+  const db = drizzle(client);
+  const execute = db.execute.bind(db);
+
+  return Object.assign(db, {
+    async execute<TRow extends Record<string, unknown> = Record<string, unknown>>(
+      query: SQLWrapper | string,
+    ): Promise<FactoryQueryResult<TRow>> {
+      const result = await execute<TRow>(query);
+      return { rows: Array.from(result) as TRow[] };
+    },
+  }) as FactoryDb;
 }
 
 /**
@@ -80,5 +106,6 @@ export async function runMigrations(
   db: FactoryDb,
   options: RunMigrationsOptions,
 ): Promise<void> {
-  await migrate(db, { migrationsFolder: options.migrationsFolder });
+  const { migrate } = await import('drizzle-orm/postgres-js/migrator');
+  await migrate(db as unknown as PostgresJsDatabase<Record<string, never>>, { migrationsFolder: options.migrationsFolder });
 }
