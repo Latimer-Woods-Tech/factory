@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { createDb, sql } from '@adrper79-dot/neon';
 import { toErrorResponse, ValidationError, AuthError } from '@adrper79-dot/errors';
 import {
@@ -19,6 +20,8 @@ interface ServiceAuth {
 }
 
 const app = new Hono<{ Bindings: Env }>();
+
+type ScheduleWorkerContext = Context<{ Bindings: Env }>;
 
 // ---------------------------------------------------------------------------
 // Auth helpers: supports one internal token plus optional app-scoped tokens
@@ -85,17 +88,7 @@ function parseTriggerSource(value: unknown): TriggerSource {
   return triggerSource;
 }
 
-// ---------------------------------------------------------------------------
-// Health
-// ---------------------------------------------------------------------------
-
-app.get('/health', (c) => c.json({ status: 'ok', worker: 'schedule-worker', ts: new Date().toISOString() }));
-
-// ---------------------------------------------------------------------------
-// GET /jobs/pending  — returns jobs ready for rendering (cron Worker calls this)
-// ---------------------------------------------------------------------------
-
-app.get('/jobs/pending', async (c) => {
+async function handlePendingJobs(c: ScheduleWorkerContext): Promise<Response> {
   const auth = requireApiToken(c.env, c.req.header('authorization'));
   const limitParam = c.req.query('limit');
   const limit = limitParam ? Number(limitParam) : 10;
@@ -109,6 +102,20 @@ app.get('/jobs/pending', async (c) => {
   const db = createDb(c.env.DB);
   const jobs = await getPendingJobs(db, limit, appId);
   return c.json({ data: jobs });
+}
+
+// ---------------------------------------------------------------------------
+// Health
+// ---------------------------------------------------------------------------
+
+app.get('/health', (c) => c.json({ status: 'ok', worker: 'schedule-worker', ts: new Date().toISOString() }));
+
+// ---------------------------------------------------------------------------
+// GET /jobs/pending  — returns jobs ready for rendering (cron Worker calls this)
+// ---------------------------------------------------------------------------
+
+app.get('/jobs/pending', async (c) => {
+  return handlePendingJobs(c);
 });
 
 // ---------------------------------------------------------------------------
@@ -118,6 +125,8 @@ app.get('/jobs/pending', async (c) => {
 app.get('/jobs/:id', async (c) => {
   const auth = requireApiToken(c.env, c.req.header('authorization'));
   const { id } = c.req.param();
+  if (id === 'pending') return handlePendingJobs(c);
+
   const db = createDb(c.env.DB);
   const job = await getVideoJob(db, id, auth.appId ?? undefined);
   return c.json({ data: job });
