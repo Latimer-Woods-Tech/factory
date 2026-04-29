@@ -36,6 +36,7 @@ async function fetchPendingJobs(env: Env): Promise<RenderJob[]> {
 
   if (!res.ok) {
     throw new InternalError(`Failed to fetch pending jobs: ${res.status}`, {
+      url,
       status: res.status,
       body: await readErrorBody(res),
     });
@@ -235,8 +236,9 @@ export default {
         const { dispatched, failed } = await processPendingJobs(env);
         return Response.json({ data: { dispatched, failed } });
       } catch (err) {
+        const context = err instanceof InternalError ? err.context : undefined;
         return Response.json(
-          { error: { message: err instanceof Error ? err.message : 'Unknown error' } },
+          { error: { message: err instanceof Error ? err.message : 'Unknown error', context } },
           { status: 500 },
         );
       }
