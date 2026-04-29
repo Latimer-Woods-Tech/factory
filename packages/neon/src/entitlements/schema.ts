@@ -51,7 +51,7 @@ export const studioPlanTable = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`NOW()`),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`NOW()`),
   },
-  (table: any) => ({
+  (table) => ({
     idxSlug: uniqueIndex('idx_studio_plans_slug').on(table.slug),
     idxStripePriceId: uniqueIndex('idx_studio_plans_stripe_price_id').on(table.stripePriceId),
   }),
@@ -83,7 +83,7 @@ export const studioCustomerTable = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`NOW()`),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`NOW()`),
   },
-  (table: any) => ({
+  (table) => ({
     idxAppId: index('idx_studio_customers_app_id').on(table.appId),
     idxStripeCustomerId: index('idx_studio_customers_stripe_customer_id').on(table.stripeCustomerId),
   }),
@@ -122,7 +122,7 @@ export const studioSubscriptionTable = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`NOW()`),
     canceledAt: timestamp('canceled_at', { withTimezone: true }),
   },
-  (table: any) => ({
+  (table) => ({
     idxCustomerId: index('idx_studio_subscriptions_customer_id').on(table.customerId),
     idxStatus: index('idx_studio_subscriptions_status').on(table.status),
     idxCurrentPeriodEnd: index('idx_studio_subscriptions_current_period_end').on(table.currentPeriodEnd),
@@ -158,7 +158,7 @@ export const studioCreditLedgerTable = pgTable(
     createdByUserId: text('created_by_user_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`NOW()`),
   },
-  (table: any) => ({
+  (table) => ({
     idxCustomerId: index('idx_studio_credit_ledger_customer_id').on(table.customerId),
     idxOperationType: index('idx_studio_credit_ledger_operation_type').on(table.operationType),
     idxRenderJobId: index('idx_studio_credit_ledger_render_job_id').on(table.renderJobId),
@@ -199,7 +199,7 @@ export const studioEntitlementTable = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`NOW()`),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`NOW()`),
   },
-  (table: any) => ({
+  (table) => ({
     idxCustomerId: index('idx_studio_entitlements_customer_id').on(table.customerId),
     idxSubscriptionId: index('idx_studio_entitlements_subscription_id').on(table.subscriptionId),
   }),
@@ -451,3 +451,4 @@ export const entitlementService = {
   refundCredits,
   getTotalAvailableCredits,
 };
+

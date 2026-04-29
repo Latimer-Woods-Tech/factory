@@ -30,6 +30,45 @@ import {
 } from './schema.js';
 
 // ============================================================================
+// Raw SQL row shapes (used for db.execute results)
+// ============================================================================
+
+interface PlanRow {
+  id: string;
+  included_credits: string | number;
+  monthly_render_quota: number | null;
+  max_video_seconds: number;
+  max_retries_per_job: number;
+  public_publish_allowed: boolean;
+}
+
+interface CustomerIdRow {
+  id: string;
+}
+
+interface CustomerStatusRow {
+  suspension_status: string;
+}
+
+interface SubscriptionCustomerRow {
+  customer_id: string;
+}
+
+interface SubscriptionPlanRow {
+  id: string;
+}
+
+interface SubscriptionDetailRow {
+  id: string;
+  customer_id: string;
+  plan_id: string;
+}
+
+interface PlanIdRow {
+  plan_id: string;
+}
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -221,7 +260,7 @@ export async function handleSubscriptionCreated(db: FactoryDb, event: StripeEven
   }
 
   // Get plan by Stripe price ID
-  const planResult = await db.execute(sql`
+  const planResult = await db.execute<PlanRow>(sql`
     SELECT * FROM studio_plans WHERE stripe_price_id = ${stripePriceId}
   `);
 
@@ -229,17 +268,17 @@ export async function handleSubscriptionCreated(db: FactoryDb, event: StripeEven
     throw new Error(`[webhook] subscription.created: unknown Stripe price ${stripePriceId}`);
   }
 
-  const plan = planResult.rows[0] as any;
+  const plan = planResult.rows[0];
   const planId = plan.id;
 
   // Check if customer exists; if not, create
-  const customerResult = await db.execute(sql`
-    SELECT * FROM studio_customers WHERE stripe_customer_id = ${stripeCustomerId}
+  const customerResult = await db.execute<CustomerIdRow>(sql`
+    SELECT id FROM studio_customers WHERE stripe_customer_id = ${stripeCustomerId}
   `);
 
   let customerId: string;
   if (customerResult.rows.length) {
-    customerId = (customerResult.rows[0] as any).id;
+    customerId = customerResult.rows[0].id;
   } else {
     // Create customer (app_id will be set by Stripe metadata or default)
     customerId = crypto.randomUUID();
@@ -303,7 +342,7 @@ export async function handleSubscriptionUpdated(db: FactoryDb, event: StripeEven
   const stripePriceId = sub.items.data[0]?.price.id;
 
   // Find subscription
-  const subResult = await db.execute(sql`
+  const subResult = await db.execute<SubscriptionCustomerRow>(sql`
     SELECT customer_id FROM studio_subscriptions WHERE stripe_subscription_id = ${stripeSubscriptionId}
   `);
 
@@ -311,16 +350,16 @@ export async function handleSubscriptionUpdated(db: FactoryDb, event: StripeEven
     throw new Error(`[webhook] subscription.updated: subscription ${stripeSubscriptionId} not found`);
   }
 
-  const customerId = (subResult.rows[0] as any).customer_id;
+  const customerId = subResult.rows[0].customer_id;
 
   if (stripePriceId) {
     // Get plan from price
-    const planResult = await db.execute(sql`
+    const planResult = await db.execute<SubscriptionPlanRow>(sql`
       SELECT id FROM studio_plans WHERE stripe_price_id = ${stripePriceId}
     `);
 
     if (planResult.rows.length) {
-      const planId = (planResult.rows[0] as any).id;
+      const planId = planResult.rows[0].id;
 
       // Update subscription: plan, credits, status, period
       const status = ['trialing', 'active', 'past_due', 'canceled', 'unpaid'].includes(sub.status)
@@ -355,7 +394,7 @@ export async function handleSubscriptionDeleted(db: FactoryDb, event: StripeEven
   const stripeSubscriptionId = sub.id;
 
   // Find subscription
-  const result = await db.execute(sql`
+  const result = await db.execute<SubscriptionDetailRow>(sql`
     SELECT id, customer_id, plan_id FROM studio_subscriptions WHERE stripe_subscription_id = ${stripeSubscriptionId}
   `);
 
@@ -363,7 +402,7 @@ export async function handleSubscriptionDeleted(db: FactoryDb, event: StripeEven
     throw new Error(`[webhook] subscription.deleted: subscription ${stripeSubscriptionId} not found`);
   }
 
-  const { id: subscriptionId, customer_id: customerId, plan_id: planId } = result.rows[0] as any;
+  const { id: subscriptionId, customer_id: customerId, plan_id: planId } = result.rows[0];
 
   // Mark subscription as canceled
   await db.execute(sql`
@@ -397,25 +436,25 @@ export async function refreshEntitlements(
   // If planId not provided, get from current active subscription
   let planIdToUse = planId;
   if (!planIdToUse) {
-    const subResult = await db.execute(sql`
+    const subResult = await db.execute<PlanIdRow>(sql`
       SELECT plan_id FROM studio_subscriptions
       WHERE customer_id = ${customerId} AND status = 'active'
       ORDER BY created_at DESC LIMIT 1
     `);
     if (subResult.rows.length) {
-      planIdToUse = (subResult.rows[0] as any).plan_id;
+      planIdToUse = subResult.rows[0].plan_id;
     }
   }
 
   // Fetch plan features
-  const planFeatures: any = planIdToUse
+  const planFeatures: PlanRow | undefined = planIdToUse
     ? (
-        await db.execute(sql`
+        await db.execute<PlanRow>(sql`
           SELECT monthly_render_quota, max_video_seconds, max_retries_per_job,
                  public_publish_allowed FROM studio_plans WHERE id = ${planIdToUse}
         `)
       ).rows[0]
-    : null;
+    : undefined;
 
   // Calculate available credits
   const creditsResult = await db.execute<{ total: string }>(sql`
@@ -440,11 +479,11 @@ export async function refreshEntitlements(
   const hasActiveSubscription = subResult.rows.length > 0;
 
   // Check customer suspension
-  const custResult = await db.execute(sql`
+  const custResult = await db.execute<CustomerStatusRow>(sql`
     SELECT suspension_status FROM studio_customers WHERE id = ${customerId}
   `);
 
-  const isSuspended = custResult.rows.length && (custResult.rows[0] as any).suspension_status !== 'active';
+  const isSuspended = custResult.rows.length > 0 && custResult.rows[0].suspension_status !== 'active';
 
   // Compute policy
   const canRender = hasActiveSubscription && !isSuspended && availableCredits > 0;
