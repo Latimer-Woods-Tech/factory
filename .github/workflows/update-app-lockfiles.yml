@@ -3,6 +3,8 @@ name: Update App Lockfiles
 on:
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 jobs:
   update-lockfiles:
     runs-on: ubuntu-latest
@@ -26,7 +28,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           registry-url: 'https://npm.pkg.github.com'
           scope: '@adrper79-dot'
 

@@ -10,6 +10,8 @@ on:
 #   1. Run the "Create Cloudflare Hyperdrive" workflow — it sets HYPERDRIVE_XICO_CITY secret
 #   2. Ensure GH_PAT secret has repo + read:packages scopes
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 jobs:
   scaffold:
     runs-on: ubuntu-latest

@@ -10,6 +10,8 @@ on:
         type: choice
         options: ['false', 'true']
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 jobs:
   setup-alerts:
     runs-on: ubuntu-latest

@@ -14,6 +14,8 @@ on:
 #   HYPERDRIVE_THE_CALLING         — Hyperdrive ID for the-calling DB
 #   HYPERDRIVE_NEIGHBOR_AID        — Hyperdrive ID for neighbor-aid DB
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 jobs:
   scaffold:
     runs-on: ubuntu-latest

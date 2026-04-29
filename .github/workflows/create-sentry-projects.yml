@@ -3,6 +3,8 @@ name: Create Sentry Projects
 on:
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 jobs:
   create-projects:
     runs-on: ubuntu-latest

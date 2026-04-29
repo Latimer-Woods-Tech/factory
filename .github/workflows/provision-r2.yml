@@ -9,6 +9,8 @@ on:
         default: 'factory-videos'
         type: string
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 jobs:
   provision:
     name: Create R2 bucket and generate credentials

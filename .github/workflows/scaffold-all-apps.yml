@@ -16,6 +16,8 @@ on:
 # npm install is intentionally skipped (--no-install) because @adrper79-dot/*
 # packages are not yet published.  The app CI will run npm ci once they are.
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 jobs:
   scaffold:
     runs-on: ubuntu-latest
