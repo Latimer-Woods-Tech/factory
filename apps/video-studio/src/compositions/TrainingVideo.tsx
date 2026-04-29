@@ -55,7 +55,6 @@ const Sidebar: React.FC<{ color: string }> = ({ color }) => (
 const StepList: React.FC<{
   steps: string[];
   frame: number;
-  fps: number;
   accent: string;
   stepFrames: number;
 }> = ({ steps, frame, accent, stepFrames }) => {
@@ -80,6 +79,32 @@ const StepList: React.FC<{
       {steps.map((step, i) => {
         const isActive = i === activeStep;
         const isPast = i < activeStep;
+
+        // Frame offset within this step's window — used for enter animations.
+        // Remotion renders each frame as a static snapshot; CSS transitions
+        // have no effect. All animations must be driven by interpolate().
+        const localFrame = frame - i * stepFrames;
+
+        // Opacity: future steps are dimmed; active steps fade in over 15 frames;
+        // past steps immediately drop to 0.5 (already rendered).
+        const opacity = isPast
+          ? 0.5
+          : isActive
+          ? interpolate(localFrame, [0, 15], [0.6, 1.0], {
+              extrapolateLeft: 'clamp',
+              extrapolateRight: 'clamp',
+            })
+          : 0.7;
+
+        // Active bullet pops in with a slight overshoot for tactile feedback.
+        const bulletScale = isActive
+          ? interpolate(localFrame, [0, 12], [0.7, 1.0], {
+              easing: Easing.out(Easing.back(1.5)),
+              extrapolateLeft: 'clamp',
+              extrapolateRight: 'clamp',
+            })
+          : 1.0;
+
         return (
           <div
             key={i}
@@ -87,8 +112,7 @@ const StepList: React.FC<{
               display: 'flex',
               alignItems: 'center',
               gap: 16,
-              opacity: isPast ? 0.5 : 1,
-              transition: 'opacity 0.3s',
+              opacity,
             }}
           >
             <div
@@ -105,6 +129,7 @@ const StepList: React.FC<{
                 fontSize: 16,
                 fontWeight: 700,
                 flexShrink: 0,
+                transform: `scale(${String(bulletScale)})`,
               }}
             >
               {isPast ? '✓' : String(i + 1)}
@@ -253,7 +278,7 @@ export const TrainingVideo: React.FC<TrainingVideoProps> = ({
   return (
     <AbsoluteFill style={{ background: '#f8f9fa' }}>
       <Sidebar color={brandColor} />
-      <StepList steps={steps} frame={frame} fps={fps} accent={brandAccent} stepFrames={stepFrames} />
+      <StepList steps={steps} frame={frame} accent={brandAccent} stepFrames={stepFrames} />
       <TitleCard topic={topic} fps={fps} frame={frame} />
       <ContentArea
         step={currentStep}
