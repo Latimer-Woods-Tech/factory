@@ -83,3 +83,13 @@ export function workerNameFor(app: FactoryApp, env: Environment): string | null 
   if (env === 'production') return app.productionWorkerName;
   return app.stagingWorkerName;
 }
+
+/**
+ * Compute the canonical /manifest URL for an app — same host as /health
+ * but on the `/manifest` path. Returns null for `local` envs.
+ */
+export function manifestUrlFor(app: FactoryApp, env: Environment): string | null {
+  const url = healthUrlFor(app, env);
+  if (!url) return null;
+  return url.replace(/\/health$/, '/manifest');
+}

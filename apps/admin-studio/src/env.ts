@@ -42,4 +42,8 @@ export interface Env {
   STUDIO_PUBLIC_URL?: string;
   /** Shared HMAC secret signed by the GH Action and verified by the Worker. */
   STUDIO_WEBHOOK_SECRET?: string;
+
+  // ── Phase E: function catalog ───────────────────────────────────────────
+  /** Build SHA stamped at deploy time, surfaced in /manifest. */
+  BUILD_SHA?: string;
 }

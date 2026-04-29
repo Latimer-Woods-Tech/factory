@@ -20,6 +20,8 @@ import audit from './routes/audit.js';
 import apps from './routes/apps.js';
 import observability from './routes/observability.js';
 import repo from './routes/repo.js';
+import manifest from './routes/manifest.js';
+import catalog from './routes/catalog.js';
 import creatorOnboarding from './routes/creator-onboarding.js';
 import creators from './routes/creators.js';
 import payouts from './routes/payouts.js';
@@ -49,6 +51,10 @@ app.get('/health', (c) => {
 
 app.route('/auth', auth);
 
+// ── Public manifest (Phase E) ────────────────────────────────────────────
+// Crawlable function catalog — no auth so external monitors can scrape.
+app.route('/manifest', manifest);
+
 // ── Webhooks (public, Stripe-signed) ──────────────────────────────────────
 app.route('/webhooks/stripe-connect', stripeConnectWebhooks);
 app.route('/webhooks/studio-tests', studioTestsWebhook);
@@ -64,6 +70,8 @@ app.use('/observability/*', envContextMiddleware());
 // Audit middleware skips GET/HEAD/OPTIONS, so reads stay cheap and
 // writes (commit, create-branch, open-PR) are recorded.
 app.use('/repo/*', envContextMiddleware(), auditMiddleware());
+// Catalog GETs are read-only; refresh POST is audited automatically.
+app.use('/catalog/*', envContextMiddleware(), auditMiddleware());
 app.use('/api/creator/*', envContextMiddleware());
 app.use('/api/admin/*', envContextMiddleware(), auditMiddleware());
 
@@ -75,6 +83,7 @@ app.route('/audit', audit);
 app.route('/apps', apps);
 app.route('/observability', observability);
 app.route('/repo', repo);
+app.route('/catalog', catalog);
 app.route('/api/creator/onboarding', creatorOnboarding);
 app.route('/api/admin/creators', creators);
 app.route('/api/admin/payouts', payouts);

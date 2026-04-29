@@ -9,13 +9,15 @@ import { TestsTab } from './tabs/TestsTab.js';
 import { CodeTab } from './tabs/CodeTab.js';
 import { AiTab } from './tabs/AiTab.js';
 import { AuditTab } from './tabs/AuditTab.js';
+import { FunctionsTab } from './tabs/FunctionsTab.js';
 
 const TABS = [
-  { to: '/overview', label: 'Overview' },
-  { to: '/tests',    label: 'Tests' },
-  { to: '/code',     label: 'Code' },
-  { to: '/ai',       label: 'AI Chat' },
-  { to: '/audit',    label: 'Audit Log' },
+  { to: '/overview',  label: 'Overview' },
+  { to: '/tests',     label: 'Tests' },
+  { to: '/code',      label: 'Code' },
+  { to: '/ai',        label: 'AI Chat' },
+  { to: '/functions', label: 'Functions' },
+  { to: '/audit',     label: 'Audit Log' },
 ];
 
 export function Dashboard() {
@@ -47,6 +49,7 @@ export function Dashboard() {
           <Route path="/tests" element={<TestsTab />} />
           <Route path="/code" element={<CodeTab />} />
           <Route path="/ai" element={<AiTab />} />
+          <Route path="/functions" element={<FunctionsTab />} />
           <Route path="/audit" element={<AuditTab />} />
         </Routes>
       </main>
