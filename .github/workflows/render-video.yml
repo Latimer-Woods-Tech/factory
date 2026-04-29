@@ -74,12 +74,12 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GH_PAT }}
 
       # -----------------------------------------------------------------------
-      # 3. System dependencies (ffmpeg + Chromium for Remotion)
+      # 3. System dependencies (ffmpeg + Chrome for Remotion)
       # -----------------------------------------------------------------------
-      - name: Install ffmpeg and Chromium
+      - name: Install ffmpeg
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y ffmpeg chromium-browser
+          sudo apt-get install -y ffmpeg
 
       # -----------------------------------------------------------------------
       # 4. Generate script via LLM (if not already in job payload)
@@ -249,7 +249,7 @@ jobs:
         run: |
           OUTPUT_PATH="/tmp/video_${{ github.event.inputs.job_id }}.mp4"
 
-          PUPPETEER_EXECUTABLE_PATH=$(which chromium-browser) \
+          PUPPETEER_EXECUTABLE_PATH=$(which google-chrome-stable || which google-chrome || which chromium) \
           node -r ts-node/register src/render.ts \
             --composition "$COMPOSITION_ID" \
             --props "$PROPS_JSON" \
