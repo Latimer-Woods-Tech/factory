@@ -50,4 +50,4 @@ If `render-video.yml` fails:
 - No automated metric-to-dashboard writer is enforced yet.
 - No shared pre-deploy health gate is imported by every deploy workflow yet.
 - Phase 6 orchestration is script-first; a single Actions UI wrapper is still recommended.
-- Cross-package integration CI is now defined in `package-integration.yml`; first post-commit workflow run still needs to be recorded in the dashboard.
+- Cross-package integration CI is defined in `package-integration.yml`; first run 25124117458 passed and is recorded in the dashboard.
