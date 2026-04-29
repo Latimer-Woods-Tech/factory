@@ -5,46 +5,58 @@
  * - POST /api/creator/onboarding/resubmit
  * - POST /api/creator/onboarding/start
  * - GET /api/creator/onboarding/callback
+ *
+ * Auth: envContextMiddleware provides c.var.envContext with userId + role.
+ * Stripe keys are expected in c.env.STRIPE_SECRET_KEY (secret) and
+ * c.env.STRIPE_PUBLISHABLE_KEY (public key for OAuth URLs).
  */
-
 import { Hono } from 'hono';
 import type { AppEnv } from '../types.js';
-import {
-  ValidationError,
-  ErrorCodes,
-  toErrorResponse,
-} from '@adrper79-dot/errors';
-import { createDb } from '@adrper79-dot/neon';
-import { logger } from '@adrper79-dot/logger';
+import { ValidationError, ErrorCodes, toErrorResponse } from '@adrper79-dot/errors';
 import Stripe from 'stripe';
 import { eq } from 'drizzle-orm';
+import {
+  createAdminDb,
+  creatorConnections,
+} from '../lib/admin-db.js';
 
 const router = new Hono<AppEnv>();
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function getNextAction(status: string): string {
+  switch (status) {
+    case 'not_started':  return 'start_oauth';
+    case 'submitted':    return 'verify_account';
+    case 'verified':     return 'ready_for_payouts';
+    case 'rejected':     return 'contact_support';
+    default:             return 'start_oauth';
+  }
+}
+
+function getStripe(secretKey: string): Stripe {
+  return new Stripe(secretKey, {
+    apiVersion: '2025-02-24.acacia',
+    httpClient: Stripe.createFetchHttpClient(),
+  });
+}
+
+// ── Routes ───────────────────────────────────────────────────────────────────
+
 /**
  * GET /api/creator/onboarding/status
- * Returns the current Stripe Connect onboarding status for the authenticated creator.
+ * Returns the current Stripe Connect onboarding status for the authed creator.
  */
 router.get('/status', async (c) => {
   try {
-    const user = c.get('user');
-    if (!user) {
-      return c.json(
-        toErrorResponse(
-          new ValidationError('Unauthorized', { code: ErrorCodes.VALIDATION_ERROR })
-        ),
-        401
-      );
-    }
+    const ctx = c.var.envContext;
+    const db = createAdminDb(c.env.DB);
 
-    const db = createDb(c.env.DB);
-    
-    // Fetch creator's Stripe connection status
-    const creatorConnection = await db.query.creatorConnections.findFirst({
-      where: (cc) => eq(cc.creatorId, user.sub),
+    const creatorConn = await db.query.creatorConnections.findFirst({
+      where: (cc) => eq(cc.creatorId, ctx.userId),
     });
 
-    if (!creatorConnection) {
+    if (!creatorConn) {
       return c.json({
         status: 'not_started',
         stripeConnectId: null,
@@ -54,89 +66,75 @@ router.get('/status', async (c) => {
     }
 
     return c.json({
-      status: creatorConnection.onboardingStatus,
-      stripeConnectId: creatorConnection.stripeAccountId,
-      lastUpdate: creatorConnection.lastVerificationAttempt?.toISOString() || creatorConnection.submittedAt?.toISOString(),
-      nextAction: getNextAction(creatorConnection.onboardingStatus),
-      errorMessage: creatorConnection.errorMessage,
-      verifiedAt: creatorConnection.verifiedAt?.toISOString(),
+      status: creatorConn.onboardingStatus,
+      stripeConnectId: creatorConn.stripeAccountId,
+      lastUpdate:
+        creatorConn.lastVerificationAttempt?.toISOString() ??
+        creatorConn.submittedAt?.toISOString() ??
+        null,
+      nextAction: getNextAction(creatorConn.onboardingStatus),
+      errorMessage: creatorConn.errorMessage,
+      verifiedAt: creatorConn.verifiedAt?.toISOString() ?? null,
     });
   } catch (error) {
-    logger.error('Failed to get onboarding status', { error });
-    return c.json(
-      toErrorResponse(new Error('Failed to get onboarding status')),
-      500
-    );
+    console.error('[creator-onboarding] get status failed:', error);
+    return c.json(toErrorResponse(new Error('Failed to get onboarding status')), 500);
   }
 });
 
 /**
  * POST /api/creator/onboarding/start
- * Initiates Stripe Connect OAuth flow by generating state and redirect URL.
+ * Initiates Stripe Connect OAuth flow by generating a redirect URL.
  */
 router.post('/start', async (c) => {
   try {
-    const user = c.get('user');
-    if (!user) {
+    const ctx = c.var.envContext;
+    const secretKey = c.env.STRIPE_SECRET_KEY;
+    const publishableKey = c.env.STRIPE_PUBLISHABLE_KEY;
+    const appUrl = c.env.APP_URL ?? '';
+
+    if (!secretKey || !publishableKey) {
       return c.json(
         toErrorResponse(
-          new ValidationError('Unauthorized', { code: ErrorCodes.VALIDATION_ERROR })
+          new ValidationError('Stripe not configured', { code: ErrorCodes.VALIDATION_ERROR }),
         ),
-        401
+        503,
       );
     }
 
-    const stripe = new Stripe(c.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2025-02-24.acacia',
-      httpClient: Stripe.createFetchHttpClient(),
+    const db = createAdminDb(c.env.DB);
+
+    const existing = await db.query.creatorConnections.findFirst({
+      where: (cc) => eq(cc.creatorId, ctx.userId),
     });
 
-    // Check if creator already has a connected account
-    const db = createDb(c.env.DB);
-    const existingConnection = await db.query.creatorConnections.findFirst({
-      where: (cc) => eq(cc.creatorId, user.sub),
-    });
-
-    if (existingConnection?.stripeAccountId) {
+    if (existing?.stripeAccountId) {
       return c.json(
         toErrorResponse(
           new ValidationError('Creator already has a connected account', {
             code: ErrorCodes.VALIDATION_ERROR,
-          })
+          }),
         ),
-        400
+        400,
       );
     }
 
-    // Generate OAuth state for CSRF protection
-    const state = crypto.getRandomValues(new Uint8Array(32));
-    const stateString = Array.from(state)
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
+    // CSRF state — 32 cryptographically random bytes as hex
+    const stateBytes = crypto.getRandomValues(new Uint8Array(32));
+    const state = Array.from(stateBytes, (b) => b.toString(16).padStart(2, '0')).join('');
 
-    // Store state in cache (TODO: use Redis or Durable Objects)
-    // For now, store in metadata for temporary use
-    const returnUrl = `${c.env.APP_URL}/creator/onboarding/callback`;
+    const returnUrl = `${appUrl}/creator/onboarding/callback`;
+    const authUrl =
+      `https://connect.stripe.com/oauth/authorize` +
+      `?response_type=code&client_id=${publishableKey}&scope=read_write` +
+      `&redirect_uri=${encodeURIComponent(returnUrl)}&state=${state}`;
 
-    // Create Stripe Connect login link
-    const stripeAuthUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${c.env.STRIPE_PUBLISHABLE_KEY}&scope=read_write&redirect_uri=${returnUrl}&state=${stateString}`;
+    console.info('[creator-onboarding] OAuth started', { creatorId: ctx.userId });
 
-    // Log analytics event
-    await c.get('analytics')?.track({
-      event: 'creator:stripe_connect_started',
-      properties: {
-        creatorId: user.sub,
-        timestamp: new Date().toISOString(),
-      },
-    });
-
-    return c.json({ authUrl: stripeAuthUrl, state: stateString });
+    return c.json({ authUrl, state });
   } catch (error) {
-    logger.error('Failed to start Stripe onboarding', { error });
-    return c.json(
-      toErrorResponse(new Error('Failed to start Stripe onboarding')),
-      500
-    );
+    console.error('[creator-onboarding] start failed:', error);
+    return c.json(toErrorResponse(new Error('Failed to start Stripe onboarding')), 500);
   }
 });
 
@@ -145,17 +143,9 @@ router.post('/start', async (c) => {
  * Handles OAuth callback from Stripe Connect.
  */
 router.get('/callback', async (c) => {
+  const appUrl = c.env.APP_URL ?? '';
   try {
-    const user = c.get('user');
-    if (!user) {
-      return c.json(
-        toErrorResponse(
-          new ValidationError('Unauthorized', { code: ErrorCodes.VALIDATION_ERROR })
-        ),
-        401
-      );
-    }
-
+    const ctx = c.var.envContext;
     const code = c.req.query('code');
     const state = c.req.query('state');
 
@@ -165,82 +155,78 @@ router.get('/callback', async (c) => {
       });
     }
 
-    const stripe = new Stripe(c.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2025-02-24.acacia',
-      httpClient: Stripe.createFetchHttpClient(),
-    });
+    const secretKey = c.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      return c.json(
+        toErrorResponse(
+          new ValidationError('Stripe not configured', { code: ErrorCodes.VALIDATION_ERROR }),
+        ),
+        503,
+      );
+    }
 
-    // Exchange authorization code for Stripe account ID
+    const stripe = getStripe(secretKey);
     const response = await stripe.oauth.token({
       grant_type: 'authorization_code',
       code,
     });
 
     if (!response.stripe_user_id) {
-      throw new ValidationError('Failed to get Stripe account ID', {
+      throw new ValidationError('Failed to get Stripe account ID from OAuth', {
         code: ErrorCodes.VALIDATION_ERROR,
       });
     }
 
-    const db = createDb(c.env.DB);
+    const db = createAdminDb(c.env.DB);
 
-    // Store Stripe account ID
-    await db.update(creatorConnections)
+    await db
+      .update(creatorConnections)
       .set({
         stripeAccountId: response.stripe_user_id,
         onboardingStatus: 'submitted',
         submittedAt: new Date(),
       })
-      .where(eq(creatorConnections.creatorId, user.sub));
+      .where(eq(creatorConnections.creatorId, ctx.userId));
 
-    // Log analytics event
-    await c.get('analytics')?.track({
-      event: 'creator:stripe_oauth_completed',
-      properties: {
-        creatorId: user.sub,
-        stripeAccountId: response.stripe_user_id,
-        timestamp: new Date().toISOString(),
-      },
+    console.info('[creator-onboarding] OAuth completed', {
+      creatorId: ctx.userId,
+      stripeAccountId: response.stripe_user_id,
     });
 
-    // Redirect to settings page
-    return c.redirect(`${c.env.APP_URL}/creator/settings?stripe_connected=true`);
+    return c.redirect(`${appUrl}/creator/settings?stripe_connected=true`);
   } catch (error) {
-    logger.error('OAuth callback failed', { error });
+    console.error('[creator-onboarding] callback failed:', error);
     return c.redirect(
-      `${c.env.APP_URL}/creator/settings?stripe_error=${encodeURIComponent(
-        error instanceof Error ? error.message : 'Unknown error'
-      )}`
+      `${appUrl}/creator/settings?stripe_error=${encodeURIComponent(
+        error instanceof Error ? error.message : 'Unknown error',
+      )}`,
     );
   }
 });
 
 /**
  * PUT /api/creator/onboarding/verify
- * Creator confirms they're ready for payouts. Once verified, included in next batch.
- * Idempotent: calling multiple times is safe.
+ * Creator confirms they are ready for payouts after linking Stripe.
+ * Idempotent — safe to call multiple times.
  */
 router.put('/verify', async (c) => {
   try {
-    const user = c.get('user');
-    if (!user) {
+    const ctx = c.var.envContext;
+    const secretKey = c.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
       return c.json(
         toErrorResponse(
-          new ValidationError('Unauthorized', { code: ErrorCodes.VALIDATION_ERROR })
+          new ValidationError('Stripe not configured', { code: ErrorCodes.VALIDATION_ERROR }),
         ),
-        401
+        503,
       );
     }
 
-    const db = createDb(c.env.DB);
-    const stripe = new Stripe(c.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2025-02-24.acacia',
-      httpClient: Stripe.createFetchHttpClient(),
-    });
+    const db = createAdminDb(c.env.DB);
+    const stripe = getStripe(secretKey);
 
-    // Get creator connection
     const connection = await db.query.creatorConnections.findFirst({
-      where: (cc) => eq(cc.creatorId, user.sub),
+      where: (cc) => eq(cc.creatorId, ctx.userId),
     });
 
     if (!connection?.stripeAccountId) {
@@ -249,7 +235,6 @@ router.put('/verify', async (c) => {
       });
     }
 
-    // Fetch latest account status from Stripe
     const account = await stripe.accounts.retrieve(connection.stripeAccountId);
 
     if (!account.charges_enabled || !account.payouts_enabled) {
@@ -258,65 +243,56 @@ router.put('/verify', async (c) => {
       });
     }
 
-    // Update connection status
-    await db.update(creatorConnections)
+    await db
+      .update(creatorConnections)
       .set({
         onboardingStatus: 'verified',
         verifiedAt: new Date(),
         lastVerificationAttempt: new Date(),
         errorMessage: null,
       })
-      .where(eq(creatorConnections.creatorId, user.sub));
+      .where(eq(creatorConnections.creatorId, ctx.userId));
 
-    // Log analytics event
-    await c.get('analytics')?.track({
-      event: 'creator:account_verified',
-      properties: {
-        creatorId: user.sub,
-        stripeAccountId: connection.stripeAccountId,
-        chargesEnabled: account.charges_enabled,
-        payoutsEnabled: account.payouts_enabled,
-        timestamp: new Date().toISOString(),
-      },
+    console.info('[creator-onboarding] account verified', {
+      creatorId: ctx.userId,
+      stripeAccountId: connection.stripeAccountId,
     });
 
     return c.json({
       status: 'verified',
-      message: 'Your Stripe account is verified and ready for payouts',
+      message: 'Stripe account verified and ready for payouts',
     });
   } catch (error) {
-    logger.error('Verification failed', { error });
+    console.error('[creator-onboarding] verify failed:', error);
     return c.json(
       toErrorResponse(error instanceof Error ? error : new Error('Verification failed')),
-      error instanceof ValidationError ? 400 : 500
+      error instanceof ValidationError ? 400 : 500,
     );
   }
 });
 
 /**
  * POST /api/creator/onboarding/resubmit
- * Creator resubmits if initial submission failed.
+ * Creator re-triggers verification after fixing Stripe requirements.
  */
 router.post('/resubmit', async (c) => {
   try {
-    const user = c.get('user');
-    if (!user) {
+    const ctx = c.var.envContext;
+    const secretKey = c.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
       return c.json(
         toErrorResponse(
-          new ValidationError('Unauthorized', { code: ErrorCodes.VALIDATION_ERROR })
+          new ValidationError('Stripe not configured', { code: ErrorCodes.VALIDATION_ERROR }),
         ),
-        401
+        503,
       );
     }
 
-    const db = createDb(c.env.DB);
-    const stripe = new Stripe(c.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2025-02-24.acacia',
-      httpClient: Stripe.createFetchHttpClient(),
-    });
+    const db = createAdminDb(c.env.DB);
+    const stripe = getStripe(secretKey);
 
     const connection = await db.query.creatorConnections.findFirst({
-      where: (cc) => eq(cc.creatorId, user.sub),
+      where: (cc) => eq(cc.creatorId, ctx.userId),
     });
 
     if (!connection?.stripeAccountId) {
@@ -325,59 +301,46 @@ router.post('/resubmit', async (c) => {
       });
     }
 
-    // Fetch latest account status
     const account = await stripe.accounts.retrieve(connection.stripeAccountId);
 
-    // Update status based on Stripe account state
-    const newStatus = account.charges_enabled && account.payouts_enabled
-      ? 'verified'
-      : 'submitted';
+    const newStatus =
+      account.charges_enabled && account.payouts_enabled ? 'verified' : 'submitted';
 
-    const errorMessage = account.requirements?.pending?.length
-      ? `Pending requirements: ${account.requirements.pending.join(', ')}`
-      : null;
+    // `currently_due` is the modern Stripe Requirements field (replaces deprecated `pending`)
+    const requirementsPending = account.requirements?.currently_due ?? [];
+    const errorMessage =
+      requirementsPending.length > 0
+        ? `Pending requirements: ${requirementsPending.join(', ')}`
+        : null;
 
-    await db.update(creatorConnections)
+    await db
+      .update(creatorConnections)
       .set({
         onboardingStatus: newStatus,
         lastVerificationAttempt: new Date(),
+        verificationAttempts: (connection.verificationAttempts ?? 0) + 1,
         errorMessage,
-        verifiedAt: newStatus === 'verified' ? new Date() : undefined,
+        verifiedAt: newStatus === 'verified' ? new Date() : connection.verifiedAt,
       })
-      .where(eq(creatorConnections.creatorId, user.sub));
+      .where(eq(creatorConnections.creatorId, ctx.userId));
+
+    console.info('[creator-onboarding] resubmitted', { creatorId: ctx.userId, newStatus });
 
     return c.json({
       status: newStatus,
-      errorMessage,
-      requirementsPending: account.requirements?.pending || [],
+      requirementsPending,
+      message:
+        newStatus === 'verified'
+          ? 'Account is now fully verified'
+          : 'Resubmission recorded — pending Stripe review',
     });
   } catch (error) {
-    logger.error('Resubmit failed', { error });
+    console.error('[creator-onboarding] resubmit failed:', error);
     return c.json(
       toErrorResponse(error instanceof Error ? error : new Error('Resubmit failed')),
-      error instanceof ValidationError ? 400 : 500
+      error instanceof ValidationError ? 400 : 500,
     );
   }
 });
-
-/**
- * Helper function to determine next action based on onboarding status
- */
-function getNextAction(status: string): string {
-  switch (status) {
-    case 'pending':
-      return 'start_oauth';
-    case 'submitted':
-      return 'complete_stripe_setup';
-    case 'verified':
-      return 'ready_for_payouts';
-    case 'processing':
-      return 'check_status_later';
-    case 'rejected':
-      return 'contact_support';
-    default:
-      return 'unknown';
-  }
-}
 
 export default router;

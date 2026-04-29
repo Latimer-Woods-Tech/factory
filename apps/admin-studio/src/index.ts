@@ -22,6 +22,7 @@ import observability from './routes/observability.js';
 import repo from './routes/repo.js';
 import manifest from './routes/manifest.js';
 import catalog from './routes/catalog.js';
+import smoke from './routes/smoke.js';
 import creatorOnboarding from './routes/creator-onboarding.js';
 import creators from './routes/creators.js';
 import payouts from './routes/payouts.js';
@@ -72,6 +73,8 @@ app.use('/observability/*', envContextMiddleware());
 app.use('/repo/*', envContextMiddleware(), auditMiddleware());
 // Catalog GETs are read-only; refresh POST is audited automatically.
 app.use('/catalog/*', envContextMiddleware(), auditMiddleware());
+// Smoke tests are auditable but not critical
+app.use('/smoke/*', envContextMiddleware(), auditMiddleware());
 app.use('/api/creator/*', envContextMiddleware());
 app.use('/api/admin/*', envContextMiddleware(), auditMiddleware());
 
@@ -84,6 +87,7 @@ app.route('/apps', apps);
 app.route('/observability', observability);
 app.route('/repo', repo);
 app.route('/catalog', catalog);
+app.route('/smoke', smoke);
 app.route('/api/creator/onboarding', creatorOnboarding);
 app.route('/api/admin/creators', creators);
 app.route('/api/admin/payouts', payouts);

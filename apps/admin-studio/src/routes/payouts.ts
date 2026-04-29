@@ -17,28 +17,42 @@ import {
   ErrorCodes,
   toErrorResponse,
 } from '@adrper79-dot/errors';
-import { createDb } from '@adrper79-dot/neon';
-import { logger } from '@adrper79-dot/logger';
 import Stripe from 'stripe';
-import { eq, desc, and, gt, gte, sum } from 'drizzle-orm';
+import { eq, desc, and, gte } from 'drizzle-orm';
+import {
+  createAdminDb,
+  payoutBatches,
+  payouts as payoutsTable,
+  payoutDlq,
+  payoutAuditLog,
+  creators,
+} from '../lib/admin-db.js';
 
 const router = new Hono<AppEnv>();
 
 /**
- * Middleware: Require admin role
+ * Middleware: Require admin or owner role
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const requireAdmin = async (c: any, next: any) => {
-  const user = c.get('user');
-  if (!user || user.role !== 'admin') {
+  const ctx = c.var.envContext as { role?: string } | undefined;
+  if (!ctx || (ctx.role !== 'admin' && ctx.role !== 'owner')) {
     return c.json(
       toErrorResponse(
-        new ValidationError('Admin access required', { code: ErrorCodes.VALIDATION_ERROR })
+        new ValidationError('Admin access required', { code: ErrorCodes.VALIDATION_ERROR }),
       ),
-      403
+      403,
     );
   }
   return next();
 };
+
+function getStripe(secretKey: string): Stripe {
+  return new Stripe(secretKey, {
+    apiVersion: '2025-02-24.acacia',
+    httpClient: Stripe.createFetchHttpClient(),
+  });
+}
 
 /**
  * GET /api/admin/payouts/batches?status=&sortBy=&page=&limit=
@@ -52,10 +66,9 @@ router.get('/batches', requireAdmin, async (c) => {
     const limit_ = Math.min(parseInt(c.req.query('limit') || '50', 10), 100);
     const offsetVal = (page - 1) * limit_;
 
-    const db = createDb(c.env.DB);
+    const db = createAdminDb(c.env.DB);
 
-    // Build query
-    let filters = [];
+    let filters: ReturnType<typeof eq>[] = [];
     if (status) {
       filters.push(eq(payoutBatches.status, status));
     }
@@ -93,11 +106,8 @@ router.get('/batches', requireAdmin, async (c) => {
       },
     });
   } catch (error) {
-    logger.error('Failed to list payout batches', { error });
-    return c.json(
-      toErrorResponse(new Error('Failed to list payout batches')),
-      500
-    );
+    console.error('[payouts] list batches failed:', error);
+    return c.json(toErrorResponse(new Error('Failed to list payout batches')), 500);
   }
 });
 
@@ -108,7 +118,7 @@ router.get('/batches', requireAdmin, async (c) => {
 router.get('/batches/:id', requireAdmin, async (c) => {
   try {
     const batchId = c.req.param('id');
-    const db = createDb(c.env.DB);
+    const db = createAdminDb(c.env.DB);
 
     const batch = await db.query.payoutBatches.findFirst({
       where: (b) => eq(b.id, batchId),
@@ -118,15 +128,15 @@ router.get('/batches/:id', requireAdmin, async (c) => {
       throw new ValidationError('Batch not found', { code: ErrorCodes.VALIDATION_ERROR });
     }
 
-    const payouts = await db.query.payouts.findMany({
+    const payoutRows = await db.query.payouts.findMany({
       where: (p) => eq(p.batchId, batchId),
     });
 
     // Enrich with creator info
     const enriched = await Promise.all(
-      payouts.map(async (p) => {
+      payoutRows.map(async (p) => {
         const creator = await db.query.creators.findFirst({
-          where: (c) => eq(c.id, p.creatorId),
+          where: (cr) => eq(cr.id, p.creatorId),
           columns: { email: true, displayName: true },
         });
         return {
@@ -139,7 +149,7 @@ router.get('/batches/:id', requireAdmin, async (c) => {
           error: p.error,
           stripeTransferId: p.stripeTransferId,
         };
-      })
+      }),
     );
 
     return c.json({
@@ -155,10 +165,10 @@ router.get('/batches/:id', requireAdmin, async (c) => {
       payouts: enriched,
     });
   } catch (error) {
-    logger.error('Failed to get batch details', { error });
+    console.error('[payouts] get batch details failed:', error);
     return c.json(
       toErrorResponse(error instanceof Error ? error : new Error('Failed to get batch')),
-      error instanceof ValidationError ? 400 : 500
+      error instanceof ValidationError ? 400 : 500,
     );
   }
 });
@@ -170,13 +180,19 @@ router.get('/batches/:id', requireAdmin, async (c) => {
 router.post('/batches/:id/execute', requireAdmin, async (c) => {
   try {
     const batchId = c.req.param('id');
-    const { excludeCreators } = await c.req.json();
-    const user = c.get('user');
-    const db = createDb(c.env.DB);
-    const stripe = new Stripe(c.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2025-02-24.acacia',
-      httpClient: Stripe.createFetchHttpClient(),
-    });
+    const { excludeCreators } = await c.req.json<{ excludeCreators?: string[] }>();
+    const ctx = c.var.envContext;
+    const secretKey = c.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      return c.json(
+        toErrorResponse(
+          new ValidationError('Stripe not configured', { code: ErrorCodes.VALIDATION_ERROR }),
+        ),
+        503,
+      );
+    }
+    const db = createAdminDb(c.env.DB);
+    const stripe = getStripe(secretKey);
 
     const batch = await db.query.payoutBatches.findFirst({
       where: (b) => eq(b.id, batchId),
@@ -196,30 +212,28 @@ router.post('/batches/:id/execute', requireAdmin, async (c) => {
     // Audit log: batch execution started
     await logPayoutAudit(db, {
       batchId,
-      operatorId: user.sub,
+      operatorId: ctx.userId,
       action: 'batch_executed',
       description: 'Operator initiated batch execution',
     });
 
     // Get all payouts in batch (excluding specified creators)
-    let query = db.query.payouts.findMany({
+    const payoutRows = await db.query.payouts.findMany({
       where: (p) => eq(p.batchId, batchId),
     });
-
-    const payouts = await query;
 
     let succeeded = 0;
     let failed = 0;
 
     // Process each payout
-    for (const payout of payouts) {
+    for (const payout of payoutRows) {
       if (excludeCreators?.includes(payout.creatorId)) {
         continue;
       }
 
       try {
         const creator = await db.query.creators.findFirst({
-          where: (c) => eq(c.id, payout.creatorId),
+          where: (cr) => eq(cr.id, payout.creatorId),
           columns: { stripeConnectedAccountId: true, email: true },
         });
 
@@ -241,42 +255,39 @@ router.post('/batches/:id/execute', requireAdmin, async (c) => {
         });
 
         // Update payout: succeeded
-        await db.update(payouts)
+        await db.update(payoutsTable)
           .set({
             status: 'succeeded',
             stripeTransferId: transfer.id,
             updatedAt: new Date(),
           })
-          .where(eq(payouts.id, payout.id));
+          .where(eq(payoutsTable.id, payout.id));
 
         succeeded++;
 
-        // Analytics
-        await c.get('analytics')?.track({
-          event: 'payout:succeeded',
-          properties: {
-            batchId,
-            creatorId: payout.creatorId,
-            amount: payout.amountUsd,
-            stripeTransferId: transfer.id,
-          },
+        console.info('[payouts] transfer succeeded', {
+          batchId,
+          creatorId: payout.creatorId,
+          amount: payout.amountUsd,
+          stripeTransferId: transfer.id,
         });
       } catch (error) {
         failed++;
 
         // Update payout: failed
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        await db.update(payouts)
+        await db.update(payoutsTable)
           .set({
             status: 'failed',
             error: errorMsg,
-            retryCount: (payout.retryCount || 0) + 1,
+            retryCount: (payout.retryCount ?? 0) + 1,
             updatedAt: new Date(),
           })
-          .where(eq(payouts.id, payout.id));
+          .where(eq(payoutsTable.id, payout.id));
 
         // Add to DLQ
         await db.insert(payoutDlq).values({
+          id: crypto.randomUUID(),
           payoutId: payout.id,
           batchId,
           creatorId: payout.creatorId,
@@ -285,15 +296,11 @@ router.post('/batches/:id/execute', requireAdmin, async (c) => {
           resolutionStatus: 'pending',
         });
 
-        // Analytics
-        await c.get('analytics')?.track({
-          event: 'payout:failed_dlq',
-          properties: {
-            batchId,
-            creatorId: payout.creatorId,
-            amount: payout.amountUsd,
-            error: errorMsg,
-          },
+        console.warn('[payouts] transfer failed → DLQ', {
+          batchId,
+          creatorId: payout.creatorId,
+          amount: payout.amountUsd,
+          error: errorMsg,
         });
       }
     }
@@ -317,10 +324,10 @@ router.post('/batches/:id/execute', requireAdmin, async (c) => {
       total: succeeded + failed,
     });
   } catch (error) {
-    logger.error('Failed to execute batch', { error });
+    console.error('[payouts] execute batch failed:', error);
     return c.json(
       toErrorResponse(error instanceof Error ? error : new Error('Batch execution failed')),
-      error instanceof ValidationError ? 400 : 500
+      error instanceof ValidationError ? 400 : 500,
     );
   }
 });
@@ -337,9 +344,9 @@ router.get('/dlq', requireAdmin, async (c) => {
     const limit_ = Math.min(parseInt(c.req.query('limit') || '50', 10), 100);
     const offsetVal = (page - 1) * limit_;
 
-    const db = createDb(c.env.DB);
+    const db = createAdminDb(c.env.DB);
 
-    let filters = [eq(payoutDlq.resolutionStatus, status)];
+    const filters: ReturnType<typeof eq>[] = [eq(payoutDlq.resolutionStatus, status)];
     if (batchId) {
       filters.push(eq(payoutDlq.batchId, batchId));
     }
@@ -374,11 +381,8 @@ router.get('/dlq', requireAdmin, async (c) => {
       },
     });
   } catch (error) {
-    logger.error('Failed to list DLQ', { error });
-    return c.json(
-      toErrorResponse(new Error('Failed to list DLQ')),
-      500
-    );
+    console.error('[payouts] list DLQ failed:', error);
+    return c.json(toErrorResponse(new Error('Failed to list DLQ')), 500);
   }
 });
 
@@ -389,12 +393,18 @@ router.get('/dlq', requireAdmin, async (c) => {
 router.post('/dlq/:id/retry', requireAdmin, async (c) => {
   try {
     const dlqId = c.req.param('id');
-    const user = c.get('user');
-    const db = createDb(c.env.DB);
-    const stripe = new Stripe(c.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2025-02-24.acacia',
-      httpClient: Stripe.createFetchHttpClient(),
-    });
+    const ctx = c.var.envContext;
+    const secretKey = c.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      return c.json(
+        toErrorResponse(
+          new ValidationError('Stripe not configured', { code: ErrorCodes.VALIDATION_ERROR }),
+        ),
+        503,
+      );
+    }
+    const db = createAdminDb(c.env.DB);
+    const stripe = getStripe(secretKey);
 
     const dlqEntry = await db.query.payoutDlq.findFirst({
       where: (d) => eq(d.id, dlqId),
@@ -409,7 +419,7 @@ router.post('/dlq/:id/retry', requireAdmin, async (c) => {
     });
 
     const creator = await db.query.creators.findFirst({
-      where: (c) => eq(c.id, dlqEntry.creatorId),
+      where: (cr) => eq(cr.id, dlqEntry.creatorId),
       columns: { stripeConnectedAccountId: true },
     });
 
@@ -425,42 +435,38 @@ router.post('/dlq/:id/retry', requireAdmin, async (c) => {
       currency: 'usd',
       destination: creator.stripeConnectedAccountId,
       description: `Retry payout for ${dlqEntry.creatorId}`,
-      metadata: { dlqRetry: true, originalPayoutId: dlqEntry.payoutId },
+      metadata: { dlqRetry: 'true', originalPayoutId: dlqEntry.payoutId },
     });
 
     // Update payout and DLQ
-    await db.update(payouts)
+    await db.update(payoutsTable)
       .set({
         status: 'succeeded',
         stripeTransferId: transfer.id,
-        retryCount: (payout?.retryCount || 0) + 1,
+        retryCount: (payout?.retryCount ?? 0) + 1,
       })
-      .where(eq(payouts.id, dlqEntry.payoutId));
+      .where(eq(payoutsTable.id, dlqEntry.payoutId));
 
     await db.update(payoutDlq)
       .set({
         resolutionStatus: 'resolved',
-        resolvedBy: user.sub,
+        resolvedBy: ctx.userId,
         resolvedAt: new Date(),
       })
       .where(eq(payoutDlq.id, dlqId));
 
-    // Analytics
-    await c.get('analytics')?.track({
-      event: 'dlq_retry_succeeded',
-      properties: {
-        dlqId,
-        creatorId: dlqEntry.creatorId,
-        amount: dlqEntry.amountUsd,
-      },
+    console.info('[payouts] DLQ retry succeeded', {
+      dlqId,
+      creatorId: dlqEntry.creatorId,
+      amount: dlqEntry.amountUsd,
     });
 
     return c.json({ success: true, stripeTransferId: transfer.id });
   } catch (error) {
-    logger.error('Failed to retry DLQ entry', { error });
+    console.error('[payouts] DLQ retry failed:', error);
     return c.json(
       toErrorResponse(error instanceof Error ? error : new Error('Retry failed')),
-      error instanceof ValidationError ? 400 : 500
+      error instanceof ValidationError ? 400 : 500,
     );
   }
 });
@@ -472,29 +478,30 @@ router.post('/dlq/:id/retry', requireAdmin, async (c) => {
 router.get('/reconciliation', requireAdmin, async (c) => {
   try {
     const period = c.req.query('period') || 'week';
-    const db = createDb(c.env.DB);
+    const db = createAdminDb(c.env.DB);
 
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - (period === 'month' ? 30 : 7));
 
-    // Total payouts
     const totalPayouts = await db.query.payouts.findMany({
-      where: (p) => gte(p.createdAt, cutoff),
+      where: (p) => gte(p.updatedAt, cutoff),
     });
 
     const succeeded = totalPayouts.filter((p) => p.status === 'succeeded');
     const failed = totalPayouts.filter((p) => p.status === 'failed');
 
-    const totalAmount = totalPayouts.reduce((sum, p) => sum + Number(p.amountUsd), 0);
-    const succeededAmount = succeeded.reduce((sum, p) => sum + Number(p.amountUsd), 0);
-    const failedAmount = failed.reduce((sum, p) => sum + Number(p.amountUsd), 0);
+    const totalAmount = totalPayouts.reduce((s, p) => s + Number(p.amountUsd), 0);
+    const succeededAmount = succeeded.reduce((s, p) => s + Number(p.amountUsd), 0);
+    const failedAmount = failed.reduce((s, p) => s + Number(p.amountUsd), 0);
 
-    // DLQ summary
     const dlqEntries = await db.query.payoutDlq.findMany({
       where: (d) => gte(d.createdAt, cutoff),
     });
 
-    const failureRate = totalPayouts.length > 0 ? (failed.length / totalPayouts.length * 100).toFixed(2) : 0;
+    const failureRate =
+      totalPayouts.length > 0
+        ? parseFloat((failed.length / totalPayouts.length * 100).toFixed(2))
+        : 0;
 
     return c.json({
       period,
@@ -512,11 +519,8 @@ router.get('/reconciliation', requireAdmin, async (c) => {
       alert: failureRate > 5 ? 'ALERT: Failure rate > 5%' : null,
     });
   } catch (error) {
-    logger.error('Failed to generate reconciliation report', { error });
-    return c.json(
-      toErrorResponse(new Error('Failed to generate reconciliation')),
-      500
-    );
+    console.error('[payouts] reconciliation failed:', error);
+    return c.json(toErrorResponse(new Error('Failed to generate reconciliation')), 500);
   }
 });
 
@@ -524,15 +528,21 @@ router.get('/reconciliation', requireAdmin, async (c) => {
  * Helper: Log payout audit entry
  */
 async function logPayoutAudit(
-  db: any,
-  { batchId, operatorId, action, description }: any
+  db: ReturnType<typeof createAdminDb>,
+  { batchId, operatorId, action, description }: {
+    batchId: string;
+    operatorId: string;
+    action: string;
+    description: string;
+  },
 ) {
   await db.insert(payoutAuditLog).values({
+    id: crypto.randomUUID(),
     batchId,
     operatorId,
     action,
     description,
-    timestamp: new Date(),
+    occurredAt: new Date(),
   });
 }
 

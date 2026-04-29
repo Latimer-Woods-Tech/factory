@@ -47,6 +47,10 @@ export function auditMiddleware(): MiddlewareHandler<AppEnv> {
       resultDetail = { error: (err as Error).message };
       throw err;
     } finally {
+      // Routes may enrich the audit entry by setting auditAction / auditResource /
+      // auditReversibility / auditResultDetail on the context. This lets routes
+      // produce semantically correct entries (e.g. 'smoke.run') without creating
+      // duplicate rows on top of the middleware's generic entry.
       const entry: AuditEntry = {
         id: crypto.randomUUID(),
         occurredAt: new Date().toISOString(),
@@ -55,11 +59,14 @@ export function auditMiddleware(): MiddlewareHandler<AppEnv> {
         userRole: ctx.role,
         sessionId: ctx.sessionId,
         env: ctx.env,
-        action: `${c.req.method} ${new URL(c.req.url).pathname}`,
-        reversibility: 'reversible', // routes can override by writing their own entry
+        action: c.var.auditAction ?? `${c.req.method} ${new URL(c.req.url).pathname}`,
+        resource: c.var.auditResource,
+        resourceId: c.var.auditResourceId,
+        reversibility: c.var.auditReversibility ?? 'reversible',
         payload,
         result,
-        resultDetail,
+        // Route-level detail takes precedence over HTTP-status-derived detail.
+        resultDetail: c.var.auditResultDetail ?? resultDetail,
         ipAddress: c.req.header('CF-Connecting-IP') ?? c.req.header('X-Forwarded-For'),
         userAgent: c.req.header('User-Agent'),
         requestId: c.var.requestId ?? crypto.randomUUID(),

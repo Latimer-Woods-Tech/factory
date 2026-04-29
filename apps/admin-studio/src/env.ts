@@ -46,4 +46,14 @@ export interface Env {
   // ── Phase E: function catalog ───────────────────────────────────────────
   /** Build SHA stamped at deploy time, surfaced in /manifest. */
   BUILD_SHA?: string;
+
+  // ── T3: Creator onboarding + payout operations ──────────────────────────
+  /** Stripe secret key for Connect OAuth and transfer operations. */
+  STRIPE_SECRET_KEY?: string;
+  /** Stripe publishable key used in front-end OAuth redirect URLs. */
+  STRIPE_PUBLISHABLE_KEY?: string;
+  /** Stripe Connect webhook signing secret for account.updated events. */
+  STRIPE_CONNECT_WEBHOOK_SECRET?: string;
+  /** Public base URL of the app (e.g. "https://studio.adrper79.workers.dev"). */
+  APP_URL?: string;
 }

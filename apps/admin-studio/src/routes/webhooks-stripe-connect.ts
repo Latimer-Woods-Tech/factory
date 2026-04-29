@@ -10,10 +10,12 @@ import {
   ErrorCodes,
   toErrorResponse,
 } from '@adrper79-dot/errors';
-import { createDb } from '@adrper79-dot/neon';
-import { logger } from '@adrper79-dot/logger';
 import Stripe from 'stripe';
 import { eq } from 'drizzle-orm';
+import {
+  createAdminDb,
+  creatorConnections,
+} from '../lib/admin-db.js';
 
 const router = new Hono<AppEnv>();
 
@@ -32,7 +34,11 @@ router.post('/', async (c) => {
       });
     }
 
-    const stripe = new Stripe(c.env.STRIPE_SECRET_KEY, {
+    const secretKey = c.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      return c.json({ received: false, error: 'Stripe not configured' }, 503);
+    }
+    const stripe = new Stripe(secretKey, {
       apiVersion: '2025-02-24.acacia',
       httpClient: Stripe.createFetchHttpClient(),
     });
@@ -40,17 +46,17 @@ router.post('/', async (c) => {
     // Verify webhook signature
     let event: Stripe.Event;
     try {
-      event = stripe.webhooks.constructEventAsync(
+      event = await stripe.webhooks.constructEventAsync(
         body,
         signature,
-        c.env.STRIPE_CONNECT_WEBHOOK_SECRET
+        c.env.STRIPE_CONNECT_WEBHOOK_SECRET ?? '',
       );
     } catch (error) {
-      logger.warn('Webhook signature verification failed', { error });
+      console.warn('[webhooks-stripe] signature verification failed:', error);
       return c.json({ received: true }, 200); // Return 200 to tell Stripe we got it (even if invalid)
     }
 
-    const db = createDb(c.env.DB);
+    const db = createAdminDb(c.env.DB);
 
     // Handle account.updated events
     if (event.type === 'account.updated') {
@@ -62,61 +68,45 @@ router.post('/', async (c) => {
       });
 
       if (!connection) {
-        logger.warn('Received account.updated for unknown Stripe account', {
-          stripeAccountId: account.id,
-        });
+        console.warn('[webhooks-stripe] account.updated for unknown account:', account.id);
         return c.json({ received: true }, 200);
       }
 
-      // Determine new status based on Stripe account state
       let newStatus = connection.onboardingStatus;
-      let errorMessage = null;
+      let errorMessage: string | null = null;
 
       if (account.charges_enabled && account.payouts_enabled) {
         newStatus = 'verified';
       } else if (account.requirements?.past_due?.length) {
         newStatus = 'rejected';
         errorMessage = `Past due requirements: ${account.requirements.past_due.join(', ')}`;
-      } else if (account.requirements?.pending?.length) {
+      } else if (account.requirements?.currently_due?.length) {
         newStatus = 'submitted';
-        errorMessage = `Pending requirements: ${account.requirements.pending.join(', ')}`;
+        errorMessage = `Pending requirements: ${account.requirements.currently_due.join(', ')}`;
       }
 
-      // Update connection if status changed
       if (newStatus !== connection.onboardingStatus) {
-        await db.update(creatorConnections)
+        await db
+          .update(creatorConnections)
           .set({
             onboardingStatus: newStatus,
             lastVerificationAttempt: new Date(),
             errorMessage,
-            verifiedAt: newStatus === 'verified' ? new Date() : undefined,
+            verifiedAt: newStatus === 'verified' ? new Date() : connection.verifiedAt,
           })
           .where(eq(creatorConnections.creatorId, connection.creatorId));
 
-        logger.info('Updated creator Stripe status via webhook', {
+        console.info('[webhooks-stripe] creator status updated', {
           creatorId: connection.creatorId,
           stripeAccountId: account.id,
           newStatus,
-        });
-
-        // Track analytics event
-        await c.get('analytics')?.track({
-          event: 'creator:stripe_account_updated',
-          properties: {
-            creatorId: connection.creatorId,
-            stripeAccountId: account.id,
-            status: newStatus,
-            chargesEnabled: account.charges_enabled,
-            payoutsEnabled: account.payouts_enabled,
-            timestamp: new Date().toISOString(),
-          },
         });
       }
     }
 
     return c.json({ received: true }, 200);
   } catch (error) {
-    logger.error('Webhook handler error', { error });
+    console.error('[webhooks-stripe] handler error:', error);
     return c.json({ received: false }, 500);
   }
 });

@@ -19,7 +19,10 @@
     "@adrper79-dot/monitoring": "file:../../packages/monitoring",
     "@adrper79-dot/neon": "file:../../packages/neon",
     "@adrper79-dot/studio-core": "file:../../packages/studio-core",
-    "hono": "^4.12.14"
+    "@neondatabase/serverless": "^0.9.0",
+    "drizzle-orm": "^0.30.0",
+    "hono": "^4.12.14",
+    "stripe": "^17.0.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240502.0",

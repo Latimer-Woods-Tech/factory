@@ -12,28 +12,39 @@ import {
   ErrorCodes,
   toErrorResponse,
 } from '@adrper79-dot/errors';
-import { createDb } from '@adrper79-dot/neon';
-import { logger } from '@adrper79-dot/logger';
 import Stripe from 'stripe';
-import { eq, desc, limit, offset } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
+import {
+  createAdminDb,
+  creatorConnections,
+  creators,
+} from '../lib/admin-db.js';
 
 const router = new Hono<AppEnv>();
 
 /**
- * Middleware: Require admin role
+ * Middleware: Require admin or owner role
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const requireAdmin = async (c: any, next: any) => {
-  const user = c.get('user');
-  if (!user || user.role !== 'admin') {
+  const ctx = c.var.envContext as { role?: string } | undefined;
+  if (!ctx || (ctx.role !== 'admin' && ctx.role !== 'owner')) {
     return c.json(
       toErrorResponse(
-        new ValidationError('Admin access required', { code: ErrorCodes.VALIDATION_ERROR })
+        new ValidationError('Admin access required', { code: ErrorCodes.VALIDATION_ERROR }),
       ),
-      403
+      403,
     );
   }
   return next();
 };
+
+function getStripe(secretKey: string): Stripe {
+  return new Stripe(secretKey, {
+    apiVersion: '2025-02-24.acacia',
+    httpClient: Stripe.createFetchHttpClient(),
+  });
+}
 
 /**
  * GET /api/admin/creators/onboarding?status=&page=&limit=&sortBy=
@@ -49,34 +60,29 @@ router.get('/onboarding', requireAdmin, async (c) => {
     const pageNum = Math.max(1, page);
     const offsetVal = (pageNum - 1) * limit_;
 
-    const db = createDb(c.env.DB);
+    const db = createAdminDb(c.env.DB);
 
-    let query = db.query.creatorConnections.findMany({
+    const connections = await db.query.creatorConnections.findMany({
       orderBy: [
         sortBy === 'verified_at'
           ? desc(creatorConnections.verifiedAt)
           : desc(creatorConnections.submittedAt),
       ],
+      where: status ? (cc) => eq(cc.onboardingStatus, status) : undefined,
       limit: limit_,
       offset: offsetVal,
     });
 
-    // Apply status filter if provided
-    if (status) {
-      query = query.where(
-        eq(creatorConnections.onboardingStatus, status)
-      );
-    }
-
-    const connections = await query;
-
-    const total = await db.query.creatorConnections.findMany();
+    const total = await db.query.creatorConnections.findMany({
+      where: status ? (cc) => eq(cc.onboardingStatus, status) : undefined,
+      columns: { creatorId: true },
+    });
 
     // Enrich with creator info
     const enriched = await Promise.all(
       connections.map(async (conn) => {
         const creator = await db.query.creators.findFirst({
-          where: (c) => eq(c.id, conn.creatorId),
+          where: (cr) => eq(cr.id, conn.creatorId),
           columns: { id: true, email: true, displayName: true },
         });
 
@@ -105,11 +111,8 @@ router.get('/onboarding', requireAdmin, async (c) => {
       },
     });
   } catch (error) {
-    logger.error('Failed to list creators', { error });
-    return c.json(
-      toErrorResponse(new Error('Failed to list creators')),
-      500
-    );
+    console.error('[creators] list onboarding failed:', error);
+    return c.json(toErrorResponse(new Error('Failed to list creators')), 500);
   }
 });
 
@@ -121,12 +124,18 @@ router.get('/onboarding', requireAdmin, async (c) => {
 router.post('/:id/verify-stripe', requireAdmin, async (c) => {
   try {
     const creatorId = c.req.param('id');
-    const db = createDb(c.env.DB);
-    const user = c.get('user');
-    const stripe = new Stripe(c.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2025-02-24.acacia',
-      httpClient: Stripe.createFetchHttpClient(),
-    });
+    const ctx = c.var.envContext;
+    const secretKey = c.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      return c.json(
+        toErrorResponse(
+          new ValidationError('Stripe not configured', { code: ErrorCodes.VALIDATION_ERROR }),
+        ),
+        503,
+      );
+    }
+    const db = createAdminDb(c.env.DB);
+    const stripe = getStripe(secretKey);
 
     const connection = await db.query.creatorConnections.findFirst({
       where: (cc) => eq(cc.creatorId, creatorId),
@@ -142,39 +151,34 @@ router.post('/:id/verify-stripe', requireAdmin, async (c) => {
     const account = await stripe.accounts.retrieve(connection.stripeAccountId);
 
     let newStatus = connection.onboardingStatus;
-    let errorMessage = null;
+    let errorMessage: string | null = null;
 
     if (account.charges_enabled && account.payouts_enabled) {
       newStatus = 'verified';
     } else if (account.requirements?.past_due?.length) {
       newStatus = 'rejected';
       errorMessage = `Past due requirements: ${account.requirements.past_due.join(', ')}`;
-    } else if (account.requirements?.pending?.length) {
+    } else if (account.requirements?.currently_due?.length) {
       newStatus = 'submitted';
-      errorMessage = `Pending requirements: ${account.requirements.pending.join(', ')}`;
+      errorMessage = `Pending requirements: ${account.requirements.currently_due.join(', ')}`;
     }
 
-    // Update local status
-    await db.update(creatorConnections)
+    await db
+      .update(creatorConnections)
       .set({
         onboardingStatus: newStatus,
         lastVerificationAttempt: new Date(),
-        verificationAttempts: (connection.verificationAttempts || 0) + 1,
+        verificationAttempts: (connection.verificationAttempts ?? 0) + 1,
         errorMessage,
-        verifiedAt: newStatus === 'verified' ? new Date() : undefined,
+        verifiedAt: newStatus === 'verified' ? new Date() : connection.verifiedAt,
       })
       .where(eq(creatorConnections.creatorId, creatorId));
 
-    // Log audit event
-    await c.get('analytics')?.track({
-      event: 'admin:creator_stripe_verified',
-      properties: {
-        operatorId: user.sub,
-        creatorId,
-        stripeAccountId: connection.stripeAccountId,
-        status: newStatus,
-        timestamp: new Date().toISOString(),
-      },
+    console.info('[creators] stripe verified by operator', {
+      operatorId: ctx.userId,
+      creatorId,
+      stripeAccountId: connection.stripeAccountId,
+      newStatus,
     });
 
     return c.json({
@@ -183,15 +187,15 @@ router.post('/:id/verify-stripe', requireAdmin, async (c) => {
       status: newStatus,
       chargesEnabled: account.charges_enabled,
       payoutsEnabled: account.payouts_enabled,
-      requirementsPending: account.requirements?.pending || [],
-      requirementsPastDue: account.requirements?.past_due || [],
+      requirementsPending: account.requirements?.currently_due ?? [],
+      requirementsPastDue: account.requirements?.past_due ?? [],
       errorMessage,
     });
   } catch (error) {
-    logger.error('Failed to verify Stripe account', { error });
+    console.error('[creators] verify-stripe failed:', error);
     return c.json(
       toErrorResponse(error instanceof Error ? error : new Error('Verification failed')),
-      error instanceof ValidationError ? 400 : 500
+      error instanceof ValidationError ? 400 : 500,
     );
   }
 });
@@ -203,9 +207,9 @@ router.post('/:id/verify-stripe', requireAdmin, async (c) => {
 router.post('/:id/mark-ready-for-payout', requireAdmin, async (c) => {
   try {
     const creatorId = c.req.param('id');
-    const { reason } = await c.req.json();
-    const user = c.get('user');
-    const db = createDb(c.env.DB);
+    const { reason } = await c.req.json<{ reason?: string }>();
+    const ctx = c.var.envContext;
+    const db = createAdminDb(c.env.DB);
 
     const connection = await db.query.creatorConnections.findFirst({
       where: (cc) => eq(cc.creatorId, creatorId),
@@ -224,22 +228,17 @@ router.post('/:id/mark-ready-for-payout', requireAdmin, async (c) => {
       );
     }
 
-    // Update status to ready for payouts
-    await db.update(creatorConnections)
+    await db
+      .update(creatorConnections)
       .set({
-        onboardingStatus: 'processing', // Waiting for first payout batch
+        onboardingStatus: 'processing',
       })
       .where(eq(creatorConnections.creatorId, creatorId));
 
-    // Audit log
-    await c.get('analytics')?.track({
-      event: 'admin:creator_marked_ready_for_payout',
-      properties: {
-        operatorId: user.sub,
-        creatorId,
-        reason,
-        timestamp: new Date().toISOString(),
-      },
+    console.info('[creators] creator marked ready for payout', {
+      operatorId: ctx.userId,
+      creatorId,
+      reason,
     });
 
     return c.json({
@@ -248,10 +247,10 @@ router.post('/:id/mark-ready-for-payout', requireAdmin, async (c) => {
       message: 'Creator marked ready for payouts',
     });
   } catch (error) {
-    logger.error('Failed to mark creator ready', { error });
+    console.error('[creators] mark-ready-for-payout failed:', error);
     return c.json(
       toErrorResponse(error instanceof Error ? error : new Error('Operation failed')),
-      error instanceof ValidationError ? 400 : 500
+      error instanceof ValidationError ? 400 : 500,
     );
   }
 });
