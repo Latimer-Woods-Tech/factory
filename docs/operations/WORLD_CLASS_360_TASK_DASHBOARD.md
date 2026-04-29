@@ -87,7 +87,7 @@ Detailed ownership and app/repo mapping lives in `docs/operations/WORLD_CLASS_36
 | W360-002 | Create workflow coordination matrix | DevOps | `.github/workflows/`, `docs/runbooks/`, `docs/operations/` | W360-001 | **Created:** `docs/operations/WORKFLOW_COORDINATION_MATRIX.md`; next add shared deploy-gate implementation and run evidence |
 | W360-003 | Xico City repo stabilization | Xico platform team | `C:/Users/Ultimate Warrior/Documents/GitHub/xico-city` | none | `npm ci`, typecheck, lint, test, build, registry validation, forbidden API check all pass locally and in Actions |
 | W360-004 | Xico City Worker health deploy | Xico platform team | Xico `wrangler.jsonc`, deploy workflow, service registry | W360-003 | `/health` and `/ready` return correct status via direct HTTP; service registry updated if public URL exists |
-| W360-005 | Practitioner Studio entitlement bridge | Revenue API team | product API, entitlement tables, Stripe webhook, credit ledger | video pipeline baseline | Test customer pays; webhook activates entitlement; credits granted exactly once |
+| W360-005 | Practitioner Studio entitlement bridge | Revenue API team | product API, entitlement tables, Stripe webhook, credit ledger | video pipeline baseline | ⚡ IN PROGRESS — Drizzle schema (5 tables) + HMAC-SHA256 signed webhook handler + credit debit/grant/refund service in `packages/schedule/src/stripe-entitlements.ts` + `stripe-webhook.ts`; 25 tests in `stripe-webhook.test.ts`; live Stripe test-card integration still needed |
 | W360-006 | Admin Studio production safety gate | Admin Studio team | `apps/admin-studio`, `apps/admin-studio-ui`, `packages/studio-core` | W360-001 | RBAC, audit logging, protected smoke runner, dry-run previews, negative auth tests pass |
 
 ### P1 — Product loops
@@ -113,7 +113,7 @@ Detailed ownership and app/repo mapping lives in `docs/operations/WORLD_CLASS_36
 
 | ID | Workstream | Owner team | Scope / paths | Dependencies | Exit criteria |
 |---|---|---|---|---|---|
-| W360-021 | Analytics event verification gate | Observability team | analytics tests, PostHog/factory_events schemas | W360-005, W360-014 | critical journeys emit required events; tests fail on missing event shape |
+| W360-021 | Analytics event verification gate | Observability team | analytics tests, PostHog/factory_events schemas | W360-005, W360-014 | ✅ DONE 2026-04-29 — `packages/analytics/src/event-schemas.ts` defines `CRITICAL_EVENT_SCHEMAS` for 22 events (render/sub/revenue/auth/booking/webhook); `assertEventShape()` throws on missing fields or wrong types; 50+ tests in `event-schemas.test.ts`; exported from index.ts for consumer tests |
 | W360-022 | User-journey SLOs | Observability team | docs/runbooks/slo, synthetic monitor | W360-007, W360-014 | checkout, first render, booking, webhook, dashboard journeys have SLOs and probes |
 | W360-023 | Cost guardrails | Revenue + observability | credit quotas, render estimates, budget alerts | W360-005 | render cost limits, quotas, kill switch, and alerts are verified |
 | W360-024 | Function manifest adoption | Platform + Admin Studio | `packages/studio-core`, Workers | W360-006 | ✅ DONE 2026-04-29 — `GET /manifest` added to admin-studio (typed, studio-core), schedule-worker (inline, 6ε2f17a), and video-cron (inline, 04b106d); all three return `{ manifestVersion:1, app, env, entries[] }` with auth/reversibility/SLO/smoke per route |
