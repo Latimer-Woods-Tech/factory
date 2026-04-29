@@ -58,6 +58,8 @@ export interface Env {
   STRIPE_PUBLISHABLE_KEY?: string;
   /** Stripe Connect webhook signing secret for account.updated events. */
   STRIPE_CONNECT_WEBHOOK_SECRET?: string;
+  /** Stripe subscription webhook signing secret for customer.subscription.* events. */
+  STRIPE_SUBSCRIPTION_WEBHOOK_SECRET?: string;
   /** Public base URL of the app (e.g. "https://studio.adrper79.workers.dev"). */
   APP_URL?: string;
 }

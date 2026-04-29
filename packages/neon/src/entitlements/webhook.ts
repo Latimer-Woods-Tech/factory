@@ -21,13 +21,6 @@
 
 import { sql } from 'drizzle-orm';
 import type { FactoryDb } from '../index.js';
-import {
-  studioCustomerTable,
-  studioSubscriptionTable,
-  studioPlanTable,
-  studioEntitlementTable,
-  studioEntitlementTable as entitlementTable,
-} from './schema.js';
 
 // ============================================================================
 // Raw SQL row shapes (used for db.execute results)
@@ -98,7 +91,7 @@ export interface StripeSubscription {
       };
     }>;
   };
-  status: 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid' | string;
+  status: string;
   current_period_start: number;
   current_period_end: number;
   trial_end?: number | null;
@@ -292,9 +285,7 @@ export async function handleSubscriptionCreated(db: FactoryDb, event: StripeEven
   }
 
   // Map Stripe status to our enum
-  const status = ['trialing', 'active', 'past_due', 'canceled', 'unpaid'].includes(sub.status)
-    ? (sub.status as 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid')
-    : 'active';
+  const status = sub.status as string;
 
   // Insert subscription
   const subscriptionId = crypto.randomUUID();
@@ -362,9 +353,7 @@ export async function handleSubscriptionUpdated(db: FactoryDb, event: StripeEven
       const planId = planResult.rows[0].id;
 
       // Update subscription: plan, credits, status, period
-      const status = ['trialing', 'active', 'past_due', 'canceled', 'unpaid'].includes(sub.status)
-        ? (sub.status as 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid')
-        : 'active';
+      const status = sub.status as string;
 
       await db.execute(sql`
         UPDATE studio_subscriptions SET
