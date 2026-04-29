@@ -21,6 +21,12 @@
   "env": {
     "production": {
       "name": "video-cron",
+      "hyperdrive": [
+        {
+          "binding": "DB",
+          "id": "78e47571fffb4a81ba12ee454507e006"
+        }
+      ],
       "triggers": {
         "crons": ["0 * * * *"]
       },

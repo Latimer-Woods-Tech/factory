@@ -15,6 +15,12 @@
     "production": {
       "name": "schedule-worker",
       "workers_dev": true,
+      "hyperdrive": [
+        {
+          "binding": "DB",
+          "id": "78e47571fffb4a81ba12ee454507e006"
+        }
+      ],
       "vars": {
         "ENVIRONMENT": "production"
       }
