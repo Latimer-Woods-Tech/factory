@@ -52,3 +52,18 @@ export {
   type StripeCustomer,
   type StripeInvoice,
 } from './webhook.js';
+
+export {
+  estimateRenderCost,
+  checkRenderGuardrails,
+  isKillSwitchActive,
+  getRenderCountThisPeriod,
+  emitBudgetAlert,
+  DEFAULT_CREDIT_RATE_PER_SECOND,
+  BUDGET_ALERT_THRESHOLD_FRACTION,
+  PLATFORM_MAX_VIDEO_SECONDS,
+  DEFAULT_MAX_VIDEO_SECONDS,
+  type RenderGuardrailResult,
+  type RenderRequest,
+  type KillSwitchState,
+} from './guardrails.js';

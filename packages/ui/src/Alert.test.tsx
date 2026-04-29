@@ -63,7 +63,7 @@ describe('Alert Component', () => {
 
   it('uses color semantic to icon and background', () => {
     const { container } = render(
-      <Alert variant="danger">
+      <Alert variant="error">
         Error occurred
       </Alert>,
     );
