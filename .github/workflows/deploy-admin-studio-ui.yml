@@ -32,19 +32,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@adrper79-dot'
 
-      - name: Install
-        run: npm ci
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install + build studio-core
+        run: npm ci --ignore-scripts
+        working-directory: packages/studio-core
 
       - name: Build studio-core
-        run: npm run build --workspace=@adrper79-dot/studio-core
+        run: npm run build
+        working-directory: packages/studio-core
+
+      - name: Install admin-studio-ui
+        run: npm ci
+        working-directory: apps/admin-studio-ui
 
       - name: Build UI
-        run: npm run build --workspace=@adrper79-dot/admin-studio-ui
+        run: npm run build
+        working-directory: apps/admin-studio-ui
         env:
           VITE_API_BASE: ${{ github.event.inputs.env == 'production' && 'https://admin-studio-production.adrper79.workers.dev' || 'https://admin-studio-staging.adrper79.workers.dev' }}
 

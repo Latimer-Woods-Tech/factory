@@ -32,22 +32,29 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@adrper79-dot'
 
-      - name: Install
+      - name: Build dependency packages
+        run: |
+          set -euo pipefail
+          for pkg in errors monitoring logger auth neon llm studio-core; do
+            echo "=== Installing + building packages/${pkg} ==="
+            cd "packages/${pkg}"
+            npm ci --ignore-scripts
+            npm run build
+            cd ../..
+          done
+
+      - name: Install admin-studio
         run: npm ci
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build studio-core
-        run: npm run build --workspace=@adrper79-dot/studio-core
+        working-directory: apps/admin-studio
 
       - name: Typecheck
-        run: npm run typecheck --workspace=@adrper79-dot/admin-studio
+        run: npm run typecheck
+        working-directory: apps/admin-studio
 
-      - name: Test
-        run: npm test --workspace=@adrper79-dot/studio-core
+      - name: Test studio-core
+        run: npm test
+        working-directory: packages/studio-core
 
       - name: Verify health pre-deploy (sanity)
         run: |
