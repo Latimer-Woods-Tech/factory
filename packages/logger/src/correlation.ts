@@ -1,5 +1,4 @@
-import type { MiddlewareHandler } from 'hono';
-import { createLogger } from './index';
+import type { Context, MiddlewareHandler } from 'hono';
 
 /**
  * Generates a new correlationId (UUID v4).
@@ -38,9 +37,9 @@ export function correlationIdMiddleware(
   headerName = 'x-correlation-id',
 ): MiddlewareHandler {
   return async (c, next) => {
-    let correlationId =
-      c.req.header(headerName) ||
-      c.req.header('x-request-id') ||
+    const correlationId =
+      c.req.header(headerName) ??
+      c.req.header('x-request-id') ??
       generateCorrelationId();
 
     c.set('correlationId', correlationId);
@@ -54,8 +53,8 @@ export function correlationIdMiddleware(
  * Extracts and returns the current correlationId from context.
  * Used in request handlers, database operations, error reports.
  */
-export function getCorrelationId(ctx: any): string {
-  return ctx.get?.('correlationId') || generateCorrelationId();
+export function getCorrelationId(ctx: Context): string {
+  return ctx.get('correlationId') ?? generateCorrelationId();
 }
 
 /**
