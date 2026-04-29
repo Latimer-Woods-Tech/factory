@@ -40,14 +40,14 @@
     "prepublish": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
-    "@adrper79-dot/design-tokens": "0.2.0"
+    "@adrper79-dot/design-tokens": "file:../design-tokens"
   },
   "peerDependencies": {
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },
   "devDependencies": {
-    "@adrper79-dot/design-tokens": "0.2.0",
+    "@adrper79-dot/design-tokens": "file:../design-tokens",
     "@testing-library/react": "^16.0.0",
     "@testing-library/jest-dom": "^6.0.0",
     "@types/node": "^25.6.0",
