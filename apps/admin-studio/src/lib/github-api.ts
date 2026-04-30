@@ -41,6 +41,12 @@ interface GhRequestInit {
   acceptRaw?: boolean;
 }
 
+export interface WorkflowDispatchArgs {
+  workflowFile: string;
+  ref: string;
+  inputs?: Record<string, string>;
+}
+
 async function gh(token: string, path: string, init: GhRequestInit = {}): Promise<Response> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: init.method ?? 'GET',
@@ -306,4 +312,32 @@ export async function openPullRequest(
     base: data.base.ref,
     title: data.title,
   };
+}
+
+/**
+ * Dispatch a GitHub Actions workflow by file name.
+ *
+ * Returns when GitHub accepts the dispatch request (HTTP 204).
+ */
+export async function dispatchWorkflow(token: string, args: WorkflowDispatchArgs): Promise<void> {
+  const payload: Record<string, unknown> = {
+    ref: args.ref,
+  };
+  if (args.inputs && Object.keys(args.inputs).length > 0) {
+    payload.inputs = args.inputs;
+  }
+
+  const res = await gh(
+    token,
+    `/repos/${FACTORY_OWNER}/${FACTORY_REPO}/actions/workflows/${encodeURIComponent(args.workflowFile)}/dispatches`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+
+  if (res.status !== 204) {
+    const text = await res.text();
+    throw new GitHubApiError(`dispatchWorkflow ${res.status}`, res.status, text);
+  }
 }

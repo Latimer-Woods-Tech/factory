@@ -91,6 +91,12 @@ npm run dev
 - **[PHASE_6_7_TIMELINE.md](./PHASE_6_7_TIMELINE.md)** — Master timeline with parallelization
 - **[PHASE_6_7_READY_STATE.md](./PHASE_6_7_READY_STATE.md)** — Deliverables inventory
 
+### World Class 360 Execution
+- **[docs/operations/WORLD_CLASS_360_TASK_DASHBOARD.md](./docs/operations/WORLD_CLASS_360_TASK_DASHBOARD.md)** — Active W360 work queue
+- **[docs/operations/W360_FACTORY_REPO_HARDENING_PLAN.md](./docs/operations/W360_FACTORY_REPO_HARDENING_PLAN.md)** — Detailed hardening program for control-plane, workflows, docs, and quality gates
+- **[docs/operations/W360_FACTORY_REPO_HARDENING_SPRINT_PLAN.md](./docs/operations/W360_FACTORY_REPO_HARDENING_SPRINT_PLAN.md)** — 2-week sprint mapping, board columns, risk register, and evidence cadence for FRH-01..FRH-10
+- **[docs/operations/W360_FACTORY_REPO_HARDENING_ISSUE_PACK.md](./docs/operations/W360_FACTORY_REPO_HARDENING_ISSUE_PACK.md)** — Ready-to-open FRH-01..FRH-10 issue titles and scope anchors (+ deferred FRH-11 append item)
+
 ### Runbooks (Troubleshooting & Reference)
 - **[docs/runbooks/CREDENTIALS_SETUP.md](./docs/runbooks/CREDENTIALS_SETUP.md)** — Gather GitHub, CloudFlare, Neon, Sentry, PostHog credentials
 - **[docs/runbooks/github-secrets-and-tokens.md](./docs/runbooks/github-secrets-and-tokens.md)** — GitHub Actions secrets inventory

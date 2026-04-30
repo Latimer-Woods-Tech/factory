@@ -158,12 +158,12 @@ app.get('/health', (c) => {
 
 ```bash
 # Verify production deployment
-curl https://wordis-bond.workers.dev/health | jq .
+curl https://wordis-bond.adrper79.workers.dev/health | jq .
 # Expected:
 # {"status":"ok","worker":"wordis-bond","environment":"production"}
 
 # Verify staging deployment
-curl https://wordis-bond-staging.workers.dev/health | jq .
+curl https://wordis-bond-staging.adrper79.workers.dev/health | jq .
 # Expected:
 # {"status":"ok","worker":"wordis-bond-staging","environment":"staging"}
 
@@ -288,7 +288,7 @@ Before deploying any app, verify:
 **Layer 1 Protection (Build-Time)**:
 - CI/CD runs on `main` branch
 - `wrangler deploy` reads `wrangler.jsonc` (which specifies `name: wordis-bond`, not `wordis-bond-staging`)
-- Code deploys to `wordis-bond.workers.dev` (production URL)
+- Code deploys to `wordis-bond.adrper79.workers.dev` (production URL)
 - **Layer 1 failed → Staged code goes to production ❌**
 
 **Layer 2 Protection (Deploy-Time)**:

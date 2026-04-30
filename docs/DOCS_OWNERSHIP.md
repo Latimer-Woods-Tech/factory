@@ -23,6 +23,8 @@ Each doc has:
 | Document | Owner | Reviewers | Cadence | Change Process |
 |----------|-------|-----------|---------|-----------------|
 | [WORLD_CLASS_IMPLEMENTATION_DASHBOARD.md](../WORLD_CLASS_IMPLEMENTATION_DASHBOARD.md) | Product Lead | EM, Tech Lead, All Track Leads | Monthly | PR + track lead approval |
+| [W360 Factory Repo Hardening Plan](operations/W360_FACTORY_REPO_HARDENING_PLAN.md) | Platform Lead | EM, Reliability Lead, Docs Lead | Bi-weekly while active | PR + platform lead approval |
+| [W360 Factory Repo Hardening Sprint Plan](operations/W360_FACTORY_REPO_HARDENING_SPRINT_PLAN.md) | EM / Program Lead | Platform Lead, QA Lead | Weekly while active | PR + EM approval |
 | [PHASE_6_CHECKLIST.md](../PHASE_6_CHECKLIST.md) | Platform Lead | Infrastructure Engineer | Quarterly or on provision | PR + platform lead approval |
 | [IMPLEMENTATION_MASTER_INDEX.md](IMPLEMENTATION_MASTER_INDEX.md) | Tech Writer / EM | Engineer, Product | Monthly | PR + editor approval |
 

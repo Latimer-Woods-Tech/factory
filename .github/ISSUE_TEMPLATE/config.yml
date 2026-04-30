@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: World Class 360 Task Dashboard
+    url: https://github.com/adrper79-dot/factory/blob/main/docs/operations/WORLD_CLASS_360_TASK_DASHBOARD.md
+    about: Use the dashboard to verify priority, dependencies, and owner discipline before creating an issue.
+  - name: Factory Repo Hardening Plan
+    url: https://github.com/adrper79-dot/factory/blob/main/docs/operations/W360_FACTORY_REPO_HARDENING_PLAN.md
+    about: Use this plan for FRH-01..FRH-10 implementation details and exit criteria.

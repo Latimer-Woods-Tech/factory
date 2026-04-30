@@ -5,6 +5,9 @@
  * Mirrors `docs/service-registry.yml`. Kept in code so the Worker can
  * iterate without a YAML parser. Update both when adding a new app.
  *
+ * Drift guard command:
+ *   npm run check:service-registry
+ *
  * URLs use the per-environment hostname pattern documented in
  * CLAUDE.md (`{name}.adrper79.workers.dev` for staging-style names,
  * `{name}-production.adrper79.workers.dev` for prod-style).
@@ -35,20 +38,23 @@ export const FACTORY_APPS: readonly FactoryApp[] = [
     id: 'prime-self',
     label: 'Prime Self',
     productionWorkerName: 'prime-self',
-    stagingWorkerName: 'prime-self-staging',
+    // No distinct staging worker is currently registry-backed for prime-self.
+    stagingWorkerName: 'prime-self',
     productionCustomDomain: 'selfprime.net',
   },
   {
     id: 'schedule-worker',
     label: 'Schedule Worker',
     productionWorkerName: 'schedule-worker',
-    stagingWorkerName: 'schedule-worker-staging',
+    // No distinct staging worker is currently registry-backed for schedule-worker.
+    stagingWorkerName: 'schedule-worker',
   },
   {
     id: 'video-cron',
     label: 'Video Cron',
     productionWorkerName: 'video-cron',
-    stagingWorkerName: 'video-cron-staging',
+    // No distinct staging worker is currently registry-backed for video-cron.
+    stagingWorkerName: 'video-cron',
   },
 ] as const;
 

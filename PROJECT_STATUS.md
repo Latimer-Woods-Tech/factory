@@ -12,6 +12,7 @@
 The Factory Core infrastructure library is **feature-complete** with all 19 reusable packages implemented and published at `v0.2.0`. Phase 6 infrastructure provisioning has been fully **automated** with the `phase-6-orchestrator.mjs` script.
 
 The implementation plan for taking the platform and core application from "ready" to **world-class** now lives in [WORLD_CLASS_IMPLEMENTATION_DASHBOARD.md](./WORLD_CLASS_IMPLEMENTATION_DASHBOARD.md). That dashboard is the source of truth for cross-functional execution planning across Factory support and the core application. It also now contains the canonical open work register, project/repo inventory, multi-agent ownership process, and done/undone/unrealized status.
+The detailed execution specification for recent control-plane and repo hardening recommendations now lives in [docs/operations/W360_FACTORY_REPO_HARDENING_PLAN.md](./docs/operations/W360_FACTORY_REPO_HARDENING_PLAN.md), and is linked from the active W360 task dashboard.
 
 The system is ready for:
 1. **Infrastructure Setup (Phase 6)** — execution pending credentials

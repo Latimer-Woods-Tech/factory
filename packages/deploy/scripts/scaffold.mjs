@@ -361,7 +361,7 @@ export const example = pgTable('example', {
   // docs/runbooks/ skeleton
   const runbooks = [
     ['getting-started.md', `# ${APP_NAME} — Getting Started\n\n## Local Dev\n\n\`\`\`bash\ncp .dev.vars.example .dev.vars\n# Fill in .dev.vars values\nnpm install\nnpm run dev\n\`\`\`\n\n## First Deploy\n\nSee deployment.md\n`],
-    ['deployment.md', `# ${APP_NAME} — Deployment\n\n## Staging\n\n\`\`\`bash\nwrangler deploy --env staging\ncurl https://staging.${APP_NAME}.workers.dev/health\n\`\`\`\n\n## Production\n\n\`\`\`bash\nwrangler deploy\n\`\`\`\n\n## Rollback\n\n\`\`\`bash\nwrangler rollback\n\`\`\`\n`],
+    ['deployment.md', `# ${APP_NAME} — Deployment\n\n## Staging\n\n\`\`\`bash\nwrangler deploy --env staging\ncurl https://${APP_NAME}-staging.adrper79.workers.dev/health\n\`\`\`\n\n## Production\n\n\`\`\`bash\nwrangler deploy\ncurl https://${APP_NAME}.adrper79.workers.dev/health\n\`\`\`\n\n## Rollback\n\n\`\`\`bash\nwrangler rollback\n\`\`\`\n`],
     ['secret-rotation.md', `# ${APP_NAME} — Secret Rotation\n\n| Secret | Rotate Every | Command |\n|---|---|---|\n| JWT_SECRET | 90 days | \`wrangler secret put JWT_SECRET --name ${APP_NAME}\` |\n| SENTRY_DSN | Never (on compromise) | \`wrangler secret put SENTRY_DSN --name ${APP_NAME}\` |\n| POSTHOG_KEY | Never (on compromise) | \`wrangler secret put POSTHOG_KEY --name ${APP_NAME}\` |\n`],
     ['database.md', `# ${APP_NAME} — Database\n\n## Generate Migration\n\n\`\`\`bash\nnpx drizzle-kit generate\n\`\`\`\n\n## Apply Migration\n\n\`\`\`bash\nexport DATABASE_URL=\"postgresql://...\"\nnpx drizzle-kit migrate\n\`\`\`\n\n## Preview Branch (CI)\n\nSet NEON_PREVIEW_URL in GitHub repo secrets to run migration dry-run in CI.\n`],
     ['slo.md', `# ${APP_NAME} — SLO\n\n## Targets\n\n| Metric | Target |\n|---|---|\n| p99 latency | < 200ms |\n| Error rate | < 0.1% |\n| Availability | 99.9% |\n\n## Error Budget\n\n0.1% errors / 30 days = ~43 minutes downtime budget.\nSentry alert threshold: > 10 errors/hour triggers immediate response.\n`],
@@ -626,7 +626,7 @@ async function main() {
     if (doDeploy.trim().toLowerCase() === 'y') {
       console.log('\n  Deploying...');
       run('wrangler deploy');
-      console.log(`\n  ✅ Deployed! Health check: https://${APP_NAME}.<account>.workers.dev/health`);
+      console.log(`\n  ✅ Deployed! Health check: https://${APP_NAME}.adrper79.workers.dev/health`);
     }
   }
 

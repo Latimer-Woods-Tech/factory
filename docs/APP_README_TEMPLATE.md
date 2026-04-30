@@ -8,8 +8,8 @@ This template should be used for all 6 Factory apps: prime-self, wordis-bond, cy
 
 A Cloudflare Workers application built on the Factory Core infrastructure.
 
-**Production**: https://{app}.workers.dev  
-**Staging**: https://{app}-staging.workers.dev
+**Production**: https://{app}.adrper79.workers.dev  
+**Staging**: https://{app}-staging.adrper79.workers.dev
 
 ## Quick Start
 
@@ -81,7 +81,7 @@ Staging uses GitHub Actions secrets from the `staging` environment:
 wrangler deploy --env staging
 
 # Verify it worked
-curl https://{app}-staging.workers.dev/health | jq .
+curl https://{app}-staging.adrper79.workers.dev/health | jq .
 ```
 
 Expected output:
@@ -102,7 +102,7 @@ Production uses GitHub Actions secrets from the `production` environment (requir
 wrangler deploy --env production
 
 # Verify it worked
-curl https://{app}.workers.dev/health | jq .
+curl https://{app}.adrper79.workers.dev/health | jq .
 ```
 
 Expected output:

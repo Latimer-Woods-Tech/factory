@@ -7,6 +7,7 @@
 **Standing orders:** `../../CLAUDE.md`
 **Discipline breakdown:** `WORLD_CLASS_360_DISCIPLINE_BREAKDOWN.md`
 **Scope gap review:** `WORLD_CLASS_360_SCOPE_GAP_REVIEW.md`
+**Repo hardening execution plan:** `W360_FACTORY_REPO_HARDENING_PLAN.md`
 
 ---
 
@@ -141,6 +142,12 @@ Detailed ownership and app/repo mapping lives in `docs/operations/WORLD_CLASS_36
 | W360-036 | Operator/support runbook pack | D14, D07, D11, D13 | refund, failed render, failed booking, login, data deletion, moderation, rollback | W360-032 | Support scripts exist for every public money/auth/compliance failure mode |
 | W360-037 | Design and brand asset system | D03, D04, D08, D14 | logos, tokens, brand packs, video templates, app-specific design boundaries | W360-031 | Brand/design assets are inventoried, reusable where appropriate, and tied to app launch templates |
 | W360-038 | Discipline routing and review gates | D01 + all leads | W360 dashboard, discipline breakdown, PR/review policy | W360-031 | Every W360 item has lead discipline, reviewer discipline, risk tier, and evidence requirements |
+
+### P0/P1 — Factory repo hardening execution
+
+| ID | Workstream | Lead disciplines | Scope / paths | Dependencies | Exit criteria |
+|---|---|---|---|---|---|
+| W360-046 | Activate Factory repo hardening plan | D01, D05, D09, D10, D11, D12, D13 | `docs/operations/W360_FACTORY_REPO_HARDENING_PLAN.md`, `docs/operations/W360_FACTORY_REPO_HARDENING_SPRINT_PLAN.md`, `docs/operations/W360_FACTORY_REPO_HARDENING_ISSUE_PACK.md`, `.github/ISSUE_TEMPLATE/w360-hardening-workstream.md` + referenced app/package/workflow paths | W360-034, W360-038 | FRH-01..FRH-10 are tracked as executable workstreams with owners, CI gates, sprint mapping, and issue-template evidence discipline; FRH-11 (admin console end-to-end update orchestration) is deferred to post-closeout |
 
 ### P1 — UI/UX excellence system
 
