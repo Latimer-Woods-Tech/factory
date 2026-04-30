@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [wordis-bond, cypher-healing, prime-self, ijustus, the-calling, neighbor-aid]
+        app: [wordis-bond, cypher-healing, ijustus, the-calling, neighbor-aid]
 
     steps:
       - name: Checkout app repo
