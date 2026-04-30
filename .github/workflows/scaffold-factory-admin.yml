@@ -20,6 +20,12 @@ jobs:
   scaffold:
     runs-on: ubuntu-latest
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -28,7 +34,7 @@ jobs:
 
       - name: Scaffold factory-admin repo
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           HYPERDRIVE_FACTORY_CORE:  ${{ secrets.HYPERDRIVE_FACTORY_CORE }}
           HYPERDRIVE_WORDIS_BOND:   ${{ secrets.HYPERDRIVE_WORDIS_BOND }}
           HYPERDRIVE_CYPHER_HEALING: ${{ secrets.HYPERDRIVE_CYPHER_HEALING }}
