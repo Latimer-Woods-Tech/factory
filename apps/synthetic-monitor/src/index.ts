@@ -48,12 +48,13 @@ export interface MonitorRunResult {
 
 type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
-type ServiceBindingName = 'SCHEDULE_WORKER' | 'VIDEO_CRON' | 'ADMIN_STUDIO_STAGING';
+type ServiceBindingName = 'SCHEDULE_WORKER' | 'VIDEO_CRON' | 'ADMIN_STUDIO_STAGING' | 'PRIME_SELF';
 
 const SERVICE_BINDINGS_BY_HOST: Readonly<Record<string, ServiceBindingName>> = {
   'schedule-worker.adrper79.workers.dev': 'SCHEDULE_WORKER',
   'video-cron.adrper79.workers.dev': 'VIDEO_CRON',
   'admin-studio-staging.adrper79.workers.dev': 'ADMIN_STUDIO_STAGING',
+  'prime-self.adrper79.workers.dev': 'PRIME_SELF',
 };
 
 const DEFAULT_TIMEOUT_MS = 8_000;

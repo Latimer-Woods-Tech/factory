@@ -15,4 +15,6 @@ export interface Env {
   VIDEO_CRON?: Fetcher;
   /** Optional service binding for internal admin-studio staging checks. */
   ADMIN_STUDIO_STAGING?: Fetcher;
+  /** Optional service binding for internal prime-self checks. */
+  PRIME_SELF?: Fetcher;
 }
