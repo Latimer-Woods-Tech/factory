@@ -45,6 +45,12 @@ jobs:
             conn_secret: NICHESTREAM_CONNECTION_STRING
 
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
       - name: Skip if filter set and app doesn't match
         if: ${{ github.event.inputs.app != '' && github.event.inputs.app != matrix.app }}
         run: echo "Skipping ${{ matrix.app }} — filter is '${{ github.event.inputs.app }}'"
@@ -52,7 +58,7 @@ jobs:
       - name: Clone app repo
         if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           git clone "https://x-access-token:${GH_TOKEN}@github.com/adrper79-dot/${{ matrix.app }}.git" app
           cd app
@@ -102,7 +108,7 @@ jobs:
       - name: Commit migration files back to app repo
         if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           cd app
           git add src/db/migrations/
