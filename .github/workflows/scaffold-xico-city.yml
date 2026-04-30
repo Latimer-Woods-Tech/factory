@@ -16,6 +16,12 @@ jobs:
   scaffold:
     runs-on: ubuntu-latest
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -34,7 +40,7 @@ jobs:
       - name: Check if already scaffolded
         id: check
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           if gh api repos/adrper79-dot/xico-city/contents/src/index.ts > /dev/null 2>&1; then
             echo "⏭  xico-city already has src/index.ts — skipping scaffold."
@@ -64,7 +70,7 @@ jobs:
       - name: Push to xico-city repo
         if: steps.check.outputs.skip == 'false'
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           cd xico-city
           git add -A
