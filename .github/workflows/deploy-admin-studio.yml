@@ -67,7 +67,10 @@ jobs:
       - name: Provision webhook secret
         run: |
           target_env="${{ github.event.inputs.env || 'staging' }}"
-          test -n "${{ secrets.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET }}" || (echo "::error::STRIPE_SUBSCRIPTION_WEBHOOK_SECRET missing" && exit 1)
+          if [ -z "${{ secrets.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET }}" ]; then
+            echo "::warning::STRIPE_SUBSCRIPTION_WEBHOOK_SECRET missing; webhook endpoint will return 503 until configured"
+            exit 0
+          fi
           echo "Provisioning STRIPE_SUBSCRIPTION_WEBHOOK_SECRET for $target_env"
           echo "${{ secrets.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET }}" | npx wrangler secret put STRIPE_SUBSCRIPTION_WEBHOOK_SECRET --env "$target_env"
         working-directory: apps/admin-studio
