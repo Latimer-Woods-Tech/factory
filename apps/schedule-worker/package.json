@@ -14,7 +14,7 @@
     "@adrper79-dot/neon": "0.2.3",
     "@adrper79-dot/schedule": "0.2.2",
     "@neondatabase/serverless": "^0.10.4",
-    "drizzle-orm": "^0.43.0",
+    "drizzle-orm": "^0.45.0",
     "hono": "^4.12.14",
     "postgres": "^3.4.9"
   },
