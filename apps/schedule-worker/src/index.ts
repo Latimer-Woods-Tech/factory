@@ -110,6 +110,9 @@ async function handlePendingJobs(c: ScheduleWorkerContext): Promise<Response> {
 
 app.get('/health', (c) => c.json({ status: 'ok', worker: 'schedule-worker', ts: new Date().toISOString() }));
 
+// Stripe webhook ingress probe (W360-005 / J08).
+app.get('/stripe/health', (c) => c.json({ status: 'ok', service: 'stripe-ingress', worker: 'schedule-worker', ts: new Date().toISOString() }));
+
 // ---------------------------------------------------------------------------
 // GET /manifest  — machine-readable function manifest for studio catalog crawlers
 // ---------------------------------------------------------------------------
@@ -129,6 +132,15 @@ app.get('/manifest', (c) => {
         smoke: [{ expectedStatus: 200, expectContains: '"status":"ok"' }],
         slo: { p95Ms: 200, errorRate: 0.001 },
         tags: ['ops'],
+      },
+      {
+        method: 'GET',
+        path: '/stripe/health',
+        auth: 'public',
+        summary: 'Stripe webhook ingress liveness probe',
+        smoke: [{ expectedStatus: 200, expectContains: '"service":"stripe-ingress"' }],
+        slo: { p95Ms: 200, errorRate: 0.001 },
+        tags: ['ops', 'webhook'],
       },
       {
         method: 'GET',

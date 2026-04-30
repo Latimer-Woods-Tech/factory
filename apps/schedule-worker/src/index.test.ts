@@ -73,6 +73,16 @@ describe('schedule-worker', () => {
     await expect(res.json()).resolves.toMatchObject({ status: 'ok', worker: 'schedule-worker' });
   });
 
+  it('GET /stripe/health returns webhook ingress health', async () => {
+    const res = await app.request('/stripe/health', {}, env);
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      status: 'ok',
+      service: 'stripe-ingress',
+      worker: 'schedule-worker',
+    });
+  });
+
   it('rejects unauthenticated pending-job requests', async () => {
     const res = await app.request('/jobs/pending', {}, env);
     expect(res.status).toBe(401);
