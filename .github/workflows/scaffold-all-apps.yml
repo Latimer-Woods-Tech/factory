@@ -45,6 +45,12 @@ jobs:
             rate_limiter_id: "1006"
 
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
       - name: Skip if filter set and app doesn't match
         if: ${{ github.event.inputs.app != '' && github.event.inputs.app != matrix.app }}
         run: echo "Skipping ${{ matrix.app }} — filter is '${{ github.event.inputs.app }}'"
@@ -72,7 +78,7 @@ jobs:
         if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
         id: check
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           APP="${{ matrix.app }}"
           # Use exit code only — gh api exits 0 on 200, non-zero on 404/409
@@ -105,7 +111,7 @@ jobs:
       - name: Amend commit and push to app repo
         if: ${{ (github.event.inputs.app == '' || github.event.inputs.app == matrix.app) && steps.check.outputs.skip == 'false' }}
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           APP="${{ matrix.app }}"
           cd "$APP"
