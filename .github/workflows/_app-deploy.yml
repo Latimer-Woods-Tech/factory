@@ -1,0 +1,53 @@
+name: _app-deploy
+
+on:
+  workflow_call:
+    inputs:
+      node_version:
+        type: string
+        default: '22'
+      working_directory:
+        type: string
+        default: '.'
+      environment:
+        type: string
+        default: 'production'
+      wrangler_command:
+        type: string
+        default: 'deploy'
+    secrets:
+      PACKAGES_READ_TOKEN:
+        required: true
+      CLOUDFLARE_API_TOKEN:
+        required: true
+      CLOUDFLARE_ACCOUNT_ID:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@adrper79-dot'
+      - name: Configure npm auth
+        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.PACKAGES_READ_TOKEN }}" >> .npmrc
+      - run: npm ci
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: ${{ inputs.wrangler_command }}
+          workingDirectory: ${{ inputs.working_directory }}
+      - name: Post-deploy health check
+        run: |
+          echo "Add curl gate here per app, e.g.:"
+          echo "curl -fsSL https://${{ inputs.environment }}.example.com/health"
