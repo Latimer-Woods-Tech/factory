@@ -23,9 +23,13 @@ function parseUnknownJson(text: string): unknown {
 
 describe('parseTargets', () => {
   it('falls back to default targets when configuration is empty', () => {
-    expect(parseTargets('[]')).toHaveLength(4);
-    expect(parseTargets('[ ]')).toHaveLength(4);
-    expect(parseTargets(undefined)).toHaveLength(4);
+    const fallback = parseTargets('[]');
+    expect(fallback).toHaveLength(11);
+    expect(fallback.some((target) => target.id === 'schedule-worker.health')).toBe(true);
+    expect(fallback.some((target) => target.id === 'schedule-worker.manifest')).toBe(true);
+    expect(fallback.some((target) => target.id === 'slo.journey.auth-api')).toBe(true);
+    expect(parseTargets('[ ]')).toHaveLength(11);
+    expect(parseTargets(undefined)).toHaveLength(11);
   });
 
   it('validates configured targets', () => {
@@ -64,7 +68,8 @@ describe('checkTarget', () => {
     const result = await checkTarget({ id: 'home', url: 'https://example.com/', contains: 'Welcome' }, fetchImpl);
 
     expect(result.ok).toBe(false);
-    expect(result.error).toBe('Response did not contain expected text: Welcome');
+    expect(result.error).toContain('Response did not contain expected text: Welcome');
+    expect(result.error).toContain('Body snippet: Different content');
   });
 
   it('fails when status does not match', async () => {
@@ -92,7 +97,7 @@ describe('checkTarget', () => {
     const result = await checkTarget({ id: 'asset', url: 'https://example.com/file', contains: 'binary-ish' }, fetchImpl);
 
     expect(result.ok).toBe(false);
-    expect(result.error).toBe('Response did not contain expected text: binary-ish');
+    expect(result.error).toContain('Response did not contain expected text: binary-ish');
   });
 });
 
@@ -126,6 +131,21 @@ describe('worker routes', () => {
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toMatchObject({ status: 'ok', worker: 'synthetic-monitor' });
+  });
+
+  it('GET /manifest returns function catalog metadata', async () => {
+    const res = await worker.fetch(new Request('https://monitor.test/manifest'), env);
+
+    expect(res.status).toBe(200);
+    const body = parseUnknownJson(await res.text());
+    const payload = body as {
+      manifestVersion?: unknown;
+      app?: unknown;
+      entries?: Array<{ path?: unknown }>;
+    };
+    expect(payload.manifestVersion).toBe(1);
+    expect(payload.app).toBe('synthetic-monitor');
+    expect(payload.entries?.some((entry) => entry.path === '/checks/run')).toBe(true);
   });
 
   it('GET /checks/run returns 422 for invalid configured targets', async () => {

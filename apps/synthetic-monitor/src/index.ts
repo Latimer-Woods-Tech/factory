@@ -34,6 +34,7 @@ export interface MonitorResult {
   ok: boolean;
   latencyMs: number;
   checkedAt: string;
+  responseUrl?: string;
   error?: string;
 }
 
@@ -51,10 +52,17 @@ const DEFAULT_TIMEOUT_MS = 8_000;
 const DEFAULT_EXPECTED_STATUS = 200;
 
 const DEFAULT_TARGETS: readonly MonitorTarget[] = [
-  { id: 'selfprime.home', url: 'https://selfprime.net/', contains: 'Prime Self' },
-  { id: 'selfprime.pricing', url: 'https://selfprime.net/pricing.html', contains: 'Plans' },
-  { id: 'selfprime.practitioners', url: 'https://selfprime.net/practitioners.html', contains: 'Practitioner' },
-  { id: 'selfprime.api.health', url: 'https://selfprime.net/api/health', contains: 'ok' },
+  { id: 'schedule-worker.health', url: 'https://schedule-worker.adrper79.workers.dev/health', contains: 'ok' },
+  { id: 'video-cron.health', url: 'https://video-cron.adrper79.workers.dev/health', contains: 'ok' },
+  { id: 'admin-studio.staging.health', url: 'https://admin-studio-staging.adrper79.workers.dev/health', contains: 'ok' },
+  { id: 'prime-self.api', url: 'https://prime-self.adrper79.workers.dev/health', contains: 'ok' },
+  { id: 'schedule-worker.manifest', url: 'https://schedule-worker.adrper79.workers.dev/manifest', contains: 'manifestVersion' },
+  { id: 'video-cron.manifest', url: 'https://video-cron.adrper79.workers.dev/manifest', contains: 'manifestVersion' },
+  { id: 'admin-studio.manifest', url: 'https://admin-studio-staging.adrper79.workers.dev/manifest', contains: 'manifestVersion' },
+  { id: 'slo.journey.render-ingest', url: 'https://schedule-worker.adrper79.workers.dev/health', contains: 'ok' },
+  { id: 'slo.journey.video-dispatch', url: 'https://video-cron.adrper79.workers.dev/health', contains: 'ok' },
+  { id: 'slo.journey.auth-api', url: 'https://prime-self.adrper79.workers.dev/health', contains: 'ok' },
+  { id: 'slo.journey.operator-plane', url: 'https://admin-studio-staging.adrper79.workers.dev/health', contains: 'ok' },
 ] as const;
 
 const app = new Hono<{ Bindings: Env }>();
@@ -168,7 +176,18 @@ export async function checkTarget(target: MonitorTarget, fetchImpl: FetchLike = 
     });
     const body = await readBodyForAssertion(response, method);
     const missingText = target.contains ? !body.includes(target.contains) : false;
-    const ok = response.status === expectedStatus && !missingText;
+    const statusMismatch = response.status !== expectedStatus;
+    const ok = !statusMismatch && !missingText;
+    const bodySnippet = body ? body.slice(0, 160).replace(/\s+/g, ' ').trim() : '';
+    const mismatchDetail = statusMismatch
+      ? `Unexpected status ${response.status} (expected ${expectedStatus})`
+      : undefined;
+    const containsDetail = missingText
+      ? `Response did not contain expected text: ${target.contains}`
+      : undefined;
+    const detail = [mismatchDetail, containsDetail, !ok && bodySnippet ? `Body snippet: ${bodySnippet}` : undefined]
+      .filter((value): value is string => Boolean(value))
+      .join(' | ');
     return {
       id: target.id,
       url: target.url,
@@ -178,7 +197,8 @@ export async function checkTarget(target: MonitorTarget, fetchImpl: FetchLike = 
       ok,
       latencyMs: elapsedMs(startedAt),
       checkedAt: new Date().toISOString(),
-      error: missingText ? `Response did not contain expected text: ${target.contains}` : undefined,
+      responseUrl: response.url,
+      error: detail || undefined,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown fetch failure';
@@ -217,6 +237,44 @@ export async function runSyntheticChecks(env: Env, fetchImpl: FetchLike = fetch)
 }
 
 app.get('/health', (c) => c.json({ status: 'ok', worker: 'synthetic-monitor', ts: new Date().toISOString() }));
+
+app.get('/manifest', (c) => {
+  const manifest = {
+    manifestVersion: 1,
+    app: 'synthetic-monitor',
+    env: c.env.ENVIRONMENT ?? 'production',
+    generatedAt: new Date().toISOString(),
+    entries: [
+      {
+        method: 'GET',
+        path: '/health',
+        auth: 'public',
+        summary: 'Liveness probe with deployed env',
+        smoke: [{ expectedStatus: 200, expectContains: '"status":"ok"' }],
+        slo: { p95Ms: 200, errorRate: 0.001 },
+        tags: ['ops'],
+      },
+      {
+        method: 'GET',
+        path: '/manifest',
+        auth: 'public',
+        summary: 'Machine-readable manifest for studio catalog crawlers',
+        smoke: [{ expectedStatus: 200, expectContains: '"manifestVersion"' }],
+        tags: ['ops'],
+      },
+      {
+        method: 'GET',
+        path: '/checks/run',
+        auth: 'public',
+        summary: 'Run synthetic checks against configured targets',
+        reversibility: 'reversible',
+        slo: { p95Ms: 2000, errorRate: 0.01 },
+        tags: ['monitoring', 'synthetic'],
+      },
+    ],
+  };
+  return c.json(manifest);
+});
 
 app.get('/checks/run', async (c) => {
   const result = await runSyntheticChecks(c.env);
