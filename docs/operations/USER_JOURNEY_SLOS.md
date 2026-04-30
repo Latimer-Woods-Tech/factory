@@ -26,7 +26,7 @@ Error budget: **0.1%** (~43.8 min/month). Budget exhaustion triggers P2 incident
 | J05 | Checkout start | _Pending_ — requires `/v1/checkout` endpoint on schedule-worker | — | 99.9% | < 800 ms |
 | J06 | First render complete | _Pending_ — requires job status webhook callback URL | — | 99% | < 300 s end-to-end |
 | J07 | Booking confirmation | _Pending_ — requires `/v1/bookings` on Xico City (W360-014) | — | 99.9% | < 600 ms |
-| J08 | Webhook ingress | _Pending_ — requires `/stripe/webhook` acceptance endpoint | — | 99.9% | < 400 ms |
+| J08 | Webhook ingress | `slo.journey.webhook` | `schedule-worker.adrper79.workers.dev/stripe/health` | 99.9% | < 400 ms |
 | J09 | Dashboard load | _Pending_ — requires practitioner dashboard route (W360-008) | — | 99.9% | < 1 s |
 
 ---
@@ -47,7 +47,7 @@ prime-self.api             → https://prime-self.adrper79.workers.dev/health (2
 ```
 schedule-worker.manifest   → https://schedule-worker.adrper79.workers.dev/manifest (200, contains "manifestVersion")
 video-cron.manifest        → https://video-cron.adrper79.workers.dev/manifest (200, contains "manifestVersion")
-admin-studio.manifest      → https://admin-studio.adrper79.workers.dev/manifest (200, contains "manifestVersion")
+admin-studio.manifest      → https://admin-studio-staging.adrper79.workers.dev/manifest (200, contains "manifestVersion")
 ```
 
 ### Journey SLO proxies (added 2026-04-29 — W360-022)
@@ -56,6 +56,20 @@ slo.journey.render-ingest  → schedule-worker health (proxy for J01 until /chec
 slo.journey.video-dispatch → video-cron health (proxy for J02 until job callback exists)
 slo.journey.auth-api       → prime-self health (proxy for J03)
 slo.journey.operator-plane → admin-studio staging health (proxy for J04)
+slo.journey.webhook        → schedule-worker /stripe/health (J08 ingress probe)
+```
+
+### Runtime evidence (2026-04-30)
+```
+Direct external verification:
+- https://schedule-worker.adrper79.workers.dev/health        → 200
+- https://video-cron.adrper79.workers.dev/health             → 200
+- https://admin-studio-staging.adrper79.workers.dev/health   → 200
+- https://schedule-worker.adrper79.workers.dev/stripe/health → 200
+
+Synthetic monitor execution context:
+- GET /checks/run currently reports 404 on the same workers.dev targets above.
+- This indicates a monitor-runtime fidelity issue (not endpoint outage).
 ```
 
 ---
@@ -102,7 +116,7 @@ When the following endpoints go live, update `apps/synthetic-monitor/wrangler.js
 - [ ] J05 (checkout) probe live — requires W360-007
 - [ ] J06 (first render) probe live — requires W360-007 and render smoke test
 - [ ] J07 (booking) probe live — requires W360-014 (Xico City bookings)
-- [ ] J08 (webhook ingress) probe live — requires W360-005 Stripe webhook route
+- [ ] J08 (webhook ingress) probe live in monitor output — endpoint is deployed (200) but monitor currently misreports workers.dev targets as 404
 - [ ] J09 (dashboard) probe live — requires W360-008
 
 _W360-022 is partially done. Full completion blocked on W360-005, W360-007, W360-008, W360-014._
