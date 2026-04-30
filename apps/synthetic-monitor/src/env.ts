@@ -9,4 +9,10 @@ export interface Env {
   ENVIRONMENT: string;
   /** Optional JSON array of monitor targets. Empty or invalid values fall back to defaults. */
   TARGETS_JSON?: string;
+  /** Optional service binding for internal schedule-worker checks. */
+  SCHEDULE_WORKER?: Fetcher;
+  /** Optional service binding for internal video-cron checks. */
+  VIDEO_CRON?: Fetcher;
+  /** Optional service binding for internal admin-studio staging checks. */
+  ADMIN_STUDIO_STAGING?: Fetcher;
 }

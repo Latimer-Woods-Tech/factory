@@ -48,6 +48,14 @@ export interface MonitorRunResult {
 
 type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
+type ServiceBindingName = 'SCHEDULE_WORKER' | 'VIDEO_CRON' | 'ADMIN_STUDIO_STAGING';
+
+const SERVICE_BINDINGS_BY_HOST: Readonly<Record<string, ServiceBindingName>> = {
+  'schedule-worker.adrper79.workers.dev': 'SCHEDULE_WORKER',
+  'video-cron.adrper79.workers.dev': 'VIDEO_CRON',
+  'admin-studio-staging.adrper79.workers.dev': 'ADMIN_STUDIO_STAGING',
+};
+
 const DEFAULT_TIMEOUT_MS = 8_000;
 const DEFAULT_EXPECTED_STATUS = 200;
 
@@ -218,6 +226,27 @@ export async function checkTarget(target: MonitorTarget, fetchImpl: FetchLike = 
   }
 }
 
+function resolveFetchForTarget(target: MonitorTarget, env: Env, fetchImpl: FetchLike): FetchLike {
+  try {
+    const parsedUrl = new URL(target.url);
+    const bindingName = SERVICE_BINDINGS_BY_HOST[parsedUrl.hostname];
+    if (!bindingName) {
+      return fetchImpl;
+    }
+    const binding = env[bindingName];
+    if (!binding) {
+      return fetchImpl;
+    }
+    return (input, init) => {
+      const baseUrl = typeof input === 'string' || input instanceof URL ? new URL(input.toString()) : new URL(input.url);
+      const internalUrl = `https://internal${baseUrl.pathname}${baseUrl.search}`;
+      return binding.fetch(internalUrl, init);
+    };
+  } catch {
+    return fetchImpl;
+  }
+}
+
 /**
  * Runs the full synthetic check suite.
  *
@@ -226,7 +255,9 @@ export async function checkTarget(target: MonitorTarget, fetchImpl: FetchLike = 
  */
 export async function runSyntheticChecks(env: Env, fetchImpl: FetchLike = fetch): Promise<MonitorRunResult> {
   const targets = parseTargets(env.TARGETS_JSON);
-  const results = await Promise.all(targets.map((target) => checkTarget(target, fetchImpl)));
+  const results = await Promise.all(
+    targets.map((target) => checkTarget(target, resolveFetchForTarget(target, env, fetchImpl))),
+  );
   const status = results.every((result) => result.ok) ? 'ok' : 'degraded';
   return {
     status,
