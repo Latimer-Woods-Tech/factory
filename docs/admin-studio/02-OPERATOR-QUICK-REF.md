@@ -14,7 +14,7 @@ Observed on 2026-04-29:
 | Surface          | Staging                                                 | Production                                            |
 | ---------------- | ------------------------------------------------------- | ----------------------------------------------------- |
 | API Worker       | `https://admin-studio-staging.adrper79.workers.dev`     | `https://admin-studio-production.adrper79.workers.dev` |
-| UI (Pages)       | `https://staging.admin-studio-ui.pages.dev`             | `https://studio.thefactory.dev`                       |
+| UI (Pages)       | `https://staging.admin-studio-ui.pages.dev`             | `https://studio.thefactory.dev` (primary), `https://apunlimited.com` (custom alias) |
 | Health check     | `GET /health` returns `200` with `env: "staging"`     | URL configured, but direct `/health` verification still pending |
 
 Always confirm env via `curl`:

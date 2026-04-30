@@ -64,7 +64,7 @@ jobs:
         run: |
           target_env="${{ github.event.inputs.env || 'staging' }}"
           if [ "$target_env" = "production" ]; then
-            url="https://studio.thefactory.dev"
+            url="https://apunlimited.com"
           else
             url="https://staging.admin-studio-ui.pages.dev"
           fi

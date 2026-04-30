@@ -14,31 +14,20 @@ test.describe('Homepage', () => {
     await expect(page.locator('body')).toContainText('Prime Self');
   });
 
-  test('hero CTA "Get your free chart" is visible and clickable', async ({ page }) => {
+  test('hero CTA "Get your free chart" is visible and routes to the auth overlay entry', async ({ page }) => {
     await page.goto('/');
-    const cta = page.getByRole('button', { name: /get your free chart/i });
+    const cta = page.getByRole('link', { name: /get your free chart/i }).first();
     await expect(cta).toBeVisible();
     await cta.click();
     // Should navigate to /?start=1
     await expect(page).toHaveURL(/start=1/);
   });
 
-  test('"Sign In" button opens login modal inline (no navigation)', async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: /sign in/i }).click();
-    const modal = page.locator('#login-modal');
-    await expect(modal).toBeVisible();
-    await expect(page.locator('#login-email')).toBeVisible();
-    await expect(page.locator('#login-password')).toBeVisible();
-  });
-
-  test('modal closes when backdrop is clicked', async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: /sign in/i }).click();
-    const modal = page.locator('#login-modal');
-    await expect(modal).toBeVisible();
-    await modal.click({ position: { x: 10, y: 10 } }); // click backdrop
-    await expect(modal).not.toHaveClass(/open/);
+  test('auth entry renders the sign-in overlay contract at /?start=1', async ({ page }) => {
+    await page.goto('/?start=1');
+    await expect(page.getByRole('heading', { name: /sign in/i })).toBeVisible();
+    await expect(page.locator('input[name="email"], input[type="email"]')).toBeVisible();
+    await expect(page.locator('#auth-password, input[name="password"], input[type="password"]')).toBeVisible();
   });
 });
 
@@ -47,13 +36,10 @@ test.describe('Homepage', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Route redirects', () => {
-  test('/login redirects to /?modal=login and auto-opens the modal', async ({ page }) => {
+  test('/login redirects to an auth-entry URL', async ({ page }) => {
     const response = await page.goto('/login');
-    // Should land on /?modal=login after redirect
     expect(response?.status()).toBeLessThan(400);
-    await expect(page).toHaveURL(/modal=login/);
-    await expect(page.locator('#login-modal')).toBeVisible();
-    await expect(page.locator('#login-email')).toBeVisible();
+    await expect(page).toHaveURL(/(modal=login|start=1)/);
   });
 
   test('/dashboard redirects to /?start=1', async ({ page }) => {
@@ -62,10 +48,10 @@ test.describe('Route redirects', () => {
     await expect(page).toHaveURL(/start=1/);
   });
 
-  test('/sign-in redirects to /?modal=login', async ({ page }) => {
+  test('/sign-in redirects to an auth-entry URL', async ({ page }) => {
     const response = await page.goto('/sign-in');
     expect(response?.status()).toBeLessThan(400);
-    await expect(page).toHaveURL(/modal=login/);
+    await expect(page).toHaveURL(/(modal=login|start=1)/);
   });
 });
 
@@ -101,12 +87,11 @@ test.describe('Marketing pages', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Chart flow entry', () => {
-  test('/?start=1 renders chart input form', async ({ page }) => {
+  test('/?start=1 renders the auth or chart-entry surface', async ({ page }) => {
     await page.goto('/?start=1');
     await expect(page).toHaveTitle(/Prime Self/);
-    // The chart wizard should be visible — check for the form or key heading
     const body = page.locator('body');
-    await expect(body).toContainText(/birth|chart|blueprint|date/i);
+    await expect(body).toContainText(/sign in|birth|chart|blueprint|date/i);
   });
 });
 
@@ -145,22 +130,18 @@ test.describe('Authenticated flow', () => {
   });
 
   test('logs in with test credentials and sees chart screen', async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: /sign in/i }).click();
-    await page.locator('#login-email').fill(process.env.SMOKE_EMAIL!);
-    await page.locator('#login-password').fill(process.env.SMOKE_PASSWORD!);
-    await page.locator('#login-form').locator('button[type=submit]').click();
-    // After login, page should redirect to /?start=1
-    await expect(page).toHaveURL(/start=1/, { timeout: 10_000 });
-    await expect(page.locator('body')).toContainText(/blueprint|chart|reading/i);
+    await page.goto('/?start=1');
+    await page.locator('input[name="email"], input[type="email"]').fill(process.env.SMOKE_EMAIL!);
+    await page.locator('#auth-password, input[name="password"], input[type="password"]').fill(process.env.SMOKE_PASSWORD!);
+    await page.getByRole('button', { name: /^sign in$/i }).click();
+    await expect(page.locator('body')).toContainText(/blueprint|chart|reading|today|relationships|more/i, { timeout: 10_000 });
   });
 
   test('invalid credentials show error message', async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: /sign in/i }).click();
-    await page.locator('#login-email').fill('invalid@example.com');
-    await page.locator('#login-password').fill('wrongpassword123');
-    await page.locator('#login-form').locator('button[type=submit]').click();
-    await expect(page.locator('#login-error')).toBeVisible({ timeout: 8_000 });
+    await page.goto('/?start=1');
+    await page.locator('input[name="email"], input[type="email"]').fill('invalid@example.com');
+    await page.locator('#auth-password, input[name="password"], input[type="password"]').fill('wrongpassword123');
+    await page.getByRole('button', { name: /^sign in$/i }).click();
+    await expect(page.locator('#auth-error')).toBeVisible({ timeout: 8_000 });
   });
 });

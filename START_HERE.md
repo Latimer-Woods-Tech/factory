@@ -11,6 +11,7 @@
 Factory Core is a shared infrastructure monorepo for 6 Cloudflare Worker apps. All 19 core packages are published. Infrastructure provisioning (Phase 6) is the next critical step.
 
 For the updated cross-cutting roadmap covering **coding quality, process, UI/UX, Factory support, and core application cohesion**, see [WORLD_CLASS_IMPLEMENTATION_DASHBOARD.md](./WORLD_CLASS_IMPLEMENTATION_DASHBOARD.md).
+For the owner/operator manual, see [docs/ESSENTIAL_OWNERS_GUIDE.md](./docs/ESSENTIAL_OWNERS_GUIDE.md).
 
 ---
 

@@ -6,7 +6,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
     "STUDIO_ENV": "staging",
-    "ALLOWED_ORIGINS": "https://studio.thefactory.dev,https://staging.admin-studio-ui.pages.dev"
+    "ALLOWED_ORIGINS": "https://studio.thefactory.dev,https://apunlimited.com,https://staging.admin-studio-ui.pages.dev"
   },
   "env": {
     "staging": {
@@ -23,7 +23,7 @@
       "name": "admin-studio-production",
       "vars": {
         "STUDIO_ENV": "production",
-        "ALLOWED_ORIGINS": "https://studio.thefactory.dev"
+        "ALLOWED_ORIGINS": "https://studio.thefactory.dev,https://apunlimited.com"
       },
       "hyperdrive": [
         { "binding": "DB", "id": "efe957f404bb457593e6bd08b733b7c4" }

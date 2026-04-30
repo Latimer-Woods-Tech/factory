@@ -25,6 +25,7 @@ Deployed via Cloudflare Pages — `dist/` is uploaded by the GitHub Actions work
 ```
 staging:    https://staging.admin-studio-ui.pages.dev
 production: https://studio.thefactory.dev
+alternate:  https://apunlimited.com
 ```
 
 The staging Pages URL above is the currently verified live staging surface.

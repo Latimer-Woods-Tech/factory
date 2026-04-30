@@ -234,7 +234,8 @@ pages:
   - id: admin-studio-ui
     repo: adrper79-dot/factory
     project_name: admin-studio-ui
-    custom_domain: studio.thefactory.dev
+    custom_domain: apunlimited.com
+    custom_domain_alternate: studio.thefactory.dev
     staging_url: https://staging.admin-studio-ui.pages.dev
     root_file: apps/admin-studio-ui/index.html
     deploy_dir: apps/admin-studio-ui/dist

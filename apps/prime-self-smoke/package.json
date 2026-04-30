@@ -6,7 +6,8 @@
   "scripts": {
     "test": "playwright test",
     "test:headed": "playwright test --headed",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "test:workspace-contract": "playwright test tests/workspace-contract.spec.ts"
   },
   "dependencies": {
     "@adrper79-dot/testing": "file:../../packages/testing"

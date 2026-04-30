@@ -33,6 +33,7 @@
 **Your next task:** Oversee Phase 6-7 execution, verify readiness
 
 1. **Project status:** [PROJECT_STATUS.md](./PROJECT_STATUS.md) — Complete overview
+2. **Owner manual:** [docs/ESSENTIAL_OWNERS_GUIDE.md](./docs/ESSENTIAL_OWNERS_GUIDE.md) — How Factory works in practice
 2. **Delivery summary:** [DELIVERY_SUMMARY.md](./DELIVERY_SUMMARY.md) — What was delivered
 3. **Ready state:** [PHASE_6_7_READY_STATE.md](./PHASE_6_7_READY_STATE.md) — Deliverables inventory
 4. **Timeline:** [PHASE_6_7_TIMELINE.md](./PHASE_6_7_TIMELINE.md) — Parallel execution plan
