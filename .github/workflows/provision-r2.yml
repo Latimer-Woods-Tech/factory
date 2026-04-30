@@ -17,6 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
       - name: Create R2 bucket
         id: create_bucket
         run: |
@@ -128,7 +134,7 @@ jobs:
       
       - name: Update GitHub Secrets
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           # Update R2_PUBLIC_DOMAIN
           echo "${{ steps.get_domain.outputs.public_domain }}" \
