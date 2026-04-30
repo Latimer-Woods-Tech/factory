@@ -1,21 +1,43 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":dependencyDashboard"
+  ],
+  "schedule": [
+    "before 6am on monday"
+  ],
   "packageRules": [
     {
-      "matchPackagePrefixes": ["@adrper79-dot/"],
-      "registryUrls": ["https://npm.pkg.github.com"],
-      "pinVersions": true,
-      "automerge": false,
-      "labels": ["factory-core-update"],
-      "commitMessagePrefix": "chore(deps):"
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
     },
     {
-      "matchDepTypes": ["devDependencies"],
-      "matchUpdateTypes": ["minor", "patch"],
+      "matchPackagePatterns": [
+        "^@adrper79-dot/"
+      ],
+      "groupName": "factory packages",
+      "schedule": [
+        "at any time"
+      ],
       "automerge": true,
-      "commitMessagePrefix": "chore(deps):"
+      "platformAutomerge": true
+    },
+    {
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "automerge": false
     }
   ],
-  "prConcurrentLimit": 3
+  "prHourlyLimit": 4,
+  "prConcurrentLimit": 10
 }
