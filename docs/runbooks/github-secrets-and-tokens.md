@@ -83,6 +83,21 @@ These secrets are required before `apps/schedule-worker`, `apps/video-cron`, and
 | `WORKER_API_TOKEN` | Bearer token for schedule-worker callbacks | Wrangler secret + GitHub Actions secret | Quarterly | Generate locally |
 | `APP_SERVICE_TOKENS` | JSON token-to-app map for app-scoped schedule-worker access | Wrangler secret | Quarterly | Generate locally |
 
+### Required for Prime Self Smoke Validation
+
+These secrets are required by `.github/workflows/smoke-prime-self.yml` and `apps/prime-self-smoke/tests/workspace-contract.spec.ts`.
+Without them, authenticated workspace contract checks (personal + practitioner route/tool discoverability) will fail in CI.
+
+| Secret | Purpose | Set In | Rotation | Provider |
+|--------|---------|--------|----------|----------|
+| `SMOKE_USER_EMAIL` | Authenticated personal workspace smoke login | GitHub Actions secret | On credential rotation | Factory test account |
+| `SMOKE_USER_PASSWORD` | Password for personal workspace smoke login | GitHub Actions secret | On credential rotation | Factory test account |
+| `SMOKE_PRACTITIONER_EMAIL` | Authenticated practitioner workspace smoke login | GitHub Actions secret | On credential rotation | Factory practitioner test account |
+| `SMOKE_PRACTITIONER_PASSWORD` | Password for practitioner workspace smoke login | GitHub Actions secret | On credential rotation | Factory practitioner test account |
+
+Canonical contract note: use only `SMOKE_USER_*` and `SMOKE_PRACTITIONER_*` secrets.
+Legacy `SMOKE_EMAIL` / `SMOKE_PASSWORD` aliases are no longer used by CI workflows.
+
 ## How to Set GitHub Secrets
 
 ### For Factory Core (monorepo)
