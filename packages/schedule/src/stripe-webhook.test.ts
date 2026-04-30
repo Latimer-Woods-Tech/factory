@@ -39,7 +39,7 @@ let mockDb: ReturnType<typeof makeDb>;
 function makeDb(rowGroups: unknown[][] = [[]]) {
   let callIndex = 0;
   return {
-    execute: vi.fn((_query: unknown) => {
+    execute: vi.fn((_: unknown) => {
       const result = rowGroups[callIndex % rowGroups.length] ?? [];
       callIndex++;
       return Promise.resolve({ rows: result });
@@ -82,7 +82,7 @@ describe('handleStripeWebhook', () => {
     mockDb = makeDb();
     const result = await handleStripeWebhook('{}', undefined, {} as never, WEBHOOK_SECRET);
     expect(result.statusCode).toBe(400);
-    expect(JSON.parse(result.body)).toMatchObject({ error: expect.stringContaining('Missing') });
+    expect(JSON.parse(result.body)).toMatchObject({ error: expect.stringContaining('Missing') as string });
   });
 
   it('returns 401 when signature is invalid', async () => {
