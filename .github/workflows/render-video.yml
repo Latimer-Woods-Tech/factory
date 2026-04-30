@@ -667,6 +667,7 @@ jobs:
         with:
           app-id: ${{ secrets.FACTORY_APP_ID }}
           private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: adrper79-dot
       - name: Update job status to failed
         run: |
           # Guard: if register_job failed, real_job_id is empty — skip the PATCH
