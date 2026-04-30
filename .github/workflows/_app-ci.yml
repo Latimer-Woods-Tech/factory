@@ -1,0 +1,35 @@
+name: _app-ci
+
+on:
+  workflow_call:
+    inputs:
+      node_version:
+        type: string
+        default: '22'
+      working_directory:
+        type: string
+        default: '.'
+    secrets:
+      PACKAGES_READ_TOKEN:
+        required: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@adrper79-dot'
+      - name: Configure npm auth
+        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.PACKAGES_READ_TOKEN }}" >> .npmrc
+      - run: npm ci
+      - run: npm run typecheck --if-present
+      - run: npm run lint --if-present
+      - run: npm test --if-present
+      - run: npm run build --if-present
