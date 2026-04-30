@@ -68,8 +68,9 @@ Direct external verification:
 - https://schedule-worker.adrper79.workers.dev/stripe/health → 200
 
 Synthetic monitor execution context:
-- GET /checks/run currently reports 404 on the same workers.dev targets above.
-- This indicates a monitor-runtime fidelity issue (not endpoint outage).
+- Root cause was worker-to-workers.dev runtime access returning `error code: 1042` for internal checks.
+- Mitigation deployed: service bindings in synthetic-monitor (`SCHEDULE_WORKER`, `VIDEO_CRON`, `ADMIN_STUDIO_STAGING`, `PRIME_SELF`) with internal fetch routing.
+- Result after deploy run `25169847401`: `GET /checks/run` returns `status: ok` and all configured probes pass.
 ```
 
 ---
@@ -116,7 +117,7 @@ When the following endpoints go live, update `apps/synthetic-monitor/wrangler.js
 - [ ] J05 (checkout) probe live — requires W360-007
 - [ ] J06 (first render) probe live — requires W360-007 and render smoke test
 - [ ] J07 (booking) probe live — requires W360-014 (Xico City bookings)
-- [ ] J08 (webhook ingress) probe live in monitor output — endpoint is deployed (200) but monitor currently misreports workers.dev targets as 404
+- [x] J08 (webhook ingress) probe live — endpoint deployed and monitor output passing (`slo.journey.webhook` → 200)
 - [ ] J09 (dashboard) probe live — requires W360-008
 
 _W360-022 is partially done. Full completion blocked on W360-005, W360-007, W360-008, W360-014._
