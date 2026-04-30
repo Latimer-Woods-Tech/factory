@@ -55,6 +55,24 @@ jobs:
         working-directory: apps/prime-self-smoke
         run: npx playwright install --with-deps ${{ matrix.project == 'chromium-desktop' && 'chromium' || matrix.project == 'mobile-chrome' && 'chromium' || 'webkit' }}
 
+      - name: Validate smoke credentials
+        env:
+          SMOKE_USER_EMAIL: ${{ secrets.SMOKE_USER_EMAIL || secrets.SMOKE_EMAIL }}
+          SMOKE_USER_PASSWORD: ${{ secrets.SMOKE_USER_PASSWORD || secrets.SMOKE_PASSWORD }}
+          SMOKE_PRACTITIONER_EMAIL: ${{ secrets.SMOKE_PRACTITIONER_EMAIL }}
+          SMOKE_PRACTITIONER_PASSWORD: ${{ secrets.SMOKE_PRACTITIONER_PASSWORD }}
+        run: |
+          missing=()
+          for v in SMOKE_USER_EMAIL SMOKE_USER_PASSWORD SMOKE_PRACTITIONER_EMAIL SMOKE_PRACTITIONER_PASSWORD; do
+            if [ -z "${!v}" ]; then
+              missing+=("$v")
+            fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Missing required secrets for authenticated workspace smoke contract tests: ${missing[*]}"
+            exit 1
+          fi
+
       - name: Run Playwright tests (${{ matrix.project }})
         working-directory: apps/prime-self-smoke
         env:
@@ -63,6 +81,10 @@ jobs:
           WORKER_URL: 'https://prime-self.adrper79.workers.dev'
           SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
           SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+          SMOKE_USER_EMAIL: ${{ secrets.SMOKE_USER_EMAIL || secrets.SMOKE_EMAIL }}
+          SMOKE_USER_PASSWORD: ${{ secrets.SMOKE_USER_PASSWORD || secrets.SMOKE_PASSWORD }}
+          SMOKE_PRACTITIONER_EMAIL: ${{ secrets.SMOKE_PRACTITIONER_EMAIL }}
+          SMOKE_PRACTITIONER_PASSWORD: ${{ secrets.SMOKE_PRACTITIONER_PASSWORD }}
         run: npx playwright test --project=${{ matrix.project }}
 
       - name: Upload test artifacts on failure

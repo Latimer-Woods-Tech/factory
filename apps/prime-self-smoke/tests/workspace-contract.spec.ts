@@ -7,6 +7,7 @@ const userEmail = process.env.SMOKE_USER_EMAIL ?? '';
 const userPassword = process.env.SMOKE_USER_PASSWORD ?? '';
 const practitionerEmail = process.env.SMOKE_PRACTITIONER_EMAIL ?? '';
 const practitionerPassword = process.env.SMOKE_PRACTITIONER_PASSWORD ?? '';
+const isCi = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
 
 async function login(page: import('@playwright/test').Page, email: string, password: string) {
   await expect(page.getByRole('heading', { name: /sign in/i })).toBeVisible({ timeout: 15_000 });
@@ -17,6 +18,24 @@ async function login(page: import('@playwright/test').Page, email: string, passw
 }
 
 test.describe('Workspace Contract', () => {
+  test.beforeAll(() => {
+    if (!isCi) return;
+
+    const requiredVars = [
+      'SMOKE_USER_EMAIL',
+      'SMOKE_USER_PASSWORD',
+      'SMOKE_PRACTITIONER_EMAIL',
+      'SMOKE_PRACTITIONER_PASSWORD',
+    ];
+    const missingVars = requiredVars.filter((name) => !process.env[name]);
+
+    if (missingVars.length > 0) {
+      throw new Error(
+        `Missing required CI smoke credentials for workspace contract tests: ${missingVars.join(', ')}`,
+      );
+    }
+  });
+
   test('destination handoff URL reaches auth surface (not marketing dead-end)', async ({ page }) => {
     await page.goto('/?destination=practitioner');
     await expect(page.getByRole('heading', { name: /sign in/i })).toBeVisible({ timeout: 15_000 });
