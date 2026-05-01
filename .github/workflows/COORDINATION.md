@@ -14,7 +14,7 @@
 
 | Group | Workflows | Primary use | Gates / recovery |
 |---|---|---|---|
-| Package CI/publish | `ci.yml`, `publish.yml`, `bootstrap-publish.yml`, `package-integration.yml` | Validate and publish `@adrper79-dot/*` packages; smoke-test cross-package runtime imports | Run package gates locally first; publish in dependency order from `CLAUDE.md`; run package integration smoke before publish-sensitive changes |
+| Package CI/publish | `ci.yml`, `publish.yml`, `bootstrap-publish.yml`, `package-integration.yml` | Validate and publish `@latimer-woods-tech/*` packages; smoke-test cross-package runtime imports | Run package gates locally first; publish in dependency order from `CLAUDE.md`; run package integration smoke before publish-sensitive changes |
 | Infrastructure setup | `create-hyperdrive.yml`, `create-sentry-projects.yml`, `provision-r2.yml`, `update-hyperdrive-new-neon.yml`, `setup-*.yml` | Provision secrets, databases, R2, Sentry, Hyperdrive | Prefer `scripts/phase-6-orchestrator.mjs`; record run IDs in dashboard |
 | App scaffolding | `scaffold-all-apps.yml`, `scaffold-factory-admin.yml`, `scaffold-xico-city.yml`, `scaffold-xpelevator.yml` | Generate app structures after infra is ready | Validate with `scripts/phase-7-validate.js --all` before claiming done |
 | Worker deploys | `deploy-admin-studio.yml`, `deploy-schedule-worker.yml`, `deploy-video-cron.yml`, `deploy-synthetic-monitor.yml` | Deploy Cloudflare Workers | After deploy, `curl https://{worker}.adrper79.workers.dev/health` must return `200` |
