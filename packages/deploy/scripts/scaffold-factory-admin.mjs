@@ -115,7 +115,7 @@ write('package.json', JSON.stringify({
 
 // ---------- .npmrc ----------
 write('.npmrc', [
-  '@adrper79-dot:registry=https://npm.pkg.github.com',
+  '@latimer-woods-tech:registry=https://npm.pkg.github.com',
   '//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}',
 ].join('\n') + '\n');
 

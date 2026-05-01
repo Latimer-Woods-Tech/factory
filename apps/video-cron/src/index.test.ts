@@ -6,7 +6,7 @@ const env: Env = {
   DB: { connectionString: 'postgres://example' } as Env['DB'],
   WORKER_API_TOKEN: 'internal-token',
   GITHUB_TOKEN: 'github-token',
-  GITHUB_REPO: 'Latimer-Woods-Tech/Factory',
+  GITHUB_REPO: 'Latimer-Woods-Tech/factory',
   SCHEDULE_WORKER_URL: 'https://schedule-worker.adrper79.workers.dev',
   APP_ID: 'selfprime',
   DEFAULT_COMPOSITION_ID: 'MarketingVideo',
@@ -71,7 +71,7 @@ describe('video-cron', () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ data: { dispatched: 1, failed: 0 } });
     expect(fetchMock.mock.calls[0]?.[0]).toBe('https://schedule-worker.adrper79.workers.dev/jobs/pending?limit=10&appId=selfprime');
-    expect(fetchMock.mock.calls[2]?.[0]).toBe('https://api.github.com/repos/Latimer-Woods-Tech/Factory/actions/workflows/render-video.yml/dispatches');
+    expect(fetchMock.mock.calls[2]?.[0]).toBe('https://api.github.com/repos/Latimer-Woods-Tech/factory/actions/workflows/render-video.yml/dispatches');
   });
 
   it('marks jobs failed when GitHub dispatch fails', async () => {

@@ -22,7 +22,7 @@ jobs:
         with:
           app-id: ${{ secrets.FACTORY_APP_ID }}
           private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
-          owner: adrper79-dot
+          owner: Latimer-Woods-Tech
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -34,7 +34,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd apps/video-cron
-          echo "@adrper79-dot:registry=https://npm.pkg.github.com" > .npmrc
+          echo "@latimer-woods-tech:registry=https://npm.pkg.github.com" > .npmrc
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
           npm install
 

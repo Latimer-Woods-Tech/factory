@@ -20,7 +20,7 @@ jobs:
         with:
           app-id: ${{ secrets.FACTORY_APP_ID }}
           private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
-          owner: adrper79-dot
+          owner: Latimer-Woods-Tech
       - name: Checkout app repo
         uses: actions/checkout@v4
         with:

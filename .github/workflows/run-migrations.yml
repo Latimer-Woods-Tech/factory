@@ -51,7 +51,7 @@ jobs:
         with:
           app-id: ${{ secrets.FACTORY_APP_ID }}
           private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
-          owner: adrper79-dot
+          owner: Latimer-Woods-Tech
       - name: Skip if filter set and app doesn't match
         if: ${{ github.event.inputs.app != '' && github.event.inputs.app != matrix.app }}
         run: echo "Skipping ${{ matrix.app }} — filter is '${{ github.event.inputs.app }}'"

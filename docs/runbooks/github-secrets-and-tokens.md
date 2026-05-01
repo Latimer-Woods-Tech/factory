@@ -102,7 +102,7 @@ Legacy `SMOKE_EMAIL` / `SMOKE_PASSWORD` aliases are no longer used by CI workflo
 
 ### For Factory Core (monorepo)
 
-1. Navigate to: **https://github.com/Latimer-Woods-Tech/Factory/settings/secrets/actions**
+1. Navigate to: **https://github.com/Latimer-Woods-Tech/factory/settings/secrets/actions**
 2. Click "New repository secret"
 3. Add each secret from the inventory above
 4. **Verify in workflows**: Go to Actions → select any workflow → check "Secrets" are populated

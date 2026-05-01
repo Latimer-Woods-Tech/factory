@@ -28,7 +28,7 @@ Update this table every time a new app is added.
 Before starting:
 
 - [ ] Neon project created for this app
-- [ ] Connection string stored as a GitHub Secret in `Latimer-Woods-Tech/Factory`: `{APP_UPPER}_CONNECTION_STRING`
+- [ ] Connection string stored as a GitHub Secret in `Latimer-Woods-Tech/factory`: `{APP_UPPER}_CONNECTION_STRING`
   - Example: app `xico-city` → secret `MEXXICO_CITY_CONNECTION_STRING`
 - [ ] `CF_API_TOKEN` set in Factory GitHub Secrets
 - [ ] `GH_PAT` (classic PAT with `repo` + `read:packages`) set in Factory GitHub Secrets
@@ -144,7 +144,7 @@ Then:
 
 ## Step 6 — Add Required Secrets to Factory
 
-Before running the scaffold and secrets workflows, ensure these exist in `Latimer-Woods-Tech/Factory` GitHub Secrets:
+Before running the scaffold and secrets workflows, ensure these exist in `Latimer-Woods-Tech/factory` GitHub Secrets:
 
 | Secret | Description |
 |--------|-------------|
