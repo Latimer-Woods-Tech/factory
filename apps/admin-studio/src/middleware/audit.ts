@@ -2,13 +2,13 @@
  * Audit middleware — captures every mutating request into studio_audit_log.
  *
  * Skips GET/HEAD/OPTIONS. Redacts secrets from payload before insert.
- * Phase B: persists via @adrper79-dot/neon. Insert failures are logged
+ * Phase B: persists via @latimer-woods-tech/neon. Insert failures are logged
  * but never block the response (defence-in-depth: audit infra outage
  * must not 5xx user traffic).
  */
 import type { MiddlewareHandler } from 'hono';
 import type { AppEnv } from '../types.js';
-import { redactSecrets, type AuditEntry } from '@adrper79-dot/studio-core';
+import { redactSecrets, type AuditEntry } from '@latimer-woods-tech/studio-core';
 import { insertAuditEntry } from '../lib/audit-store.js';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);

@@ -227,7 +227,7 @@ npm run phase-7:scaffold -- {your-app-name} \
 cat PHASE_6_7_TIMELINE.md
 
 # Monitor Phase 6 progress
-watch "gh run list --repo adrper79-dot/Factory --limit 1"
+watch "gh run list --repo Latimer-Woods-Tech/Factory --limit 1"
 ```
 
 ---

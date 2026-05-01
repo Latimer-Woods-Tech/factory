@@ -10,10 +10,10 @@ on:
 
 # Scaffolds all 6 app repos with wrangler.jsonc, tsconfig, src/index.ts,
 # src/db/schema.ts, CI/deploy workflows, etc.
-# Pushes directly to the adrper79-dot/<app> repo main branch.
+# Pushes directly to the Latimer-Woods-Tech/<app> repo main branch.
 # Safe to re-run — checks if repo already has src/index.ts before pushing.
 #
-# npm install is intentionally skipped (--no-install) because @adrper79-dot/*
+# npm install is intentionally skipped (--no-install) because @latimer-woods-tech/*
 # packages are not yet published.  The app CI will run npm ci once they are.
 
 env:
@@ -45,6 +45,13 @@ jobs:
             rate_limiter_id: "1006"
 
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: Latimer-Woods-Tech
       - name: Skip if filter set and app doesn't match
         if: ${{ github.event.inputs.app != '' && github.event.inputs.app != matrix.app }}
         run: echo "Skipping ${{ matrix.app }} — filter is '${{ github.event.inputs.app }}'"
@@ -72,11 +79,11 @@ jobs:
         if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
         id: check
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           APP="${{ matrix.app }}"
           # Use exit code only — gh api exits 0 on 200, non-zero on 404/409
-          if gh api repos/adrper79-dot/$APP/contents/src/index.ts > /dev/null 2>&1; then
+          if gh api repos/Latimer-Woods-Tech/$APP/contents/src/index.ts > /dev/null 2>&1; then
             echo "⏭  $APP already has src/index.ts — skipping scaffold."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
@@ -105,7 +112,7 @@ jobs:
       - name: Amend commit and push to app repo
         if: ${{ (github.event.inputs.app == '' || github.event.inputs.app == matrix.app) && steps.check.outputs.skip == 'false' }}
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           APP="${{ matrix.app }}"
           cd "$APP"
@@ -115,6 +122,6 @@ jobs:
           git commit --amend --no-edit
 
           # Push to existing empty repo (force in case a README exists)
-          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/adrper79-dot/$APP.git"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/Latimer-Woods-Tech/$APP.git"
           git push origin main --force
           echo "✅ $APP scaffolded and pushed."

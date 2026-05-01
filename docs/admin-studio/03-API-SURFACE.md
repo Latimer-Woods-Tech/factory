@@ -108,4 +108,4 @@ X-Confirm-Token: a1b2c3d4e5f60718
 
 ## OpenAPI / Hono RPC
 
-A typed client is auto-generated from Hono's `hc()` helper in Phase B and shipped as `@adrper79-dot/admin-studio-client` for use by other Factory apps that need to call Studio APIs (e.g. CI gating).
+A typed client is auto-generated from Hono's `hc()` helper in Phase B and shipped as `@latimer-woods-tech/admin-studio-client` for use by other Factory apps that need to call Studio APIs (e.g. CI gating).

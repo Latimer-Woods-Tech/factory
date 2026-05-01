@@ -13,9 +13,9 @@
  * workflow_dispatch). Read-only callers can use a fine-grained `contents:read`.
  *
  * All responses are constrained to the minimal fields exposed by
- * `@adrper79-dot/studio-core` types.
+ * `@latimer-woods-tech/studio-core` types.
  */
-import type { RepoBranch, RepoFileContent, RepoPullRequest, RepoTreeNode } from '@adrper79-dot/studio-core';
+import type { RepoBranch, RepoFileContent, RepoPullRequest, RepoTreeNode } from '@latimer-woods-tech/studio-core';
 
 const FACTORY_OWNER = 'adrper79-dot';
 const FACTORY_REPO = 'factory';

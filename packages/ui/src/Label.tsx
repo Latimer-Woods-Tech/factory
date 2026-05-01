@@ -6,7 +6,7 @@
  */
 
 import React, { forwardRef, type LabelHTMLAttributes, type ReactNode } from 'react';
-import { colors, spacing, typography } from '@adrper79-dot/design-tokens';
+import { colors, spacing, typography } from '@latimer-woods-tech/design-tokens';
 
 /**
  * Props for the Label component

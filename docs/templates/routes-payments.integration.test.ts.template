@@ -22,7 +22,7 @@ import {
   createMockStripeWebhook,
   createMockCreator,
   createMockEarnings,
-} from '@adrper79-dot/testing';
+} from '@latimer-woods-tech/testing';
 
 interface TestContext {
   app: any; // Your Hono app instance

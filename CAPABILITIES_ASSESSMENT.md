@@ -27,7 +27,7 @@ The Factory Core platform is **feature-complete at infrastructure layer** (error
 
 ### 1. **PostHog Integration in Apps** ⚠️ HIGH PRIORITY
 **What exists:**
-- `@adrper79-dot/analytics` exports `trackEvent(db, opts)` to factory_events table
+- `@latimer-woods-tech/analytics` exports `trackEvent(db, opts)` to factory_events table
 - Monitoring package exists with Sentry
 
 **What's missing:**
@@ -40,7 +40,7 @@ The Factory Core platform is **feature-complete at infrastructure layer** (error
 **Quick fix:** 
 ```typescript
 // In each app's worker setup:
-import { createPostHogClient } from '@adrper79-dot/analytics'; // extend this
+import { createPostHogClient } from '@latimer-woods-tech/analytics'; // extend this
 posthog.init(env.POSTHOG_API_KEY);
 middleware for auto-tracking
 ```
@@ -54,7 +54,7 @@ middleware for auto-tracking
 **What's missing:**
 - Renovate not configured on wordis-bond, prime-self, cypher-healing, etc.
 - When Factory Core packages bump, apps don't auto-get update PRs
-- Manual `npm update @adrper79-dot/*` required per app
+- Manual `npm update @latimer-woods-tech/*` required per app
 
 **Impact:** Apps drift from latest security/feature updates. Cannot control version rollout across platform.
 
@@ -122,24 +122,24 @@ Auth API:
 
 ## Nice-to-Have Enhancements (Could Have)
 
-### 7. **Local Development Environment** (`@adrper79-dot/devtools` package)
+### 7. **Local Development Environment** (`@latimer-woods-tech/devtools` package)
 - Docker Compose for Postgres + mocked Hyperdrive
 - Seed scripts for test data (1,000 leads, conversion history)
 - VSCode launch config for debugging Workers locally
 - Mock `env.DB` binding for offline development
 
-### 8. **Secrets Rotation Manager** (extend `@adrper79-dot/deploy`)
+### 8. **Secrets Rotation Manager** (extend `@latimer-woods-tech/deploy`)
 - Automated Stripe API key cycling (30-day rotation)
 - Neon password rotation with zero downtime
 - Audit trail logged to factory_events
 
-### 9. **Security Automation Package** (`@adrper79-dot/security`)
+### 9. **Security Automation Package** (`@latimer-woods-tech/security`)
 - Pre-publish OWASP Top 10 scan (CI gate)
 - Secret scanning (GitGuardian hook)
 - GDPR compliance audit report
 - Dependency CVE check
 
-### 10. **Advanced CRM Analytics** (extend `@adrper79-dot/crm`)
+### 10. **Advanced CRM Analytics** (extend `@latimer-woods-tech/crm`)
 - LTV calculation per channel
 - Cohort retention curves
 - Churn risk prediction model
@@ -166,7 +166,7 @@ Auth API:
 ### **Phase 2: Developer Experience (Week 3)**
 1. ✅ Deploy Mintlify docs site
 2. ✅ Add local dev Docker Compose
-3. ✅ Create `@adrper79-dot/devtools` package
+3. ✅ Create `@latimer-woods-tech/devtools` package
 4. **Effort:** 16–24 hours  
 5. **Value:** Faster onboarding; offline development
 
@@ -182,7 +182,7 @@ Auth API:
 ## Implementation Checklist for Phase 0 (Start Here)
 
 ### Task 1: PostHog Integration
-- [ ] Create PostHog client factory in `@adrper79-dot/analytics`
+- [ ] Create PostHog client factory in `@latimer-woods-tech/analytics`
 - [ ] Export `createPostHogMiddleware()` for Hono apps
 - [ ] Auto-track: route hit, auth success/fail, error rate
 - [ ] Add to each app's setup script (`setup-all-apps.mjs`)

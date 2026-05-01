@@ -84,7 +84,7 @@ node scripts/phase-6-orchestrator.mjs
    - ✅ Creates 7 Neon databases (factory_core, wordis_bond, cypher_healing, prime_self, ijustus, the_calling, neighbor_aid)
    - ✅ Runs factory_core DDL (factory_events, crm_leads, compliance tables)
    - ✅ Creates 7 Hyperdrive instances (Cloudflare Workers bindings)
-   - ✅ Creates 6 GitHub app repositories (adrper79-dot/*)
+   - ✅ Creates 6 GitHub app repositories (Latimer-Woods-Tech/*)
    - ✅ Creates 6 Sentry projects (if SENTRY_AUTH_TOKEN set)
    - ✅ Creates 6 PostHog projects (if POSTHOG_API_KEY set)
    - ✅ Stores all secrets in GitHub Actions
@@ -98,12 +98,12 @@ node scripts/phase-6-orchestrator.mjs
    ```
    
    Should show 6 repos:
-   - adrper79-dot/wordis-bond
-   - adrper79-dot/cypher-healing
-   - adrper79-dot/prime-self
-   - adrper79-dot/ijustus
-   - adrper79-dot/the-calling
-   - adrper79-dot/neighbor-aid
+   - Latimer-Woods-Tech/wordis-bond
+   - Latimer-Woods-Tech/cypher-healing
+   - Latimer-Woods-Tech/prime-self
+   - Latimer-Woods-Tech/ijustus
+   - Latimer-Woods-Tech/the-calling
+   - Latimer-Woods-Tech/neighbor-aid
 
    Check Hyperdrive instances:
    ```bash

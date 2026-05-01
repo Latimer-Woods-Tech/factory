@@ -2,7 +2,7 @@
  * Hono app type — extends env with our custom variables.
  */
 import type { Env } from './env.js';
-import type { EnvContext, ReversibilityTier } from '@adrper79-dot/studio-core';
+import type { EnvContext, ReversibilityTier } from '@latimer-woods-tech/studio-core';
 
 export interface AppVariables {
   envContext: EnvContext;

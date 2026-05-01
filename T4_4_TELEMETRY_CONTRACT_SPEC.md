@@ -66,7 +66,7 @@ Create `src/routes/admin/health.ts`:
 
 ```typescript
 import { Hono } from 'hono';
-import { requireRole } from '@adrper79-dot/auth';
+import { requireRole } from '@latimer-woods-tech/auth';
 
 const healthRoute = new Hono();
 
@@ -330,7 +330,7 @@ healthRoute.post('/events', requireRole(['admin:*']), async (c) => {
 All 3 endpoints require:
 
 1. **JWT in Authorization header:** `Bearer <JWT_TOKEN>`  
-   - JWT from Factory Auth service (`@adrper79-dot/auth`)
+   - JWT from Factory Auth service (`@latimer-woods-tech/auth`)
    - Must include role `admin:videoking`, `operator:*`, or `admin:*`
 
 2. **Rate limiting:**
@@ -344,8 +344,8 @@ All 3 endpoints require:
 
 ```typescript
 // In src/index.ts
-import { authMiddleware, requireRole } from '@adrper79-dot/auth';
-import { rateLimitMiddleware } from '@adrper79-dot/analytics';
+import { authMiddleware, requireRole } from '@latimer-woods-tech/auth';
+import { rateLimitMiddleware } from '@latimer-woods-tech/analytics';
 
 app.use('*', authMiddleware(c.env.JWT_SECRET));
 

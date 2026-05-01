@@ -1,4 +1,4 @@
-# Changelog — @adrper79-dot/design-tokens
+# Changelog — @latimer-woods-tech/design-tokens
 
 ## [0.2.0] - 2026-04-29
 

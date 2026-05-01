@@ -12,7 +12,7 @@ import type {
   RepoCommitResponse,
   RepoFileContent,
   RepoTreeNode,
-} from '@adrper79-dot/studio-core';
+} from '@latimer-woods-tech/studio-core';
 import { apiFetch } from '../../lib/api.js';
 import { useActiveFile, guessLanguage } from '../../stores/activeFile.js';
 

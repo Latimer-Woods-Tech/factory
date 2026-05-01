@@ -5,7 +5,7 @@
  */
 
 import React, { forwardRef, type HTMLAttributes, type ReactNode } from 'react';
-import { colors, spacing, typography, radii } from '@adrper79-dot/design-tokens';
+import { colors, spacing, typography, radii } from '@latimer-woods-tech/design-tokens';
 
 export interface EmptyStateProps extends HTMLAttributes<HTMLDivElement> {
   /** Icon element */

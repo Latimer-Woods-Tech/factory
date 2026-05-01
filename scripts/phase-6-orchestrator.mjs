@@ -238,13 +238,13 @@ function createGitHubRepos(dryRun = false) {
   }
 
   for (const app of APPS) {
-    const cmd = `gh repo create adrper79-dot/${app} --private --description "Factory App: ${app}"`;
+    const cmd = `gh repo create Latimer-Woods-Tech/${app} --private --description "Factory App: ${app}"`;
 
     if (dryRun) {
       console.log(`  ${cmd}\n`);
     } else {
       try {
-        console.log(`Creating adrper79-dot/${app}...`);
+        console.log(`Creating Latimer-Woods-Tech/${app}...`);
         execSync(cmd, { stdio: 'inherit' });
         console.log(`  ✅ Created\n`);
       } catch (e) {
@@ -343,7 +343,7 @@ function generateReport() {
 
   console.log('\nGitHub Repositories:');
   APPS.forEach(app => {
-    console.log(`  adrper79-dot/${app}`);
+    console.log(`  Latimer-Woods-Tech/${app}`);
   });
 
   console.log('\n' + '='.repeat(60) + '\n');

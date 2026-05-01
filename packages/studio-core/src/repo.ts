@@ -6,7 +6,7 @@
  * never sees the token.
  *
  * AI chat uses Anthropic SSE under the hood (with Grok/Groq fallbacks
- * available via `@adrper79-dot/llm`).
+ * available via `@latimer-woods-tech/llm`).
  */
 
 /**

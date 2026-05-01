@@ -7,7 +7,7 @@
 import React, { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
 import { Input } from './Input';
 import { Label } from './Label';
-import { spacing } from '@adrper79-dot/design-tokens';
+import { spacing } from '@latimer-woods-tech/design-tokens';
 
 export interface FormFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   /** Field label */

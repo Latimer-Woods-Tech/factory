@@ -78,7 +78,7 @@ curl -X POST https://api.cloudflare.com/client/v4/accounts/{account_id}/alerting
 
 ## PostHog funnel monitoring
 
-PostHog tracks business-level events via `@adrper79-dot/analytics`.
+PostHog tracks business-level events via `@latimer-woods-tech/analytics`.
 
 Key funnels to monitor:
 - **Signup funnel**: `user_signup` → `email_verified` → `first_action`

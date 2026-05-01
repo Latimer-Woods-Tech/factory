@@ -1,4 +1,4 @@
-import { ValidationError } from '@adrper79-dot/errors';
+import { ValidationError } from '@latimer-woods-tech/errors';
 
 /**
  * Options for {@link generateMetaTags}.

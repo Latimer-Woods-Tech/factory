@@ -12,8 +12,8 @@
  * proposals once the editor + commit-to-branch flow lands.
  */
 import { Hono } from 'hono';
-import { complete, stream as anthropicStream } from '@adrper79-dot/llm';
-import type { AIChatEvent, AIChatRequest, AIProposal, AIProposalRequest } from '@adrper79-dot/studio-core';
+import { complete, stream as anthropicStream } from '@latimer-woods-tech/llm';
+import type { AIChatEvent, AIChatRequest, AIProposal, AIProposalRequest } from '@latimer-woods-tech/studio-core';
 import type { AppEnv } from '../types.js';
 
 const ai = new Hono<AppEnv>();

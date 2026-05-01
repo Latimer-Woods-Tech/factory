@@ -48,7 +48,7 @@ This is the single entry point for all Factory implementation docs. It replaces 
 
 ### Infrastructure Status
 - **[Service Registry](service-registry.yml)** — Cloudflare Workers, Pages projects, URLs, health checks, rename procedures, and Factory Packages inventory (22 packages with status, dependencies, and Videoking usage)
-- **[Package Inventory](packages/)** — README and docs for each @adrper79-dot/* package
+- **[Package Inventory](packages/)** — README and docs for each @latimer-woods-tech/* package
 
 ---
 
@@ -203,42 +203,42 @@ Quick reference for common tasks:
 
 | Package | Purpose | Owner | Status |
 |---------|---------|-------|--------|
-| [@adrper79-dot/errors](packages/errors/) | Custom error types with context | Factory | Stable |
-| [@adrper79-dot/monitoring](packages/monitoring/) | Sentry integration and error reporting | Factory | Stable |
-| [@adrper79-dot/logger](packages/logger/) | Structured logging with context | Factory | Stable |
+| [@latimer-woods-tech/errors](packages/errors/) | Custom error types with context | Factory | Stable |
+| [@latimer-woods-tech/monitoring](packages/monitoring/) | Sentry integration and error reporting | Factory | Stable |
+| [@latimer-woods-tech/logger](packages/logger/) | Structured logging with context | Factory | Stable |
 
 ### Platform Layer
 
 | Package | Purpose | Owner | Status |
 |---------|---------|-------|--------|
-| [@adrper79-dot/auth](packages/auth/) | JWT auth with Web Crypto API | Factory | Stable |
-| [@adrper79-dot/neon](packages/neon/) | Neon Postgres via Hyperdrive | Factory | Stable |
-| [@adrper79-dot/deploy](packages/deploy/) | Build and deployment automation | Factory | Stable |
-| [@adrper79-dot/testing](packages/testing/) | Mock factories and test helpers | Factory | Stable |
+| [@latimer-woods-tech/auth](packages/auth/) | JWT auth with Web Crypto API | Factory | Stable |
+| [@latimer-woods-tech/neon](packages/neon/) | Neon Postgres via Hyperdrive | Factory | Stable |
+| [@latimer-woods-tech/deploy](packages/deploy/) | Build and deployment automation | Factory | Stable |
+| [@latimer-woods-tech/testing](packages/testing/) | Mock factories and test helpers | Factory | Stable |
 
 ### Integration Layer
 
 | Package | Purpose | Owner | Status |
 |---------|---------|-------|--------|
-| [@adrper79-dot/stripe](packages/stripe/) | Stripe payments and subscriptions | Factory | Phase 3 |
-| [@adrper79-dot/llm](packages/llm/) | Anthropic + Grok + Groq chain | Factory | Phase 3 |
-| [@adrper79-dot/telephony](packages/telephony/) | Telnyx + Deepgram + ElevenLabs | Factory | Phase 4 |
-| [@adrper79-dot/analytics](packages/analytics/) | PostHog + factory_events schema | Factory | Phase 3 |
-| [@adrper79-dot/email](packages/email/) | Resend integration | Factory | Phase 3 |
-| [@adrper79-dot/video](packages/video/) | Cloudflare Stream + R2 wrappers | Factory | Phase 5 |
-| [@adrper79-dot/schedule](packages/schedule/) | Video production calendar + scoring | Factory | Phase 5 |
+| [@latimer-woods-tech/stripe](packages/stripe/) | Stripe payments and subscriptions | Factory | Phase 3 |
+| [@latimer-woods-tech/llm](packages/llm/) | Anthropic + Grok + Groq chain | Factory | Phase 3 |
+| [@latimer-woods-tech/telephony](packages/telephony/) | Telnyx + Deepgram + ElevenLabs | Factory | Phase 4 |
+| [@latimer-woods-tech/analytics](packages/analytics/) | PostHog + factory_events schema | Factory | Phase 3 |
+| [@latimer-woods-tech/email](packages/email/) | Resend integration | Factory | Phase 3 |
+| [@latimer-woods-tech/video](packages/video/) | Cloudflare Stream + R2 wrappers | Factory | Phase 5 |
+| [@latimer-woods-tech/schedule](packages/schedule/) | Video production calendar + scoring | Factory | Phase 5 |
 
 ### Product Layer
 
 | Package | Purpose | Owner | Status |
 |---------|---------|-------|--------|
-| [@adrper79-dot/compliance](packages/compliance/) | Regulatory standards, consent, audit | Factory | Phase 4 |
-| [@adrper79-dot/crm](packages/crm/) | Relationship management surface | Factory | Phase 5 |
-| [@adrper79-dot/admin](packages/admin/) | Admin dashboard + analytics | Factory | Phase 4 |
-| [@adrper79-dot/content](packages/content/) | Content catalog and distribution | Factory | Phase 5 |
-| [@adrper79-dot/copy](packages/copy/) | Copy generation and templates | Factory | Phase 4 |
-| [@adrper79-dot/social](packages/social/) | Social sync and publishing | Factory | Phase 5 |
-| [@adrper79-dot/seo](packages/seo/) | SEO utilities and metadata | Factory | Phase 4 |
+| [@latimer-woods-tech/compliance](packages/compliance/) | Regulatory standards, consent, audit | Factory | Phase 4 |
+| [@latimer-woods-tech/crm](packages/crm/) | Relationship management surface | Factory | Phase 5 |
+| [@latimer-woods-tech/admin](packages/admin/) | Admin dashboard + analytics | Factory | Phase 4 |
+| [@latimer-woods-tech/content](packages/content/) | Content catalog and distribution | Factory | Phase 5 |
+| [@latimer-woods-tech/copy](packages/copy/) | Copy generation and templates | Factory | Phase 4 |
+| [@latimer-woods-tech/social](packages/social/) | Social sync and publishing | Factory | Phase 5 |
+| [@latimer-woods-tech/seo](packages/seo/) | SEO utilities and metadata | Factory | Phase 4 |
 
 **Status Legend:** Stable = production-ready; Phase N = in development; To Do = not started
 

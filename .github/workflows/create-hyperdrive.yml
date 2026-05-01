@@ -46,7 +46,7 @@ jobs:
               echo "SKIP $name (empty)"
               return
             fi
-            echo "$val" | gh secret set "$name" --repo adrper79-dot/Factory
+            echo "$val" | gh secret set "$name" --repo Latimer-Woods-Tech/factory
             echo "Set $name=$val"
           }
           store HYPERDRIVE_FACTORY_CORE "${{ steps.hyperdrive.outputs.FACTORY_CORE_ID }}"

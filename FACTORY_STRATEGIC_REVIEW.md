@@ -27,10 +27,10 @@
 | Capability | Status | Evidence |
 |---|---|---|
 | **Infrastructure as Code** | ✅ Production | 19 packages published to npm |
-| **Backend API Admin** | ✅ Scaffolded | `@adrper79-dot/admin` package routes |
+| **Backend API Admin** | ✅ Scaffolded | `@latimer-woods-tech/admin` package routes |
 | **Database Admin** | ✅ Working | User management, event querying via API |
-| **Content Management** | ✅ Library | `@adrper79-dot/content` for CMS entities |
-| **LLM Integration** | ✅ Working | `@adrper79-dot/llm` (Claude → Grok → Groq) |
+| **Content Management** | ✅ Library | `@latimer-woods-tech/content` for CMS entities |
+| **LLM Integration** | ✅ Working | `@latimer-woods-tech/llm` (Claude → Grok → Groq) |
 | **Deploy Automation** | ✅ CI/CD | GitHub Actions → Wrangler → Cloudflare |
 | **Monitoring** | ✅ Integrated | Sentry errors + PostHog analytics |
 | **Multi-tenant Support** | ✅ Library | RLS policies + tenant isolation |
@@ -52,7 +52,7 @@
 
 ## Current Admin Dashboard Scope
 
-### What `@adrper79-dot/admin` Provides (API Routes Only)
+### What `@latimer-woods-tech/admin` Provides (API Routes Only)
 
 ```typescript
 GET  /admin                  → Dashboard summary (users, events)
@@ -103,7 +103,7 @@ To achieve your vision, Factory needs **Phase 8.5: Admin UI + AI Studio**.
 **Tech Stack:**
 - **Framework:** React + Vite (or Remix on Cloudflare Pages)
 - **Deployment:** Cloudflare Pages (serves static assets + functions)
-- **Auth:** JWT from `@adrper79-dot/auth` (same tokens as API)
+- **Auth:** JWT from `@latimer-woods-tech/auth` (same tokens as API)
 
 **Key Views:**
 ```
@@ -158,7 +158,7 @@ GET /api/code/deploy/:app/:workflowRunId/status
 ```
 User types: "Add a /contacts endpoint that returns all contacts"
   ↓
-Browser → factory-admin Worker → LLM (via @adrper79-dot/llm)
+Browser → factory-admin Worker → LLM (via @latimer-woods-tech/llm)
   ↓
 LLM generates code → Display in Monaco editor
   ↓
@@ -183,7 +183,7 @@ Response: {
 ```
 
 **Dependencies:**
-- Uses existing `@adrper79-dot/llm` package (already integrated)
+- Uses existing `@latimer-woods-tech/llm` package (already integrated)
 - Streams responses via Server-Sent Events (SSE)
 - Code diffs shown in Monaco with syntax highlighting
 
@@ -197,8 +197,8 @@ Response: {
 
 **Implementation:**
 ```typescript
-// Uses existing @adrper79-dot/content package
-import { createContent, updateContent } from '@adrper79-dot/content';
+// Uses existing @latimer-woods-tech/content package
+import { createContent, updateContent } from '@latimer-woods-tech/content';
 
 // New UI routes in factory-admin
 GET  /apps/:id/content           → List all content items
@@ -217,7 +217,7 @@ POST /apps/:id/content/:itemId/publish → Trigger publish workflow
 | Component | Feasible? | Notes |
 |---|---|---|
 | Monaco Editor | ✅ Yes | Runs 100% client-side in browser |
-| AI Chat | ✅ Yes | `@adrper79-dot/llm` already works in Workers |
+| AI Chat | ✅ Yes | `@latimer-woods-tech/llm` already works in Workers |
 | GitHub API Integration | ✅ Yes | REST API calls from Worker |
 | TypeScript LSP | ⚠️ Partial | WebAssembly version available (performance concerns) |
 | Live Deployment Preview | ✅ Yes | Deploy to staging, poll health endpoint |
@@ -376,7 +376,7 @@ All commits from browser MUST:
 **Factory's Unique Position:**
 - Only platform combining: browser IDE + self-hosted AI + CMS + Cloudflare Workers deploy
 - No per-user seat licensing (self-hosted)
-- Integrated with existing `@adrper79-dot/*` packages
+- Integrated with existing `@latimer-woods-tech/*` packages
 
 ---
 
