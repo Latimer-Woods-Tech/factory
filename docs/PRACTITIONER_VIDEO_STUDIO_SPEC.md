@@ -356,7 +356,7 @@ R2 bucket: factory-videos
 
 | Dependency | Status |
 |---|---|
-| `@adrper79-dot/video` package | ✅ Available |
+| `@latimer-woods-tech/video` package | ✅ Available |
 | Cloudflare Stream API token (`CF_STREAM_TOKEN`) | ✅ Configured |
 | Cloudflare R2 binding | ✅ Active |
 | schedule-worker deployed | ⏳ Pending (Phase 1 blocker) |

@@ -1,16 +1,16 @@
 ---
-title: "@adrper79-dot/admin"
+title: "@latimer-woods-tech/admin"
 description: Hono sub-router for admin operations — users, events, health, and suspend.
 ---
 
-# @adrper79-dot/admin
+# @latimer-woods-tech/admin
 
-Drop-in Hono admin router with user management, event inspection, and health check endpoints. Depends on `@adrper79-dot/auth` and `@adrper79-dot/analytics`.
+Drop-in Hono admin router with user management, event inspection, and health check endpoints. Depends on `@latimer-woods-tech/auth` and `@latimer-woods-tech/analytics`.
 
 ## Installation
 
 ```bash
-npm install @adrper79-dot/admin
+npm install @latimer-woods-tech/admin
 ```
 
 ## API
@@ -43,9 +43,9 @@ All routes return `401` without a valid JWT and `403` without the `admin` role (
 ## Example
 
 ```typescript
-import { createAdminRouter } from '@adrper79-dot/admin';
-import { createDb } from '@adrper79-dot/neon';
-import { jwtMiddleware } from '@adrper79-dot/auth';
+import { createAdminRouter } from '@latimer-woods-tech/admin';
+import { createDb } from '@latimer-woods-tech/neon';
+import { jwtMiddleware } from '@latimer-woods-tech/auth';
 import { Hono } from 'hono';
 
 const app = new Hono<{ Bindings: Env }>();

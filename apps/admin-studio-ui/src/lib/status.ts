@@ -2,7 +2,7 @@
  * Tiny presentational helpers for status colors so OverviewTab and
  * AppHealthGrid stay readable.
  */
-import type { AppHealthStatus } from '@adrper79-dot/studio-core';
+import type { AppHealthStatus } from '@latimer-woods-tech/studio-core';
 
 export function statusBadgeClass(status: AppHealthStatus): string {
   switch (status) {

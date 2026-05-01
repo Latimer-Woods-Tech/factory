@@ -1,5 +1,5 @@
 {
-  "name": "@adrper79-dot/logger",
+  "name": "@latimer-woods-tech/logger",
   "version": "0.2.0",
   "private": false,
   "publishConfig": {
@@ -27,8 +27,8 @@
     "prepublish": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
-    "@adrper79-dot/errors": "file:../errors",
-    "@adrper79-dot/monitoring": "file:../monitoring",
+    "@latimer-woods-tech/errors": "file:../errors",
+    "@latimer-woods-tech/monitoring": "file:../monitoring",
     "hono": "^4.12.14"
   },
   "devDependencies": {

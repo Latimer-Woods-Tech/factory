@@ -5,7 +5,7 @@
  */
 
 import React, { forwardRef, type HTMLAttributes } from 'react';
-import { colors, spacing, radii } from '@adrper79-dot/design-tokens';
+import { colors, spacing, radii } from '@latimer-woods-tech/design-tokens';
 
 export interface LoadingStateProps extends HTMLAttributes<HTMLDivElement> {
   /** Type of loading indicator */

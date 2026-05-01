@@ -63,8 +63,8 @@ Factory apps and packages have drifted in configuration standards. This audit id
 
 | Package | version field | private | license | repository | keywords |
 |---|---|---|---|---|---|
-| @adrper79-dot/errors | ✅ 0.2.0 | ✅ true | ✅ MIT | ✅ npm* | ✅ errors,validation |
-| @adrper79-dot/ui | ✅ 0.2.0 | ✅ true | ✅ MIT | ✅ npm | ✅ ui,components |
+| @latimer-woods-tech/errors | ✅ 0.2.0 | ✅ true | ✅ MIT | ✅ npm* | ✅ errors,validation |
+| @latimer-woods-tech/ui | ✅ 0.2.0 | ✅ true | ✅ MIT | ✅ npm | ✅ ui,components |
 | admin-studio | ✅ 0.1.0 | ❌ missing | ❌ missing | ❌ missing | ❌ missing |
 | schedule-worker | ✅ 0.1.0 | ❌ missing | ❌ missing | ❌ missing | ❌ missing |
 
@@ -77,14 +77,14 @@ Factory apps and packages have drifted in configuration standards. This audit id
 **STANDARD (post-normalization):**
 ```json
 {
-  "name": "@adrper79-dot/package-name",
+  "name": "@latimer-woods-tech/package-name",
   "version": "0.1.0",
   "description": "Clear one-liner",
   "private": true,
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/adrper79-dot/factory.git",
+    "url": "https://github.com/Latimer-Woods-Tech/factory.git",
     "directory": "packages/package-name"
   },
   "keywords": ["keyword1", "keyword2"],
@@ -103,7 +103,7 @@ Factory apps and packages have drifted in configuration standards. This audit id
 **Workflows Found:**
 - `.github/workflows/ci.yml` — Main CI pipeline (used by all packages)
 - `.github/workflows/deploy.yml` — Deployment workflow (used by worker apps)
-- `.github/workflows/publish.yml` — Package publish workflow (used by @adrper79-dot/x)
+- `.github/workflows/publish.yml` — Package publish workflow (used by @latimer-woods-tech/x)
 - ⚠️ No linting consistency checks across workflows
 
 **Gaps:**
@@ -144,8 +144,8 @@ jobs:
 
 | Package | tsconfig.json | eslint.config.mjs | vitest.config.ts | Tests |
 |---|---|---|---|---|
-| @adrper79-dot/errors | ✅ | ✅ | ✅ | ✅ 42/42 passing |
-| @adrper79-dot/ui | ✅ | ✅ | ✅ | ✅ 41/41 passing |
+| @latimer-woods-tech/errors | ✅ | ✅ | ✅ | ✅ 42/42 passing |
+| @latimer-woods-tech/ui | ✅ | ✅ | ✅ | ✅ 41/41 passing |
 | admin-studio | ✅ | ✅ | ❌ | ⚠️ No tests |
 | schedule-worker | ✅ | ✅ | ❌ | ⚠️ No tests |
 
@@ -159,7 +159,7 @@ jobs:
 ```ts
 // tsconfig.json — All projects
 {
-  "extends": "@adrper79-dot/base-config/tsconfig.json",
+  "extends": "@latimer-woods-tech/base-config/tsconfig.json",
   "compilerOptions": {
     "strict": true,
     "noUnusedLocals": true,
@@ -200,12 +200,12 @@ workers:
   - id: worker-name
     name: worker-name
     url: https://worker-name.adrper79.workers.dev
-    repo: adrper79-dot/factory
+    repo: Latimer-Woods-Tech/factory
     health_endpoint: /health
     critical_endpoints:
       - /api/critical-path
     consumers:
-      - repo: adrper79-dot/consumer
+      - repo: Latimer-Woods-Tech/consumer
         file: src/config.ts
         line: 42
         pattern: "https://worker-name.adrper79.workers.dev"
@@ -230,7 +230,7 @@ workers:
 **STANDARD (post-normalization):**
 ```ts
 // index.ts — All workers
-import { sentryMiddleware } from '@adrper79-dot/monitoring'
+import { sentryMiddleware } from '@latimer-woods-tech/monitoring'
 
 export default {
   async fetch(request, env) {
@@ -275,7 +275,7 @@ export default {
     },
     {
       "matchDatasources": ["npm"],
-      "matchPackagePatterns": ["^@adrper79-dot/.*"],
+      "matchPackagePatterns": ["^@latimer-woods-tech/.*"],
       "automerge": true
     }
   ],
@@ -317,7 +317,7 @@ export default {
 
 ### Priority 3 (W360-032+ Roadmap)
 
-7. **Base config shared package** (`@adrper79-dot/base-config`)
+7. **Base config shared package** (`@latimer-woods-tech/base-config`)
    - Consolidate tsconfig.json, eslint config, vitest config
    - Version and release with other packages
 
@@ -369,14 +369,14 @@ export default {
 **File:** `.package.json.template`
 ```json
 {
-  "name": "@adrper79-dot/package-name",
+  "name": "@latimer-woods-tech/package-name",
   "version": "0.1.0",
   "description": "Clear one-liner description",
   "private": true,
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/adrper79-dot/factory.git",
+    "url": "https://github.com/Latimer-Woods-Tech/factory.git",
     "directory": "packages/package-name"
   },
   "keywords": ["factory", "core", "utility"],
@@ -442,9 +442,9 @@ export default {
 ### Phase 3 — Priority 3 Shared Config (W360-032+ Roadmap)
 
 **Changes:**
-1. Create `@adrper79-dot/base-config` package
+1. Create `@latimer-woods-tech/base-config` package
 2. Export tsconfig.json, ESLint config, Vitest config
-3. Update all consumers to `extends: "@adrper79-dot/base-config"`
+3. Update all consumers to `extends: "@latimer-woods-tech/base-config"`
 
 **Timeline:** 2-3 weeks (after Phase 2 complete)
 

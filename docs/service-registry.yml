@@ -24,7 +24,7 @@
 workers:
   - id: prime-self
     name: prime-self                                       # matches wrangler.jsonc `name`
-    repo: adrper79-dot/prime-self
+    repo: Latimer-Woods-Tech/prime-self
     url: https://prime-self.adrper79.workers.dev           # canonical workers.dev URL
     custom_domain: null                                    # custom domain if any
     health_endpoint: /health
@@ -33,18 +33,18 @@ workers:
       - /api/practitioners
     consumers:
       # Files that hardcode this worker's URL — must be updated before any rename
-      - repo: adrper79-dot/prime-self-ui
+      - repo: Latimer-Woods-Tech/prime-self-ui
         file: public/landing.html
         line: ~537
         pattern: "fetch('https://prime-self.adrper79.workers.dev/auth/login'"
-      - repo: adrper79-dot/prime-self-ui
+      - repo: Latimer-Woods-Tech/prime-self-ui
         file: public/index.html
         line: ~537
         pattern: "fetch('https://prime-self.adrper79.workers.dev/auth/login'"
 
   - id: schedule-worker
     name: schedule-worker                                  # matches apps/schedule-worker/wrangler.jsonc `name`
-    repo: adrper79-dot/factory
+    repo: Latimer-Woods-Tech/factory
     url: https://schedule-worker.adrper79.workers.dev      # canonical workers.dev URL
     custom_domain: null
     health_endpoint: /health
@@ -63,22 +63,22 @@ workers:
     required_vars:
       - ENVIRONMENT
     consumers:
-      - repo: adrper79-dot/factory
+      - repo: Latimer-Woods-Tech/factory
         file: apps/admin-studio/src/lib/app-registry.ts
         line: ~42
         pattern: "productionWorkerName: 'schedule-worker'"
-      - repo: adrper79-dot/factory
+      - repo: Latimer-Woods-Tech/factory
         file: apps/video-cron/src/env.ts
         line: ~27
         pattern: "SCHEDULE_WORKER_URL"
-      - repo: adrper79-dot/factory
+      - repo: Latimer-Woods-Tech/factory
         file: docs/SELFPRIME_VIDEOKING_SYNERGY_DEVELOPMENT_PLAN.md
         line: ~141
         pattern: "Factory schedule-worker"
 
   - id: video-cron
     name: video-cron                                       # matches apps/video-cron/wrangler.jsonc `name`
-    repo: adrper79-dot/factory
+    repo: Latimer-Woods-Tech/factory
     url: https://video-cron.adrper79.workers.dev           # canonical workers.dev URL
     custom_domain: null
     health_endpoint: /health
@@ -98,18 +98,18 @@ workers:
       - DEFAULT_COMPOSITION_ID
       - ENVIRONMENT
     consumers:
-      - repo: adrper79-dot/factory
+      - repo: Latimer-Woods-Tech/factory
         file: apps/admin-studio/src/lib/app-registry.ts
         line: ~48
         pattern: "productionWorkerName: 'video-cron'"
-      - repo: adrper79-dot/factory
+      - repo: Latimer-Woods-Tech/factory
         file: docs/SELFPRIME_VIDEOKING_SYNERGY_DEVELOPMENT_PLAN.md
         line: ~143
         pattern: "D[video-cron]"
 
   - id: synthetic-monitor
     name: synthetic-monitor                                # matches apps/synthetic-monitor/wrangler.jsonc `name`
-    repo: adrper79-dot/factory
+    repo: Latimer-Woods-Tech/factory
     url: https://synthetic-monitor.adrper79.workers.dev    # canonical workers.dev URL
     custom_domain: null
     health_endpoint: /health
@@ -126,7 +126,7 @@ workers:
 
   - id: admin-studio-staging
     name: admin-studio-staging                             # matches apps/admin-studio/wrangler.jsonc env.staging.name
-    repo: adrper79-dot/factory
+    repo: Latimer-Woods-Tech/factory
     url: https://admin-studio-staging.adrper79.workers.dev
     custom_domain: null
     health_endpoint: /health
@@ -148,22 +148,22 @@ workers:
       - STUDIO_ENV
       - ALLOWED_ORIGINS
     consumers:
-      - repo: adrper79-dot/factory
+      - repo: Latimer-Woods-Tech/factory
         file: .github/workflows/deploy-admin-studio.yml
         line: ~77
         pattern: "https://admin-studio-staging.adrper79.workers.dev/health"
-      - repo: adrper79-dot/factory
+      - repo: Latimer-Woods-Tech/factory
         file: .github/workflows/deploy-admin-studio-ui.yml
         line: ~52
         pattern: "https://admin-studio-staging.adrper79.workers.dev"
-      - repo: adrper79-dot/factory
+      - repo: Latimer-Woods-Tech/factory
         file: docs/admin-studio/02-OPERATOR-QUICK-REF.md
         line: ~10
         pattern: "https://admin-studio-staging.adrper79.workers.dev"
 
   - id: admin-studio-production
     name: admin-studio-production                          # matches apps/admin-studio/wrangler.jsonc env.production.name
-    repo: adrper79-dot/factory
+    repo: Latimer-Woods-Tech/factory
     url: https://admin-studio-production.adrper79.workers.dev
     custom_domain: null
     health_endpoint: /health
@@ -190,22 +190,22 @@ workers:
       - STUDIO_ENV
       - ALLOWED_ORIGINS
     consumers:
-      - repo: adrper79-dot/factory
+      - repo: Latimer-Woods-Tech/factory
         file: .github/workflows/deploy-admin-studio.yml
         line: ~75
         pattern: "https://admin-studio-production.adrper79.workers.dev/health"
-      - repo: adrper79-dot/factory
+      - repo: Latimer-Woods-Tech/factory
         file: .github/workflows/deploy-admin-studio-ui.yml
         line: ~52
         pattern: "https://admin-studio-production.adrper79.workers.dev"
-      - repo: adrper79-dot/factory
+      - repo: Latimer-Woods-Tech/factory
         file: docs/admin-studio/02-OPERATOR-QUICK-REF.md
         line: ~10
         pattern: "https://admin-studio-production.adrper79.workers.dev"
 
   - id: videoking
     name: videoking                                        # NOT a deployed worker — architecture reference only
-    repo: adrper79-dot/factory
+    repo: Latimer-Woods-Tech/factory
     url: null                                              # No workers.dev URL — never deployed
     custom_domain: null
     health_endpoint: null
@@ -220,7 +220,7 @@ workers:
 
 pages:
   - id: prime-self-ui
-    repo: adrper79-dot/prime-self-ui
+    repo: Latimer-Woods-Tech/prime-self-ui
     project_name: prime-self-ui                            # Cloudflare Pages project name
     custom_domain: selfprime.net
     root_file: public/index.html                          # must exist for root URL to serve
@@ -232,7 +232,7 @@ pages:
       - CF_ACCOUNT_ID
 
   - id: admin-studio-ui
-    repo: adrper79-dot/factory
+    repo: Latimer-Woods-Tech/factory
     project_name: admin-studio-ui
     custom_domain: apunlimited.com
     custom_domain_alternate: studio.thefactory.dev
@@ -258,154 +258,154 @@ pages:
 #
 
 packages:
-  - name: "@adrper79-dot/errors"
+  - name: "@latimer-woods-tech/errors"
     status: "Foundation"
     version: "1.0.0"
     main_use: "Error types, FactoryBaseError, error handling"
     videoking_used: true
     depends_on: []
     
-  - name: "@adrper79-dot/monitoring"
+  - name: "@latimer-woods-tech/monitoring"
     status: "Foundation"
     version: "1.0.0"
     main_use: "Sentry integration, error tracking, APM"
     videoking_used: true
     depends_on: ["errors"]
     
-  - name: "@adrper79-dot/logger"
+  - name: "@latimer-woods-tech/logger"
     status: "Foundation"
     version: "1.0.0"
     main_use: "JSON structured logging"
     videoking_used: true
     depends_on: ["errors", "monitoring"]
     
-  - name: "@adrper79-dot/auth"
+  - name: "@latimer-woods-tech/auth"
     status: "Active"
     version: "1.0.0"
     main_use: "JWT auth, RBAC, middleware"
     videoking_used: true
     depends_on: ["errors", "logger"]
     
-  - name: "@adrper79-dot/neon"
+  - name: "@latimer-woods-tech/neon"
     status: "Active"
     version: "1.0.0"
     main_use: "Drizzle ORM, Hyperdrive, migrations, RLS"
     videoking_used: true
     depends_on: ["errors", "logger"]
     
-  - name: "@adrper79-dot/stripe"
+  - name: "@latimer-woods-tech/stripe"
     status: "Active"
     version: "1.0.0"
     main_use: "Stripe API, subscriptions, webhooks, payouts"
     videoking_used: true
     depends_on: ["errors", "logger", "neon"]
     
-  - name: "@adrper79-dot/llm"
+  - name: "@latimer-woods-tech/llm"
     status: "Active"
     version: "1.0.0"
     main_use: "Multi-provider LLM chain (Anthropic → Grok → Groq)"
     videoking_used: true
     depends_on: ["errors", "logger"]
     
-  - name: "@adrper79-dot/telephony"
+  - name: "@latimer-woods-tech/telephony"
     status: "Active"
     version: "1.0.0"
     main_use: "Telnyx, Deepgram STT, ElevenLabs TTS"
     videoking_used: true
     depends_on: ["errors", "logger", "llm"]
     
-  - name: "@adrper79-dot/analytics"
+  - name: "@latimer-woods-tech/analytics"
     status: "Active"
     version: "1.0.0"
     main_use: "PostHog + factory_events instrumentation"
     videoking_used: true
     depends_on: ["errors", "neon"]
     
-  - name: "@adrper79-dot/video"
+  - name: "@latimer-woods-tech/video"
     status: "Active"
     version: "1.0.0"
     main_use: "Cloudflare Stream + R2 wrappers"
     videoking_used: true
     depends_on: ["errors"]
     
-  - name: "@adrper79-dot/schedule"
+  - name: "@latimer-woods-tech/schedule"
     status: "Active"
     version: "1.0.0"
     main_use: "Video production calendar + priority scoring"
     videoking_used: true
     depends_on: ["errors", "neon", "video"]
     
-  - name: "@adrper79-dot/deploy"
+  - name: "@latimer-woods-tech/deploy"
     status: "Foundation"
     version: "1.0.0"
     main_use: "Deployment scripts (no runtime deps)"
     videoking_used: false
     depends_on: []
     
-  - name: "@adrper79-dot/testing"
+  - name: "@latimer-woods-tech/testing"
     status: "Foundation"
     version: "1.0.0"
     main_use: "Mock factories, vitest config"
     videoking_used: true
     depends_on: []
     
-  - name: "@adrper79-dot/email"
+  - name: "@latimer-woods-tech/email"
     status: "Staging"
     version: "0.1.0"
     main_use: "Resend email delivery"
     videoking_used: false
     depends_on: ["errors", "logger"]
     
-  - name: "@adrper79-dot/compliance"
+  - name: "@latimer-woods-tech/compliance"
     status: "Staging"
     version: "0.1.0"
     main_use: "GDPR, HIPAA, audit logging"
     videoking_used: false
     depends_on: ["neon"]
     
-  - name: "@adrper79-dot/admin"
+  - name: "@latimer-woods-tech/admin"
     status: "Staging"
     version: "0.1.0"
     main_use: "Admin dashboard capabilities"
     videoking_used: false
     depends_on: ["auth", "analytics"]
     
-  - name: "@adrper79-dot/crm"
+  - name: "@latimer-woods-tech/crm"
     status: "Staging"
     version: "0.1.0"
     main_use: "Customer relationship data layer"
     videoking_used: false
     depends_on: ["neon", "analytics"]
     
-  - name: "@adrper79-dot/content"
+  - name: "@latimer-woods-tech/content"
     status: "Staging"
     version: "0.1.0"
     main_use: "Content management + LLM copy"
     videoking_used: false
     depends_on: ["neon", "copy"]
     
-  - name: "@adrper79-dot/copy"
+  - name: "@latimer-woods-tech/copy"
     status: "Staging"
     version: "0.1.0"
     main_use: "LLM-based copy generation"
     videoking_used: false
     depends_on: ["llm"]
     
-  - name: "@adrper79-dot/seo"
+  - name: "@latimer-woods-tech/seo"
     status: "Foundation"
     version: "1.0.0"
     main_use: "SEO utilities (schema, sitemap)"
     videoking_used: false
     depends_on: []
     
-  - name: "@adrper79-dot/social"
+  - name: "@latimer-woods-tech/social"
     status: "Staging"
     version: "0.1.0"
     main_use: "Social media integration"
     videoking_used: false
     depends_on: ["content"]
     
-  - name: "@adrper79-dot/studio-core"
+  - name: "@latimer-woods-tech/studio-core"
     status: "Foundation"
     version: "0.1.0"
     main_use: "Studio/builder core (shared UI)"

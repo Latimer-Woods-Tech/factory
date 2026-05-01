@@ -6,7 +6,7 @@
  * Tier 4: adds a 30-second cooldown timer to OK.
  */
 import { useEffect, useMemo, useState } from 'react';
-import type { ConfirmationTier, ReversibilityTier } from '@adrper79-dot/studio-core';
+import type { ConfirmationTier, ReversibilityTier } from '@latimer-woods-tech/studio-core';
 
 const REVERSIBILITY_LABEL: Record<ReversibilityTier, { icon: string; text: string; tone: string }> = {
   trivial:           { icon: '🟢', text: 'Trivial / undo-able',         tone: 'text-emerald-400' },

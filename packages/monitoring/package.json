@@ -1,5 +1,5 @@
 {
-  "name": "@adrper79-dot/monitoring",
+  "name": "@latimer-woods-tech/monitoring",
   "version": "0.2.1",
   "private": false,
   "publishConfig": { "registry": "https://npm.pkg.github.com" },
@@ -21,7 +21,7 @@
     "prepublish": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
-    "@adrper79-dot/errors": "file:../errors",
+    "@latimer-woods-tech/errors": "file:../errors",
     "@sentry/cloudflare": "^10.50.0",
     "hono": "^4.12.14"
   },

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Environment, Role } from '@adrper79-dot/studio-core';
+import type { Environment, Role } from '@latimer-woods-tech/studio-core';
 
 interface SessionState {
   token: string | null;

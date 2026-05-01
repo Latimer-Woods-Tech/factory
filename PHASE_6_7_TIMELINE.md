@@ -21,7 +21,7 @@
 | 2 | Provision 7 Neon databases | 30 min | Via Neon console or `neonctl` |
 | 3 | Apply factory_core DDL | 15 min | `psql $NEON_CONN_STR_FACTORY_CORE < docs/sql/factory_core_schema.sql` |
 | 4 | Create 7 Hyperdrive instances | 30 min | `wrangler hyperdrive create ...` (7x) |
-| 5 | Create 6 GitHub repositories | 10 min | `gh repo create adrper79-dot/{app} ...` (6x) |
+| 5 | Create 6 GitHub repositories | 10 min | `gh repo create Latimer-Woods-Tech/{app} ...` (6x) |
 | 6 | Create 6 Sentry projects | 20 min | Via Sentry dashboard |
 | 7 | Create 6 PostHog projects | 20 min | Via PostHog dashboard |
 | 8 | Wire all secrets | 15 min | `node packages/deploy/scripts/setup-all-apps.mjs` |
@@ -85,7 +85,7 @@ Each agent follows this workflow in parallel (approx 8–12 hours per app):
 
 ```bash
 # All agents start from Factory Core monorepo
-git clone https://github.com/adrper79-dot/Factory.git factory-core
+git clone https://github.com/Latimer-Woods-Tech/Factory.git factory-core
 cd factory-core
 
 # Export credentials (same for all agents)
@@ -150,7 +150,7 @@ gh run watch
 ```
 
 **CI does automatically:**
-- npm ci (pulls all @adrper79-dot/* packages)
+- npm ci (pulls all @latimer-woods-tech/* packages)
 - npm run typecheck
 - npm run lint
 - npm run test
@@ -275,7 +275,7 @@ If Phase 7 scaffolding fails on a single app:
 
 ### For App Agents (Phase 7):
 
-1. Clone Factory Core: `git clone https://github.com/adrper79-dot/Factory.git`
+1. Clone Factory Core: `git clone https://github.com/Latimer-Woods-Tech/Factory.git`
 2. Wait for Phase 6 to complete (all infrastructure provisioning done)
 3. Read this timeline
 4. Start app scaffolding: `npm run phase-7:scaffold -- {app-name} --hyperdrive-id {id} --rate-limiter-id {id}`

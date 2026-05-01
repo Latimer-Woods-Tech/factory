@@ -24,34 +24,34 @@ All 28 initiatives are properly integrated with zero scope gaps, redundant logic
 
 | Package | Scope | Status | App-Specific Logic? | T4.1 Aligned? |
 |---------|-------|--------|-------------------|---------------|
-| @adrper79-dot/errors | Error types + handling | Foundation | ❌ No (pure utility) | ✅ Yes |
-| @adrper79-dot/monitoring | Sentry integration + APM | Foundation | ❌ No (instrumentation only) | ✅ Yes |
-| @adrper79-dot/logger | JSON structured logging | Foundation | ❌ No (pure utility) | ✅ Yes |
-| @adrper79-dot/auth | JWT, RBAC, middleware | Active | ❌ No (auth patterns only) | ✅ Yes |
-| @adrper79-dot/neon | Drizzle ORM + Hyperdrive | Active | ❌ No (data access layer) | ✅ Yes |
-| @adrper79-dot/stripe | Stripe API wrapper + webhooks | Active | ❌ No (payment patterns) | ✅ Yes |
-| @adrper79-dot/llm | Multi-provider LLM chain | Active | ❌ No (LLM routing only) | ✅ Yes |
-| @adrper79-dot/telephony | Telnyx + Deepgram + ElevenLabs | Active | ❌ No (VoIP patterns) | ✅ Yes |
-| @adrper79-dot/analytics | PostHog + factory_events | Active | ❌ No (event schema + instrumentation) | ✅ Yes |
-| @adrper79-dot/video | Cloudflare Stream + R2 | Active | ❌ No (video hosting wrapper) | ✅ Yes |
-| @adrper79-dot/schedule | Video production calendar | Active | ❌ No (job scheduling framework) | ✅ Yes |
-| @adrper79-dot/deploy | Deploy scripts | Foundation | ❌ No (CI/CD patterns) | ✅ Yes |
-| @adrper79-dot/testing | Mock factories + vitest | Foundation | ❌ No (test utilities) | ✅ Yes |
-| @adrper79-dot/email | Resend email delivery | Staging | ❌ No (email transport) | ✅ Yes |
-| @adrper79-dot/compliance | GDPR + audit logging | Staging | ⚠️ Domain-specific, not app-specific | ✅ Yes |
-| @adrper79-dot/admin | Admin dashboard | Staging | ⚠️ Framework, not videoking-specific | ✅ Yes |
-| @adrper79-dot/crm | Customer data layer | Staging | ⚠️ Framework, not videoking-specific | ✅ Yes |
-| @adrper79-dot/content | Content management | Staging | ⚠️ Framework, not videoking-specific | ✅ Yes |
-| @adrper79-dot/copy | LLM copy generation | Staging | ❌ No (copy patterns) | ✅ Yes |
-| @adrper79-dot/seo | SEO utilities | Staging | ❌ No (SEO patterns) | ✅ Yes |
-| @adrper79-dot/social | Social posting | Staging | ❌ No (social API patterns) | ✅ Yes |
+| @latimer-woods-tech/errors | Error types + handling | Foundation | ❌ No (pure utility) | ✅ Yes |
+| @latimer-woods-tech/monitoring | Sentry integration + APM | Foundation | ❌ No (instrumentation only) | ✅ Yes |
+| @latimer-woods-tech/logger | JSON structured logging | Foundation | ❌ No (pure utility) | ✅ Yes |
+| @latimer-woods-tech/auth | JWT, RBAC, middleware | Active | ❌ No (auth patterns only) | ✅ Yes |
+| @latimer-woods-tech/neon | Drizzle ORM + Hyperdrive | Active | ❌ No (data access layer) | ✅ Yes |
+| @latimer-woods-tech/stripe | Stripe API wrapper + webhooks | Active | ❌ No (payment patterns) | ✅ Yes |
+| @latimer-woods-tech/llm | Multi-provider LLM chain | Active | ❌ No (LLM routing only) | ✅ Yes |
+| @latimer-woods-tech/telephony | Telnyx + Deepgram + ElevenLabs | Active | ❌ No (VoIP patterns) | ✅ Yes |
+| @latimer-woods-tech/analytics | PostHog + factory_events | Active | ❌ No (event schema + instrumentation) | ✅ Yes |
+| @latimer-woods-tech/video | Cloudflare Stream + R2 | Active | ❌ No (video hosting wrapper) | ✅ Yes |
+| @latimer-woods-tech/schedule | Video production calendar | Active | ❌ No (job scheduling framework) | ✅ Yes |
+| @latimer-woods-tech/deploy | Deploy scripts | Foundation | ❌ No (CI/CD patterns) | ✅ Yes |
+| @latimer-woods-tech/testing | Mock factories + vitest | Foundation | ❌ No (test utilities) | ✅ Yes |
+| @latimer-woods-tech/email | Resend email delivery | Staging | ❌ No (email transport) | ✅ Yes |
+| @latimer-woods-tech/compliance | GDPR + audit logging | Staging | ⚠️ Domain-specific, not app-specific | ✅ Yes |
+| @latimer-woods-tech/admin | Admin dashboard | Staging | ⚠️ Framework, not videoking-specific | ✅ Yes |
+| @latimer-woods-tech/crm | Customer data layer | Staging | ⚠️ Framework, not videoking-specific | ✅ Yes |
+| @latimer-woods-tech/content | Content management | Staging | ⚠️ Framework, not videoking-specific | ✅ Yes |
+| @latimer-woods-tech/copy | LLM copy generation | Staging | ❌ No (copy patterns) | ✅ Yes |
+| @latimer-woods-tech/seo | SEO utilities | Staging | ❌ No (SEO patterns) | ✅ Yes |
+| @latimer-woods-tech/social | Social posting | Staging | ❌ No (social API patterns) | ✅ Yes |
 | (Future packages) | (TBD in Phase E) | Future | — | — |
 
 **Duplicate Logic Check:**
-- ✅ No payment logic in @adrper79-dot/stripe AND in core app (Stripe package owns all patterns)
-- ✅ No auth logic in @adrper79-dot/auth AND in core app (auth package owns patterns; app configures policies)
-- ✅ No observability logic in @adrper79-dot/monitoring AND in core app (monitoring owns setup; app registers contexts)
-- ✅ No analytics schema definition in @adrper79-dot/analytics AND in app docs (shared schema in package; app maps events)
+- ✅ No payment logic in @latimer-woods-tech/stripe AND in core app (Stripe package owns all patterns)
+- ✅ No auth logic in @latimer-woods-tech/auth AND in core app (auth package owns patterns; app configures policies)
+- ✅ No observability logic in @latimer-woods-tech/monitoring AND in core app (monitoring owns setup; app registers contexts)
+- ✅ No analytics schema definition in @latimer-woods-tech/analytics AND in app docs (shared schema in package; app maps events)
 
 **Result:** ✅ **PASS** — No package logic duplication. Clear Factory vs app boundaries maintained.
 

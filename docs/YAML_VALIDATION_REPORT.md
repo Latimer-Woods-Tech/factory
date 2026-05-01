@@ -86,7 +86,7 @@ Structure: Workers, Pages, Package inventory
 Key elements:
   - workers array (prime-self, etc.)
   - pages array (prime-self-ui, etc.)
-  - packages array (22 @adrper79-dot/* entries)
+  - packages array (22 @latimer-woods-tech/* entries)
 Errors: 0
 Warnings: 1 (minor: trailing whitespace on line 187)
   → Does not affect parsing; cosmetic only

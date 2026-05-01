@@ -21,14 +21,14 @@
  *     (INSERT … ON CONFLICT DO UPDATE / upsert semantics in refreshEntitlements).
  */
 import { Hono } from 'hono';
-import { createDb } from '@adrper79-dot/neon';
+import { createDb } from '@latimer-woods-tech/neon';
 import {
   verifyStripeSignature,
   handleSubscriptionCreated,
   handleSubscriptionUpdated,
   handleSubscriptionDeleted,
-} from '@adrper79-dot/neon';
-import type { StripeEvent } from '@adrper79-dot/neon';
+} from '@latimer-woods-tech/neon';
+import type { StripeEvent } from '@latimer-woods-tech/neon';
 import type { AppEnv } from '../types.js';
 
 const studioSubscriptions = new Hono<AppEnv>();

@@ -28,11 +28,11 @@ Update this table every time a new app is added.
 Before starting:
 
 - [ ] Neon project created for this app
-- [ ] Connection string stored as a GitHub Secret in `adrper79-dot/Factory`: `{APP_UPPER}_CONNECTION_STRING`
+- [ ] Connection string stored as a GitHub Secret in `Latimer-Woods-Tech/factory`: `{APP_UPPER}_CONNECTION_STRING`
   - Example: app `xico-city` → secret `MEXXICO_CITY_CONNECTION_STRING`
 - [ ] `CF_API_TOKEN` set in Factory GitHub Secrets
 - [ ] `GH_PAT` (classic PAT with `repo` + `read:packages`) set in Factory GitHub Secrets
-- [ ] GitHub repo created: `gh repo create adrper79-dot/{app} --private`
+- [ ] GitHub repo created: `gh repo create Latimer-Woods-Tech/{app} --private`
 
 ---
 
@@ -54,10 +54,10 @@ Add a schema entry to the `SCHEMAS` object with the app's canonical Drizzle ORM 
 
 ### 1c. `add-app-deps.mjs`
 
-Add an entry specifying which `@adrper79-dot/*` packages the app uses beyond the defaults:
+Add an entry specifying which `@latimer-woods-tech/*` packages the app uses beyond the defaults:
 
 ```js
-'{app}': ['@adrper79-dot/stripe'],  // only extras needed
+'{app}': ['@latimer-woods-tech/stripe'],  // only extras needed
 ```
 
 ---
@@ -117,7 +117,7 @@ git -c credential.helper="" -c "http.extraheader=Authorization: Basic $encoded" 
 
 Then trigger the Hyperdrive creation workflow:
 ```bash
-gh workflow run create-hyperdrive.yml --repo adrper79-dot/factory
+gh workflow run create-hyperdrive.yml --repo Latimer-Woods-Tech/factory
 ```
 
 ---
@@ -127,8 +127,8 @@ gh workflow run create-hyperdrive.yml --repo adrper79-dot/factory
 The "Store" step will fail with 403 (expected — see [lessons-learned.md](./lessons-learned.md#error-create-hyperdrive-workflow-store-step-fails-with-403)). Get the UUID from the successful "Create" step:
 
 ```bash
-RUN_ID=$(gh run list --repo adrper79-dot/factory --workflow create-hyperdrive.yml --limit 1 --json databaseId --jq '.[0].databaseId')
-gh run view $RUN_ID --repo adrper79-dot/factory --log | grep "{app}-db ->"
+RUN_ID=$(gh run list --repo Latimer-Woods-Tech/factory --workflow create-hyperdrive.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run view $RUN_ID --repo Latimer-Woods-Tech/factory --log | grep "{app}-db ->"
 # Output: [created] {app}-db -> <UUID>
 ```
 
@@ -136,7 +136,7 @@ Then:
 1. Hard-code the UUID in `scaffold-{app}.yml`
 2. Store it as a Factory secret:
    ```bash
-   echo "<UUID>" | gh secret set HYPERDRIVE_{APP_UPPER} --repo adrper79-dot/factory
+   echo "<UUID>" | gh secret set HYPERDRIVE_{APP_UPPER} --repo Latimer-Woods-Tech/factory
    ```
 3. Commit and push the updated scaffold workflow
 
@@ -144,7 +144,7 @@ Then:
 
 ## Step 6 — Add Required Secrets to Factory
 
-Before running the scaffold and secrets workflows, ensure these exist in `adrper79-dot/Factory` GitHub Secrets:
+Before running the scaffold and secrets workflows, ensure these exist in `Latimer-Woods-Tech/factory` GitHub Secrets:
 
 | Secret | Description |
 |--------|-------------|
@@ -153,7 +153,7 @@ Before running the scaffold and secrets workflows, ensure these exist in `adrper
 
 Generate JWT secret:
 ```bash
-openssl rand -base64 32 | gh secret set JWT_SECRET_{APP_UPPER} --repo adrper79-dot/factory
+openssl rand -base64 32 | gh secret set JWT_SECRET_{APP_UPPER} --repo Latimer-Woods-Tech/factory
 ```
 
 ---
@@ -162,17 +162,17 @@ openssl rand -base64 32 | gh secret set JWT_SECRET_{APP_UPPER} --repo adrper79-d
 
 ```bash
 # 1. Scaffold the app repo
-gh workflow run scaffold-{app}.yml --repo adrper79-dot/factory
+gh workflow run scaffold-{app}.yml --repo Latimer-Woods-Tech/factory
 
 # Wait for completion
-gh run watch $(gh run list --repo adrper79-dot/factory --workflow scaffold-{app}.yml --limit 1 --json databaseId --jq '.[0].databaseId') --repo adrper79-dot/factory --exit-status
+gh run watch $(gh run list --repo Latimer-Woods-Tech/factory --workflow scaffold-{app}.yml --limit 1 --json databaseId --jq '.[0].databaseId') --repo Latimer-Woods-Tech/factory --exit-status
 
 # 2. Verify scaffold succeeded
-gh api repos/adrper79-dot/{app}/contents/src/index.ts --jq '.name'
+gh api repos/Latimer-Woods-Tech/{app}/contents/src/index.ts --jq '.name'
 # Expected: "index.ts"
 
 # 3. Wire secrets to the app repo and Worker
-gh workflow run setup-{app}-secrets.yml --repo adrper79-dot/factory
+gh workflow run setup-{app}-secrets.yml --repo Latimer-Woods-Tech/factory
 ```
 
 ---
@@ -187,7 +187,7 @@ Add the new app and its rate limiter ID to the registry table at the top of this
 
 - [ ] Rate limiter ID reserved (next available: 1009+)
 - [ ] Neon connection string in Factory Secrets as `{APP_UPPER}_CONNECTION_STRING`
-- [ ] GitHub repo created: `adrper79-dot/{app}`
+- [ ] GitHub repo created: `Latimer-Woods-Tech/{app}`
 - [ ] `create-hyperdrive.mjs` updated
 - [ ] `write-schema.mjs` updated with canonical Drizzle schema
 - [ ] `add-app-deps.mjs` updated with app-specific package deps

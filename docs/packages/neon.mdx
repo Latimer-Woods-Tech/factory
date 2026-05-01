@@ -1,16 +1,16 @@
 ---
-title: "@adrper79-dot/neon"
+title: "@latimer-woods-tech/neon"
 description: Neon Postgres client via Cloudflare Hyperdrive with connection retry.
 ---
 
-# @adrper79-dot/neon
+# @latimer-woods-tech/neon
 
-Thin wrapper around `@neondatabase/serverless` scoped to Cloudflare's Hyperdrive binding. Depends on `@adrper79-dot/errors` and `@adrper79-dot/logger`.
+Thin wrapper around `@neondatabase/serverless` scoped to Cloudflare's Hyperdrive binding. Depends on `@latimer-woods-tech/errors` and `@latimer-woods-tech/logger`.
 
 ## Installation
 
 ```bash
-npm install @adrper79-dot/neon
+npm install @latimer-woods-tech/neon
 ```
 
 ## Bindings required
@@ -63,7 +63,7 @@ class DbError extends FactoryError {
 ## Example
 
 ```typescript
-import { createDb, withDbRetry } from '@adrper79-dot/neon';
+import { createDb, withDbRetry } from '@latimer-woods-tech/neon';
 
 const db = createDb(env.DB);
 

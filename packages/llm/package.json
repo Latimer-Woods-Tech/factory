@@ -1,5 +1,5 @@
 {
-  "name": "@adrper79-dot/llm",
+  "name": "@latimer-woods-tech/llm",
   "version": "0.2.0",
   "private": false,
   "publishConfig": {
@@ -27,11 +27,11 @@
     "prepublish": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
-    "@adrper79-dot/errors": "file:../errors",
-    "@adrper79-dot/logger": "file:../logger"
+    "@latimer-woods-tech/errors": "file:../errors",
+    "@latimer-woods-tech/logger": "file:../logger"
   },
   "devDependencies": {
-    "@adrper79-dot/monitoring": "file:../monitoring",
+    "@latimer-woods-tech/monitoring": "file:../monitoring",
     "@types/node": "^25.6.0",
     "typescript": "^5.4.0",
     "tsup": "^8.1.0",

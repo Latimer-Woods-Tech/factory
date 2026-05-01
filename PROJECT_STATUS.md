@@ -27,25 +27,25 @@ The system is ready for:
 
 | Package | Purpose | Status |
 |---------|---------|--------|
-| `@adrper79-dot/errors` | Standardized error hierarchy | ✅ Published |
-| `@adrper79-dot/monitoring` | Sentry integration + error reporting | ✅ Published |
-| `@adrper79-dot/logger` | Structured logging for Workers | ✅ Published |
-| `@adrper79-dot/auth` | JWT identity + RBAC | ✅ Published |
-| `@adrper79-dot/neon` | Neon Postgres client + query builder | ✅ Published |
-| `@adrper79-dot/stripe` | Stripe subscription lifecycle | ✅ Published |
-| `@adrper79-dot/llm` | LLM chain (Claude → fallbacks) | ✅ Published |
-| `@adrper79-dot/telephony` | Voice + SMS (Telnyx, Deepgram, ElevenLabs) | ✅ Published |
-| `@adrper79-dot/analytics` | PostHog events + first-party `factory_events` | ✅ Published |
-| `@adrper79-dot/deploy` | Deployment scripts + CI/CD templates | ✅ Published |
-| `@adrper79-dot/testing` | Vitest + mock factories | ✅ Published |
-| `@adrper79-dot/email` | Resend email automation | ✅ Published |
-| `@adrper79-dot/copy` | LLM-powered copy generation | ✅ Published |
-| `@adrper79-dot/content` | CMS entities + templates | ✅ Published |
-| `@adrper79-dot/social` | Social media scheduling + cross-post | ✅ Published |
-| `@adrper79-dot/seo` | SEO metadata + structured data | ✅ Published |
-| `@adrper79-dot/crm` | Lead tracking + MRR analytics | ✅ Published |
-| `@adrper79-dot/compliance` | TCPA + FDCPA enforcement + consent logs | ✅ Published |
-| `@adrper79-dot/admin` | Admin dashboard + user management | ✅ Published |
+| `@latimer-woods-tech/errors` | Standardized error hierarchy | ✅ Published |
+| `@latimer-woods-tech/monitoring` | Sentry integration + error reporting | ✅ Published |
+| `@latimer-woods-tech/logger` | Structured logging for Workers | ✅ Published |
+| `@latimer-woods-tech/auth` | JWT identity + RBAC | ✅ Published |
+| `@latimer-woods-tech/neon` | Neon Postgres client + query builder | ✅ Published |
+| `@latimer-woods-tech/stripe` | Stripe subscription lifecycle | ✅ Published |
+| `@latimer-woods-tech/llm` | LLM chain (Claude → fallbacks) | ✅ Published |
+| `@latimer-woods-tech/telephony` | Voice + SMS (Telnyx, Deepgram, ElevenLabs) | ✅ Published |
+| `@latimer-woods-tech/analytics` | PostHog events + first-party `factory_events` | ✅ Published |
+| `@latimer-woods-tech/deploy` | Deployment scripts + CI/CD templates | ✅ Published |
+| `@latimer-woods-tech/testing` | Vitest + mock factories | ✅ Published |
+| `@latimer-woods-tech/email` | Resend email automation | ✅ Published |
+| `@latimer-woods-tech/copy` | LLM-powered copy generation | ✅ Published |
+| `@latimer-woods-tech/content` | CMS entities + templates | ✅ Published |
+| `@latimer-woods-tech/social` | Social media scheduling + cross-post | ✅ Published |
+| `@latimer-woods-tech/seo` | SEO metadata + structured data | ✅ Published |
+| `@latimer-woods-tech/crm` | Lead tracking + MRR analytics | ✅ Published |
+| `@latimer-woods-tech/compliance` | TCPA + FDCPA enforcement + consent logs | ✅ Published |
+| `@latimer-woods-tech/admin` | Admin dashboard + user management | ✅ Published |
 
 All packages meet production standards:
 - **TypeScript:** Strict mode, zero `any` in public APIs
@@ -58,12 +58,12 @@ All packages meet production standards:
 
 | App | Repo | Status |
 |-----|------|--------|
-| wordis-bond | `github.com/adrper79-dot/wordis-bond` | ✅ Created |
-| cypher-healing | `github.com/adrper79-dot/cypher-healing` | ✅ Created |
-| prime-self | `github.com/adrper79-dot/prime-self` | ✅ Created |
-| ijustus | `github.com/adrper79-dot/ijustus` | ✅ Created |
-| the-calling | `github.com/adrper79-dot/the-calling` | ✅ Created |
-| neighbor-aid | `github.com/adrper79-dot/neighbor-aid` | ✅ Created |
+| wordis-bond | `github.com/Latimer-Woods-Tech/wordis-bond` | ✅ Created |
+| cypher-healing | `github.com/Latimer-Woods-Tech/cypher-healing` | ✅ Created |
+| prime-self | `github.com/Latimer-Woods-Tech/prime-self` | ✅ Created |
+| ijustus | `github.com/Latimer-Woods-Tech/ijustus` | ✅ Created |
+| the-calling | `github.com/Latimer-Woods-Tech/the-calling` | ✅ Created |
+| neighbor-aid | `github.com/Latimer-Woods-Tech/neighbor-aid` | ✅ Created |
 
 All repos include:
 - Pre-scaffolded directory structure
@@ -185,7 +185,7 @@ Once Phase 6 complete:
 
 ```bash
 # Clone an app repo
-git clone https://github.com/adrper79-dot/wordis-bond
+git clone https://github.com/Latimer-Woods-Tech/wordis-bond
 
 # Install dependencies
 npm ci
@@ -246,7 +246,7 @@ Create app-specific READMEs:
 → Run `node scripts/phase-7-validate.js` to get detailed error messages
 
 **Package import errors in app?**
-→ Verify `package.json` includes `@adrper79-dot/*` at `v0.2.0`, run `npm ci` to refresh lock file
+→ Verify `package.json` includes `@latimer-woods-tech/*` at `v0.2.0`, run `npm ci` to refresh lock file
 
 **Hyperdrive connection failing?**
 → Check `wrangler.jsonc` has correct binding ID, verify Neon connection string is in GitHub Actions secrets

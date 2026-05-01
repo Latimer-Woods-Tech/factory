@@ -1,16 +1,16 @@
 ---
-title: "@adrper79-dot/analytics"
+title: "@latimer-woods-tech/analytics"
 description: PostHog event tracking plus a first-party factory_events database table.
 ---
 
-# @adrper79-dot/analytics
+# @latimer-woods-tech/analytics
 
-Dual-track analytics: PostHog for product analytics and a first-party `factory_events` table for business intelligence. Depends on `@adrper79-dot/errors` and `@adrper79-dot/neon`.
+Dual-track analytics: PostHog for product analytics and a first-party `factory_events` table for business intelligence. Depends on `@latimer-woods-tech/errors` and `@latimer-woods-tech/neon`.
 
 ## Installation
 
 ```bash
-npm install @adrper79-dot/analytics
+npm install @latimer-woods-tech/analytics
 ```
 
 ## Secrets required
@@ -24,7 +24,7 @@ wrangler secret put POSTHOG_API_KEY
 Run the DDL constant to create the table:
 
 ```typescript
-import { CREATE_FACTORY_EVENTS_TABLE } from '@adrper79-dot/analytics';
+import { CREATE_FACTORY_EVENTS_TABLE } from '@latimer-woods-tech/analytics';
 await db.execute(CREATE_FACTORY_EVENTS_TABLE);
 ```
 
@@ -90,7 +90,7 @@ function getEvents(
 ## Example
 
 ```typescript
-import { track } from '@adrper79-dot/analytics';
+import { track } from '@latimer-woods-tech/analytics';
 
 await track({
   db: createDb(env.DB),

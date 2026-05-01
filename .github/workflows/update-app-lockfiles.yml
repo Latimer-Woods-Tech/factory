@@ -25,11 +25,11 @@ jobs:
         with:
           app-id: ${{ secrets.FACTORY_APP_ID }}
           private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
-          owner: adrper79-dot
+          owner: Latimer-Woods-Tech
       - name: Checkout ${{ matrix.repo }}
         uses: actions/checkout@v4
         with:
-          repository: adrper79-dot/${{ matrix.repo }}
+          repository: Latimer-Woods-Tech/${{ matrix.repo }}
           token: ${{ steps.app-token.outputs.token }}
           ref: main
 
@@ -40,7 +40,7 @@ jobs:
           scope: '@adrper79-dot'
 
       - name: Update neon to latest
-        run: npm install @adrper79-dot/neon@0.2.1
+        run: npm install @latimer-woods-tech/neon@0.2.1
         env:
           NODE_AUTH_TOKEN: ${{ steps.app-token.outputs.token }}
 

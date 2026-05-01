@@ -6,7 +6,7 @@
  */
 
 import React, { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
-import { colors, spacing, typography, motion, focus, radii } from '@adrper79-dot/design-tokens';
+import { colors, spacing, typography, motion, focus, radii } from '@latimer-woods-tech/design-tokens';
 
 /**
  * Button variants — semantic meaning

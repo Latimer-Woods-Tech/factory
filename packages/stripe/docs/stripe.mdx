@@ -1,16 +1,16 @@
 ---
-title: "@adrper79-dot/stripe"
+title: "@latimer-woods-tech/stripe"
 description: Stripe webhook handling and subscription lifecycle management.
 ---
 
-# @adrper79-dot/stripe
+# @latimer-woods-tech/stripe
 
-Stripe webhook verification and subscription event routing for Cloudflare Workers. Depends on `@adrper79-dot/errors` and `@adrper79-dot/logger`.
+Stripe webhook verification and subscription event routing for Cloudflare Workers. Depends on `@latimer-woods-tech/errors` and `@latimer-woods-tech/logger`.
 
 ## Installation
 
 ```bash
-npm install @adrper79-dot/stripe
+npm install @latimer-woods-tech/stripe
 ```
 
 ## Secrets required
@@ -79,7 +79,7 @@ function createPortalSession(opts: {
 ## Webhook example
 
 ```typescript
-import { verifyWebhook, handleSubscriptionEvent } from '@adrper79-dot/stripe';
+import { verifyWebhook, handleSubscriptionEvent } from '@latimer-woods-tech/stripe';
 
 app.post('/webhook/stripe', async (c) => {
   const event = await verifyWebhook(c.req.raw, c.env.STRIPE_WEBHOOK_SECRET);

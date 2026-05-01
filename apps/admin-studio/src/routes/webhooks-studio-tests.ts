@@ -6,7 +6,7 @@
  * `X-Studio-Signature` HMAC of the raw body.
  */
 import { Hono } from 'hono';
-import type { TestWebhookPayload } from '@adrper79-dot/studio-core';
+import type { TestWebhookPayload } from '@latimer-woods-tech/studio-core';
 import type { AppEnv } from '../types.js';
 import { verifyHmac } from '../lib/hmac.js';
 import {

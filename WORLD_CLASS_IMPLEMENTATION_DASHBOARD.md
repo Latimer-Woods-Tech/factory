@@ -131,7 +131,7 @@ Ship customer-facing and operator-facing surfaces that are:
 
 | Outcome | Required proof |
 |---|---|
-| Shared primitives exist and are used | `@adrper79-dot/design-tokens` and `@adrper79-dot/ui` own tokens + core primitives; apps consume instead of hardcoding repeated styles |
+| Shared primitives exist and are used | `@latimer-woods-tech/design-tokens` and `@latimer-woods-tech/ui` own tokens + core primitives; apps consume instead of hardcoding repeated styles |
 | Critical journeys are explicitly designed | Every app has journey maps with acceptance criteria for anonymous, authenticated, paid, and operator flows |
 | Accessibility is enforced in CI and manually verified | axe, keyboard-path review, screen-reader spot checks, and breakpoint checks are attached to PR evidence |
 | Performance is treated as a release gate | Lighthouse/Core Web Vitals budgets are defined per surface and regressions block merge or release |
@@ -297,14 +297,14 @@ This section is the single place to answer: what exists, what is done, what is u
 
 | Asset | Repo / path | Type | Current role | Status |
 |---|---|---|---|---|
-| Factory Core | `adrper79-dot/factory` | Monorepo | Shared packages, Workers, docs, Admin Studio | Active control repo |
-| wordis-bond | `adrper79-dot/wordis-bond` | App repo | App scaffold target | Created; Phase 7 waits on Phase 6 gates |
-| cypher-healing | `adrper79-dot/cypher-healing` | App repo | App scaffold target | Created; Phase 7 waits on Phase 6 gates |
-| prime-self | `adrper79-dot/prime-self` | App repo / Worker | Reference app and SelfPrime runtime | Created; live Worker referenced in service registry |
-| prime-self-ui | `adrper79-dot/prime-self-ui` | Pages app | SelfPrime landing/front-end consumer | Registry consumer of `prime-self` |
-| ijustus | `adrper79-dot/ijustus` | App repo | App scaffold target | Created; Phase 7 waits on Phase 6 gates |
-| the-calling | `adrper79-dot/the-calling` | App repo | App scaffold target | Created; Phase 7 waits on Phase 6 gates |
-| neighbor-aid | `adrper79-dot/neighbor-aid` | App repo | App scaffold target | Created; Phase 7 waits on Phase 6 gates |
+| Factory Core | `Latimer-Woods-Tech/factory` | Monorepo | Shared packages, Workers, docs, Admin Studio | Active control repo |
+| wordis-bond | `Latimer-Woods-Tech/wordis-bond` | App repo | App scaffold target | Created; Phase 7 waits on Phase 6 gates |
+| cypher-healing | `Latimer-Woods-Tech/cypher-healing` | App repo | App scaffold target | Created; Phase 7 waits on Phase 6 gates |
+| prime-self | `Latimer-Woods-Tech/prime-self` | App repo / Worker | Reference app and SelfPrime runtime | Created; live Worker referenced in service registry |
+| prime-self-ui | `Latimer-Woods-Tech/prime-self-ui` | Pages app | SelfPrime landing/front-end consumer | Registry consumer of `prime-self` |
+| ijustus | `Latimer-Woods-Tech/ijustus` | App repo | App scaffold target | Created; Phase 7 waits on Phase 6 gates |
+| the-calling | `Latimer-Woods-Tech/the-calling` | App repo | App scaffold target | Created; Phase 7 waits on Phase 6 gates |
+| neighbor-aid | `Latimer-Woods-Tech/neighbor-aid` | App repo | App scaffold target | Created; Phase 7 waits on Phase 6 gates |
 | admin-studio | `apps/admin-studio` | Worker | Factory browser control plane API | In progress; environment safety and API surface planned/partially implemented |
 | admin-studio-ui | `apps/admin-studio-ui` | Pages/UI | Factory browser control plane UI | In progress; Functions tab and generated build artifacts present locally |
 | studio-core | `packages/studio-core` | Shared package | Admin Studio types, manifests, smoke probes | In progress; uncommitted local changes exist |
@@ -334,8 +334,8 @@ This section is the single place to answer: what exists, what is done, what is u
 | OWR-011 | Admin Studio command plane for GUI AI commands | Admin Studio specialist | Planned / partially scaffolded | Command schema, dry-run previews, audit logging, and branch-based PR flow implemented |
 | OWR-012 | Function manifest adoption across apps | Platform + app agents | In progress in Studio Core concepts | Each live app exposes crawlable manifest with owner, auth, reversibility, SLO, and smoke probes |
 | OWR-017 | Refresh active agent prompts for current execution model | Coordinator | **DONE** Active prompt index and success contracts added; stale Stage 1 prompts marked historical — April 29, 2026 | Future agents start from `prompts/README.md` and `prompts/AGENT_SUCCESS_CONTRACT.md` |
-| OWR-018 | Restore `@adrper79-dot/llm` runtime dependency classification | Package specialist | **DONE locally** `errors` and `logger` restored to runtime dependencies; llm gates passed during lockfile regeneration — April 29, 2026 | Commit package fix and publish audit when ready |
-| OWR-019 | Backfill `@adrper79-dot/llm` changelog and release evidence | Package specialist | **DONE locally** changelog documents `0.2.0`, provider failover, runtime deps, and verification — April 29, 2026 | Commit with OWR-018 and confirm publish readiness |
+| OWR-018 | Restore `@latimer-woods-tech/llm` runtime dependency classification | Package specialist | **DONE locally** `errors` and `logger` restored to runtime dependencies; llm gates passed during lockfile regeneration — April 29, 2026 | Commit package fix and publish audit when ready |
+| OWR-019 | Backfill `@latimer-woods-tech/llm` changelog and release evidence | Package specialist | **DONE locally** changelog documents `0.2.0`, provider failover, runtime deps, and verification — April 29, 2026 | Commit with OWR-018 and confirm publish readiness |
 | OWR-020 | Add cross-package integration CI | Platform specialist | **DONE** package chain build and cross-package smoke passed locally and in Actions — April 29, 2026 | Run 25124117458 passed for `package-integration.yml`; keep workflow required for package-sensitive PRs |
 | OWR-021 | Harden Admin Studio command-plane blockers | Admin Studio specialist | Required; auth, smoke auth, LLM-backed failure analysis, and UI tabs remain partially scaffolded | Real auth, protected smoke runner, code/AI/functions tab evidence, and audit tests pass |
 | OWR-022 | Document workflow coordination and deployment gates | DevOps specialist | **MATRIX CREATED** `docs/operations/WORKFLOW_COORDINATION_MATRIX.md` documents critical workflows, deploy gates, coordination rules, and immediate workflow backlog; shared deploy-gate implementation still required | Deploy workflows reference common health-gate pattern and dashboard records run IDs/statuses |
@@ -357,8 +357,8 @@ This section is the single place to answer: what exists, what is done, what is u
 |---|---|---|---|---|
 | Live video platform | Schedule migration, R2/Stream path, first successful renders, SelfPrime Stream embed, and synthetic monitor are now proven | Failure replay and operator-facing render exception handling still need a durable workflow | Treat video as `verified` for happy path and keep failure recovery as open work | `render-video.yml` runs `25120264469` and `25122396643`; direct health checks returned `200` for `schedule-worker`, `video-cron`, and `synthetic-monitor` on Apr 29 |
 | Prompting / agent success | Active prompts now exist for agent success contract, OWR coordination, Phase E video/revenue work, and Admin Studio command-plane work | Old Stage 1 prompts remain historical and should not drive current implementation | Require future agents to start from `prompts/README.md` and quote the relevant prompt contract in their plan | `prompts/README.md`, `prompts/AGENT_SUCCESS_CONTRACT.md`, `prompts/OWR_COORDINATOR_PROMPT.md`, `prompts/PHASE_E_VIDEO_REVENUE_PROMPT.md`, `prompts/ADMIN_STUDIO_COMMAND_PLANE_PROMPT.md` |
-| Package dependency safety | `@adrper79-dot/llm` runtime dependency misclassification and changelog gap were corrected; cross-package smoke CI was added and passed | Keep the workflow active for package-sensitive PRs and publishing prep | Use the workflow as the runtime dependency drift gate before package publish-sensitive changes | `packages/llm/package.json`, `packages/llm/CHANGELOG.md`, `.github/workflows/package-integration.yml`, `scripts/package-integration-smoke.mjs`; llm lint/typecheck/test/build passed during `npm install` prepublish on Apr 29; local package chain build + smoke passed; Actions run 25124117458 passed |
-| Smoke and accessibility | Prime Self smoke/a11y gates, synthetic monitor, and real-credential auth e2e (OWR-023) represent a stronger live-quality loop | Coverage is still uneven across apps; app-level analytics event verification is not a release gate | Make smoke/a11y/event proof mandatory for app launch gates | `apps/prime-self-smoke`, `.github/workflows/smoke-prime-self.yml`, `apps/synthetic-monitor`, `adrper79-dot/prime-self-ui` run 25123827532 |
+| Package dependency safety | `@latimer-woods-tech/llm` runtime dependency misclassification and changelog gap were corrected; cross-package smoke CI was added and passed | Keep the workflow active for package-sensitive PRs and publishing prep | Use the workflow as the runtime dependency drift gate before package publish-sensitive changes | `packages/llm/package.json`, `packages/llm/CHANGELOG.md`, `.github/workflows/package-integration.yml`, `scripts/package-integration-smoke.mjs`; llm lint/typecheck/test/build passed during `npm install` prepublish on Apr 29; local package chain build + smoke passed; Actions run 25124117458 passed |
+| Smoke and accessibility | Prime Self smoke/a11y gates, synthetic monitor, and real-credential auth e2e (OWR-023) represent a stronger live-quality loop | Coverage is still uneven across apps; app-level analytics event verification is not a release gate | Make smoke/a11y/event proof mandatory for app launch gates | `apps/prime-self-smoke`, `.github/workflows/smoke-prime-self.yml`, `apps/synthetic-monitor`, `Latimer-Woods-Tech/prime-self-ui` run 25123827532 |
 | Admin Studio | Control-plane requirements are now clearer and prompt-backed | Production command-plane safety remains incomplete: real auth, RBAC, dry-run, audit, smoke auth, UI tabs, and PR/deploy governance | Sequence Admin Studio work through the command-plane prompt; do not allow production mutation until safety model passes tests | `prompts/ADMIN_STUDIO_COMMAND_PLANE_PROMPT.md`, `apps/admin-studio`, `apps/admin-studio-ui`, `packages/studio-core` |
 | Workflow operations | `render-video.yml` already has job-ID concurrency and successful run evidence | Workflow inventory, deployment dependencies, metric freshness, and recovery playbooks are not centralized | Create workflow coordination doc and pre-deploy health gate pattern | `.github/workflows/render-video.yml`, `.github/workflows/`, `scripts/phase-6-orchestrator.mjs` |
 
@@ -366,7 +366,7 @@ This section is the single place to answer: what exists, what is done, what is u
 
 | Priority | Action | Owner mode | Exit criteria |
 |---|---|---|---|
-| P0 | Commit the `@adrper79-dot/llm` runtime dependency and changelog fix | Package specialist | `llm` quality gates pass; changelog has `0.2.0`; package-lock shows runtime deps |
+| P0 | Commit the `@latimer-woods-tech/llm` runtime dependency and changelog fix | Package specialist | `llm` quality gates pass; changelog has `0.2.0`; package-lock shows runtime deps |
 | P0 | Enforce the new active prompt contract for all future agents | Coordinator | Every new task plan cites an active prompt and dashboard/OWR item before edits |
 | P1 | Build cross-package integration CI | Platform specialist | Workflow and smoke script exist; CI catches runtime dependency drift and validates package chain composition |
 | P1 | Create workflow coordination/deploy-gate documentation | DevOps specialist | Workflow trigger/order/recovery matrix exists and deploy workflows reference health gates |
@@ -376,7 +376,7 @@ This section is the single place to answer: what exists, what is done, what is u
 #### Done
 
 - Phase B dashboard initiatives are documented as 28/28 complete.
-- Core package publish chain was repaired; `@adrper79-dot/schedule@0.2.1` and `@adrper79-dot/video@0.2.0` are published.
+- Core package publish chain was repaired; `@latimer-woods-tech/schedule@0.2.1` and `@latimer-woods-tech/video@0.2.0` are published.
 - `schedule-worker` and `video-cron` deploy workflows have successful runs.
 - Direct HTTP health checks for `schedule-worker` and `video-cron` returned `200` on Apr 29.
 - Worker service registry entries exist for `prime-self`, `schedule-worker`, `video-cron`, and the `videoking` reference entry.
@@ -427,7 +427,7 @@ The Admin Studio should eventually manage this process through GUI AI commands, 
 | E0.1 | Reconcile shared video Worker registry | Prevents hidden dependencies and broken rename/deploy flows | Add `schedule-worker` and `video-cron` to the service registry with owners, consumers, endpoints, and secrets | Confirm SelfPrime and admin consumers use registry-approved URLs | Registry entries exist and remain current | ✅ Complete |
 | E0.2 | Verify shared video Worker health | Product rollout must not depend on undeployed or unreachable services | Deploy Workers after Hyperdrive IDs and secrets are configured | Block SelfPrime video UX until shared services return live `200` health checks | Both `/health` URLs return `200` via direct HTTP verification | ✅ Complete: both health checks returned `200` on Apr 29 |
 | E0.3 | Harden schedule pipeline for app tenancy | Private SelfPrime data must not leak into shared services | Add app-scoped auth, sanitized context refs, structured logs, and events | SelfPrime sends minimal generation briefs and owns private chart data | Synthetic job completes or fails with audit trail; no raw private chart payload in shared queue | ✅ Complete: migration ran (6 statements, run 25121132381); render-video run 25120264469 registered job end-to-end with no raw chart payload |
-| E0.4 | Add reusable output validation gates | AI outputs must be measurable before they reach users | Add `@adrper79-dot/validation` for deterministic quality checks, prompt-leak detection, placeholder detection, and unsafe-advice detection | SelfPrime configures required sections, chart facts, and brand voice terms for synthesis outputs | Package gates pass and SelfPrime can consume shared validators in CI/synthetic monitors | ✅ Complete: package added and verified Apr 29 |
+| E0.4 | Add reusable output validation gates | AI outputs must be measurable before they reach users | Add `@latimer-woods-tech/validation` for deterministic quality checks, prompt-leak detection, placeholder detection, and unsafe-advice detection | SelfPrime configures required sections, chart facts, and brand voice terms for synthesis outputs | Package gates pass and SelfPrime can consume shared validators in CI/synthetic monitors | ✅ Complete: package added and verified Apr 29 |
 | E0.5 | Add live synthetic monitor Worker | Production health should be continuously checked, not manually remembered | Add `synthetic-monitor` Worker with cron-based route checks and service registry entry | SelfPrime routes/API health become monitor targets before world-class launch | `/health` and `/checks/run` exist; deploy then verify via direct HTTP | ✅ Complete: deployed and both endpoints returned `200` on Apr 29 |
 
 ### T1 — Product + UX Operating System

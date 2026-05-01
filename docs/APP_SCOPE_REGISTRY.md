@@ -62,14 +62,14 @@
 
 | Package | Version | Status | Owner | Tests | Docs | Used By |
 |---|---|---|---|---|---|---|
-| `@adrper79-dot/errors` | 0.2.0 | ✅ Stable | D09 | ✅ 42 tests | ✅ Yes | All packages |
-| `@adrper79-dot/monitoring` | 0.2.1 | ✅ Stable | D10 | ✅ 32 tests | ✅ Yes | All packages |
-| `@adrper79-dot/logger` | 0.2.0 | ✅ Stable | D10 | ✅ 31 tests | ✅ Yes | All packages |
-| `@adrper79-dot/auth` | 0.2.0 | ✅ Stable | D01 | ✅ 27 tests | ✅ Yes | Workers + apps |
-| `@adrper79-dot/neon` | 0.2.3 | ⚡ IN PROGRESS | D09 | 🟡 W360-005 pending | ✅ Yes | admin-studio, schedule-worker |
-| `@adrper79-dot/ui` | 0.2.0 | ⚡ IN PROGRESS | D03 | ✅ 41 tests | ✅ Yes | admin-studio-ui, video-studio |
-| `@adrper79-dot/design-tokens` | 0.2.0 | ✅ Stable | D03 | ✅ 26 tests | ✅ Yes | `@adrper79-dot/ui` + apps |
-| `@adrper79-dot/analytics` | (TBD) | ⚡ IN PROGRESS | D10 | ✅ 50+ tests | ✅ Yes | W360-021 (event schemas) |
+| `@latimer-woods-tech/errors` | 0.2.0 | ✅ Stable | D09 | ✅ 42 tests | ✅ Yes | All packages |
+| `@latimer-woods-tech/monitoring` | 0.2.1 | ✅ Stable | D10 | ✅ 32 tests | ✅ Yes | All packages |
+| `@latimer-woods-tech/logger` | 0.2.0 | ✅ Stable | D10 | ✅ 31 tests | ✅ Yes | All packages |
+| `@latimer-woods-tech/auth` | 0.2.0 | ✅ Stable | D01 | ✅ 27 tests | ✅ Yes | Workers + apps |
+| `@latimer-woods-tech/neon` | 0.2.3 | ⚡ IN PROGRESS | D09 | 🟡 W360-005 pending | ✅ Yes | admin-studio, schedule-worker |
+| `@latimer-woods-tech/ui` | 0.2.0 | ⚡ IN PROGRESS | D03 | ✅ 41 tests | ✅ Yes | admin-studio-ui, video-studio |
+| `@latimer-woods-tech/design-tokens` | 0.2.0 | ✅ Stable | D03 | ✅ 26 tests | ✅ Yes | `@latimer-woods-tech/ui` + apps |
+| `@latimer-woods-tech/analytics` | (TBD) | ⚡ IN PROGRESS | D10 | ✅ 50+ tests | ✅ Yes | W360-021 (event schemas) |
 
 ---
 

@@ -226,7 +226,7 @@ Title: RFC-012: Payout Status Tracking [ACCEPTED]
 Body:
 RFC accepted on [date]. Ready for implementation.
 
-📄 RFC: https://github.com/adrper79/factory/blob/main/docs/rfc/RFC-012-payout-status-tracking.md
+📄 RFC: https://github.com/Latimer-Woods-Tech/factory/blob/main/docs/rfc/RFC-012-payout-status-tracking.md
 
 **Implementation Tasks:**
 - [ ] Spike: explore payout API rate limits (1 day)

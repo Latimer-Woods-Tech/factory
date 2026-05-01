@@ -109,7 +109,7 @@ npm run lint          # zero warnings (--max-warnings 0)
 | Phase | Scope                                                | Status         |
 |-------|------------------------------------------------------|----------------|
 | A     | Foundation: auth, env safety, audit middleware, UI shell | ✅ this commit |
-| B     | Real users + RLS via `@adrper79-dot/neon`            | next           |
+| B     | Real users + RLS via `@latimer-woods-tech/neon`            | next           |
 | C     | GitHub Actions test-runner + SSE streaming           |                |
 | D     | Deploy + rollback + secret rotation flows            |                |
 | E     | AI chat: Monaco diff editor + repo context + PR proposals |           |

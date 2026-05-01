@@ -1,20 +1,20 @@
-# `@adrper79-dot/video`
+# `@latimer-woods-tech/video`
 
 Cloudflare Stream and R2 client wrappers for the Factory automated video production pipeline.
 
 ## Overview
 
-`@adrper79-dot/video` provides type-safe, platform-neutral wrappers around:
+`@latimer-woods-tech/video` provides type-safe, platform-neutral wrappers around:
 
 - **Cloudflare Stream REST API** — upload, retrieve, list, and delete videos
 - **Cloudflare R2 bucket bindings** — store/fetch raw video files and narration audio
 
-It is used by the `@adrper79-dot/schedule` package and the `apps/video-studio` render pipeline.
+It is used by the `@latimer-woods-tech/schedule` package and the `apps/video-studio` render pipeline.
 
 ## Installation
 
 ```bash
-npm install @adrper79-dot/video
+npm install @latimer-woods-tech/video
 ```
 
 ## Environment bindings
@@ -38,7 +38,7 @@ import {
   getStreamVideo,
   getStreamEmbedUrl,
   deleteStreamVideo,
-} from '@adrper79-dot/video';
+} from '@latimer-woods-tech/video';
 
 // Copy a rendered MP4 from R2 into Stream
 const video = await uploadFromUrl(
@@ -54,7 +54,7 @@ const embedUrl = getStreamEmbedUrl(video.uid);
 ### R2 bucket binding
 
 ```ts
-import { putR2Object, getR2Object } from '@adrper79-dot/video';
+import { putR2Object, getR2Object } from '@latimer-woods-tech/video';
 
 // Store a rendered MP4
 const key = await putR2Object(env.VIDEOS_BUCKET, 'renders/job_01.mp4', arrayBuffer);
@@ -66,10 +66,10 @@ const buffer = await getR2Object(env.VIDEOS_BUCKET, 'renders/job_01.mp4');
 ### Render job type
 
 ```ts
-import type { RenderJob } from '@adrper79-dot/video';
+import type { RenderJob } from '@latimer-woods-tech/video';
 ```
 
-The `RenderJob` type flows through the entire pipeline: from the `video_calendar` schedule, through the GitHub Actions render workflow, and back into `@adrper79-dot/schedule` for status tracking.
+The `RenderJob` type flows through the entire pipeline: from the `video_calendar` schedule, through the GitHub Actions render workflow, and back into `@latimer-woods-tech/schedule` for status tracking.
 
 ## Constraints
 

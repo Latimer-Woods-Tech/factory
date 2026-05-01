@@ -152,7 +152,7 @@ function runOrIgnore(cmd, ignorePhrases = []) {
  * Uses --overwrite so it's safe to re-run.
  */
 function setGitHubSecret(repo, name, value) {
-  const fullRepo = `adrper79-dot/${repo}`;
+  const fullRepo = `Latimer-Woods-Tech/${repo}`;
   const cmd = `gh secret set ${name} --repo ${fullRepo} --body "${value}"`;
   console.log(`  gh secret set ${name} --repo ${fullRepo}`);
   run(cmd);

@@ -1,4 +1,4 @@
-# Changelog — @adrper79-dot/ui
+# Changelog — @latimer-woods-tech/ui
 
 ## [0.2.0] - 2026-04-29
 
@@ -52,7 +52,7 @@
 
 ### Design System Integration
 
-- All colors from `@adrper79-dot/design-tokens`
+- All colors from `@latimer-woods-tech/design-tokens`
 - All spacing from design tokens
 - All typography from design tokens
 - Motion and focus styles from tokens

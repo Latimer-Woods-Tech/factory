@@ -12,7 +12,7 @@
  */
 import { Hono } from 'hono';
 import type { AppEnv } from '../types.js';
-import { ValidationError, ErrorCodes, toErrorResponse } from '@adrper79-dot/errors';
+import { ValidationError, ErrorCodes, toErrorResponse } from '@latimer-woods-tech/errors';
 import Stripe from 'stripe';
 import { eq } from 'drizzle-orm';
 import {

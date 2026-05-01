@@ -1,3 +1,54 @@
+# =============================================================================
+# Reusable deploy workflow for Latimer-Woods-Tech apps (Cloudflare Workers).
+#
+# WHAT IT DOES
+#   Installs deps from GitHub Packages, runs `wrangler deploy`, optionally
+#   probes a health URL with retry. Targets either staging or production
+#   GitHub Environment so required-reviewer gates apply automatically.
+#
+# WHO CALLS IT
+#   Every app repo's `.github/workflows/deploy.yml` should call this when a
+#   push to main lands (production) or a push to staging/* lands (staging).
+#
+# HOW TO CALL
+#   jobs:
+#     deploy:
+#       uses: Latimer-Woods-Tech/factory/.github/workflows/_app-deploy.yml@main
+#       with:
+#         environment: production           # or 'staging'
+#         working_directory: workers        # if app is in a subdir
+#         health_url: https://app.example.com/healthz
+#       secrets: inherit
+#
+# REQUIRED SECRETS (passed via `secrets: inherit` from org-level vault)
+#   FACTORY_APP_ID            - GitHub App ID for `factory-cross-repo`
+#   FACTORY_APP_PRIVATE_KEY   - PEM private key for the same App
+#   CLOUDFLARE_API_TOKEN      - Token with Workers Scripts:Edit on this account
+#   CLOUDFLARE_ACCOUNT_ID     - Cloudflare account ID
+#
+# REQUIRED REPO STATE
+#   GitHub Environment named `production` and/or `staging` must exist on the
+#   calling repo. Public repos get required-reviewer gates; private repos on
+#   the Team plan get bare environments only (Enterprise needed for private
+#   repo gates).
+#
+# OPTIONAL INPUTS
+#   node_version       - Node.js major version (default '22')
+#   working_directory  - Subdir to run wrangler in (default '.')
+#   environment        - GitHub Environment name (default 'production')
+#   wrangler_command   - Wrangler CLI command (default 'deploy')
+#   health_url         - URL to probe post-deploy. Empty string skips the check.
+#
+# OUTPUT
+#   No outputs. Failure exits non-zero. For auto-rollback, chain
+#   `_post-deploy-verify.yml` with `rollback_on_failure: true`.
+#
+# RELATED
+#   _app-ci.yml              - Pre-deploy CI (typecheck, lint, test, build)
+#   _post-deploy-verify.yml  - Stronger verify with auto-rollback
+#   docs/CI_CD.md            - Full architecture reference
+# =============================================================================
+
 name: _app-deploy
 
 on:
@@ -15,13 +66,13 @@ on:
       wrangler_command:
         type: string
         default: 'deploy'
-    secrets:
-      PACKAGES_READ_TOKEN:
-        required: true
-      CLOUDFLARE_API_TOKEN:
-        required: true
-      CLOUDFLARE_ACCOUNT_ID:
-        required: true
+      health_url:
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  packages: read
 
 jobs:
   deploy:
@@ -36,18 +87,28 @@ jobs:
         with:
           node-version: ${{ inputs.node_version }}
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@adrper79-dot'
+          scope: '@latimer-woods-tech'
       - name: Configure npm auth
-        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.PACKAGES_READ_TOKEN }}" >> .npmrc
+        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
       - run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Deploy to Cloudflare
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: ${{ inputs.wrangler_command }}
-          workingDirectory: ${{ inputs.working_directory }}
       - name: Post-deploy health check
+        if: ${{ inputs.health_url != '' }}
         run: |
-          echo "Add curl gate here per app, e.g.:"
-          echo "curl -fsSL https://${{ inputs.environment }}.example.com/health"
+          for i in 1 2 3 4 5; do
+            if curl -fsSL --max-time 10 "${{ inputs.health_url }}" > /dev/null; then
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "Health check failed after 5 attempts"
+          exit 1

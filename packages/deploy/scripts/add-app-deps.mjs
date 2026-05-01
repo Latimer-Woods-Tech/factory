@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * add-app-deps.mjs — Adds app-specific @adrper79-dot/* dependencies to package.json.
+ * add-app-deps.mjs — Adds app-specific @latimer-woods-tech/* dependencies to package.json.
  *
  * Usage:
  *   node add-app-deps.mjs <app-name>
@@ -18,16 +18,16 @@ if (!APP) {
   process.exit(1);
 }
 
-/** Extra @adrper79-dot/* packages per app, beyond the base set in scaffold.mjs */
+/** Extra @latimer-woods-tech/* packages per app, beyond the base set in scaffold.mjs */
 const EXTRA_DEPS = {
-  'wordis-bond':    ['@adrper79-dot/compliance', '@adrper79-dot/crm', '@adrper79-dot/telephony'],
-  'cypher-healing': ['@adrper79-dot/telephony', '@adrper79-dot/llm', '@adrper79-dot/copy'],
-  'prime-self':     ['@adrper79-dot/telephony', '@adrper79-dot/llm', '@adrper79-dot/copy'],
-  'ijustus':        ['@adrper79-dot/telephony', '@adrper79-dot/llm', '@adrper79-dot/compliance', '@adrper79-dot/crm'],
+  'wordis-bond':    ['@latimer-woods-tech/compliance', '@latimer-woods-tech/crm', '@latimer-woods-tech/telephony'],
+  'cypher-healing': ['@latimer-woods-tech/telephony', '@latimer-woods-tech/llm', '@latimer-woods-tech/copy'],
+  'prime-self':     ['@latimer-woods-tech/telephony', '@latimer-woods-tech/llm', '@latimer-woods-tech/copy'],
+  'ijustus':        ['@latimer-woods-tech/telephony', '@latimer-woods-tech/llm', '@latimer-woods-tech/compliance', '@latimer-woods-tech/crm'],
   'the-calling':    [],
   'neighbor-aid':   [],
-  'xpelevator':     ['@adrper79-dot/stripe'],
-  'xico-city':      ['@adrper79-dot/stripe'],
+  'xpelevator':     ['@latimer-woods-tech/stripe'],
+  'xico-city':      ['@latimer-woods-tech/stripe'],
 };
 
 const extras = EXTRA_DEPS[APP];

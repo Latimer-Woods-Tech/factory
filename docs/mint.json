@@ -14,14 +14,14 @@
   "topbarLinks": [
     {
       "name": "GitHub",
-      "url": "https://github.com/adrper79-dot/factory"
+      "url": "https://github.com/Latimer-Woods-Tech/factory"
     }
   ],
   "anchors": [
     {
       "name": "Changelog",
       "icon": "list",
-      "url": "https://github.com/adrper79-dot/factory/releases"
+      "url": "https://github.com/Latimer-Woods-Tech/factory/releases"
     }
   ],
   "navigation": [
@@ -90,6 +90,6 @@
     }
   ],
   "footerSocials": {
-    "github": "https://github.com/adrper79-dot/factory"
+    "github": "https://github.com/Latimer-Woods-Tech/factory"
   }
 }

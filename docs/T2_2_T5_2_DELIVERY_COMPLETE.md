@@ -326,7 +326,7 @@ npm run test:integration
 
 ### Phase 2: Implement Correlation Middleware (1-2 hours)
 
-- [ ] Add `import { correlationIdMiddleware } from '@adrper79-dot/logger'` to `apps/worker/src/index.ts`
+- [ ] Add `import { correlationIdMiddleware } from '@latimer-woods-tech/logger'` to `apps/worker/src/index.ts`
 - [ ] Call `app.use(correlationIdMiddleware())` before route handlers
 - [ ] Verify response headers include `x-correlation-id`
 - [ ] Test: send request with custom x-correlation-id header, confirm response echoes it back
@@ -381,7 +381,7 @@ npm run test:integration
 ## Success Criteria (All Must Pass)
 
 ### T2.2 Regression Tests
-- [x] Test fixtures library (`money-flow-fixtures.ts`) available in `@adrper79-dot/testing`
+- [x] Test fixtures library (`money-flow-fixtures.ts`) available in `@latimer-woods-tech/testing`
 - [ ] All 24 test cases included (4 flows × 6 tests each)
 - [ ] Coverage ≥95% on payout-service, stripe-connect, dlq
 - [ ] CI gate enforces coverage minimum before merge
