@@ -65,7 +65,7 @@ State the decision that was made in clear, direct language.
 
 Tactical details needed to ship the decision. Reference the PR, package, or runbook.
 
-- Package affected: `@adrper79-dot/[package]`
+- Package affected: `@latimer-woods-tech/[package]`
 - Related runbook: `docs/runbooks/[name].md`
 - Related PR / commit: …
 

@@ -168,7 +168,7 @@ Current behavior:
 The route currently uses:
 
 - Anthropic as the primary provider
-- Grok / Groq as configured fallback inputs for proposal completion via `@adrper79-dot/llm`
+- Grok / Groq as configured fallback inputs for proposal completion via `@latimer-woods-tech/llm`
 
 ### Required bindings/secrets
 

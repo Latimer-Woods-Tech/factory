@@ -80,7 +80,7 @@ When adding a new standard, open a PR touching this file and the corresponding g
 
 | ID | Standard | Owner | Required gate | Check mechanism | Reference |
 |----|----------|-------|--------------|-----------------|-----------|
-| MONEY-01 | Stripe client created via `createStripeClient()` from `@adrper79-dot/stripe` | D07 | PR review | No raw `new Stripe(...)` outside the package | [packages/stripe/src/index.ts](../../packages/stripe/src/index.ts) |
+| MONEY-01 | Stripe client created via `createStripeClient()` from `@latimer-woods-tech/stripe` | D07 | PR review | No raw `new Stripe(...)` outside the package | [packages/stripe/src/index.ts](../../packages/stripe/src/index.ts) |
 | MONEY-02 | Credit guardrails applied before every render dispatch | D07 | Unit tests | `checkRenderGuardrails()` must be called; enforce via PR review | [packages/neon/src/entitlements/guardrails.ts](../../packages/neon/src/entitlements/guardrails.ts) |
 | MONEY-03 | Stripe webhook idempotency — duplicate events must not double-apply | D07 | Unit tests | `processedEvents` table check in webhook handler | [packages/neon/src/entitlements/webhook.ts](../../packages/neon/src/entitlements/webhook.ts) |
 | MONEY-04 | All Stripe test-card flows verified via `curl` before marking complete | D07 | Manual gate | `curl -X POST .../stripe/webhook` with test event | [CLAUDE.md §Verification Requirement](../../CLAUDE.md) |
@@ -92,7 +92,7 @@ When adding a new standard, open a PR touching this file and the corresponding g
 | ID | Standard | Owner | Required gate | Check mechanism | Reference |
 |----|----------|-------|--------------|-----------------|-----------|
 | AI-01 | LLM chain priority: Anthropic → Grok → Groq | D11 | PR review | `packages/llm` implements fallback chain | [packages/llm/](../../packages/llm/) |
-| AI-02 | No raw `fetch` to LLM APIs — use `@adrper79-dot/llm` | D11 | PR review + ESLint | No hardcoded `https://api.anthropic.com` in app code | [packages/llm/src/index.ts](../../packages/llm/src/index.ts) |
+| AI-02 | No raw `fetch` to LLM APIs — use `@latimer-woods-tech/llm` | D11 | PR review + ESLint | No hardcoded `https://api.anthropic.com` in app code | [packages/llm/src/index.ts](../../packages/llm/src/index.ts) |
 | AI-03 | LLM prompts version-controlled as `.prompt.md` or TypeScript string constants | D11 | PR review | No prompt strings assembled at runtime without log | [CLAUDE.md §Stack](../../CLAUDE.md) |
 
 ---
@@ -101,8 +101,8 @@ When adding a new standard, open a PR touching this file and the corresponding g
 
 | ID | Standard | Owner | Required gate | Check mechanism | Reference |
 |----|----------|-------|--------------|-----------------|-----------|
-| OBS-01 | All errors reported to Sentry via `@adrper79-dot/monitoring` | D10 | PR review | No direct `Sentry.captureException()` outside monitoring package | [packages/monitoring/](../../packages/monitoring/) |
-| OBS-02 | All analytics events use canonical event schemas from `@adrper79-dot/analytics` | D10 | Unit tests | `assertEventShape()` validates shape at emit time | [packages/analytics/src/event-schemas.ts](../../packages/analytics/src/event-schemas.ts) |
+| OBS-01 | All errors reported to Sentry via `@latimer-woods-tech/monitoring` | D10 | PR review | No direct `Sentry.captureException()` outside monitoring package | [packages/monitoring/](../../packages/monitoring/) |
+| OBS-02 | All analytics events use canonical event schemas from `@latimer-woods-tech/analytics` | D10 | Unit tests | `assertEventShape()` validates shape at emit time | [packages/analytics/src/event-schemas.ts](../../packages/analytics/src/event-schemas.ts) |
 | OBS-03 | Revenue/subscription events go to `factory_events` only — not PostHog | D10 | Unit tests | `isBusinessEvent()` routing enforced in `initAnalytics()` | [packages/analytics/src/index.ts](../../packages/analytics/src/index.ts) |
 | OBS-04 | SLO targets defined for all user journeys; synthetic monitor proxies active | D10 | Synthetic monitor | `apps/synthetic-monitor` target list includes all live workers | [docs/operations/USER_JOURNEY_SLOS.md](USER_JOURNEY_SLOS.md) |
 

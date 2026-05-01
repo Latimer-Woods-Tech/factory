@@ -19,13 +19,13 @@ import {
   refundCredits,
   getTotalAvailableCredits,
   type StudioEntitlement,
-} from '@adrper79-dot/neon';
+} from '@latimer-woods-tech/neon';
 
-// Mock @adrper79-dot/neon
+// Mock @latimer-woods-tech/neon
 // ---------------------------------------------------------------------------
 
-vi.mock('@adrper79-dot/neon', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@adrper79-dot/neon')>();
+vi.mock('@latimer-woods-tech/neon', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@latimer-woods-tech/neon')>();
   return {
     ...actual,
     sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values }),
@@ -162,7 +162,7 @@ describe('handleStripeWebhook', () => {
   });
 
   it('handles customer.subscription.updated and returns 200', async () => {
-    const { createDb } = await import('@adrper79-dot/neon');
+    const { createDb } = await import('@latimer-woods-tech/neon');
     mockDb = makeDb([
       [],                                              // UPDATE subscriptions
       [{ customer_id: 'cust-01', plan_id: 'plan-01' }], // SELECT for refresh
@@ -192,7 +192,7 @@ describe('handleStripeWebhook', () => {
   });
 
   it('handles customer.subscription.deleted and returns 200', async () => {
-    const { createDb } = await import('@adrper79-dot/neon');
+    const { createDb } = await import('@latimer-woods-tech/neon');
     mockDb = makeDb([
       [],                                              // UPDATE SET status = canceled
       [{ customer_id: 'cust-01', plan_id: 'plan-01' }], // SELECT for refresh

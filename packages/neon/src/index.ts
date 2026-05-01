@@ -2,7 +2,7 @@ import postgres from 'postgres';
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import type { SQLWrapper } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
-import { InternalError, ErrorCodes } from '@adrper79-dot/errors';
+import { InternalError, ErrorCodes } from '@latimer-woods-tech/errors';
 
 /**
  * Query result shape consumed by Factory data packages.

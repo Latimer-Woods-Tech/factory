@@ -48,7 +48,7 @@ env:
 | `CF_API_TOKEN` | Wrangler deployments + Hyperdrive setup | GitHub Actions workflows | Quarterly via CloudFlare dashboard | `v1.0.xxx...` (Bearer-style) |
 | `CF_ACCOUNT_ID` | CloudFlare account identifier | `wrangler.jsonc` / workflows | Never | `123abc456def...` (32 hex chars) |
 | `GITHUB_TOKEN` | GitHub API access (auto-generated) | CI/CD, dependency fetching | Per-workflow (auto) | `ghp_xxx...` |
-| `NODE_AUTH_TOKEN` | npm registry auth for @adrper79-dot/* packages | `.npmrc` (in GitHub Packages) | Quarterly via GitHub PAT | `ghp_xxx...` (GitHub PAT) |
+| `NODE_AUTH_TOKEN` | npm registry auth for @latimer-woods-tech/* packages | `.npmrc` (in GitHub Packages) | Quarterly via GitHub PAT | `ghp_xxx...` (GitHub PAT) |
 | `GH_PAT` | PAT for scaffold workflows to push to app repos | `scaffold-*.yml` workflows | Quarterly | `ghp_xxx...` (repo + read:packages) |
 
 ### Required for Each App Repository

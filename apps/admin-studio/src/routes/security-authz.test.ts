@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import worker from '../index.js';
 import type { Env } from '../env.js';
-import type { EnvJWTPayload, Role } from '@adrper79-dot/studio-core';
+import type { EnvJWTPayload, Role } from '@latimer-woods-tech/studio-core';
 
 const executionContext = {} as ExecutionContext;
 

@@ -150,7 +150,7 @@ gh run watch
 ```
 
 **CI does automatically:**
-- npm ci (pulls all @adrper79-dot/* packages)
+- npm ci (pulls all @latimer-woods-tech/* packages)
 - npm run typecheck
 - npm run lint
 - npm run test

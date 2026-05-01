@@ -246,12 +246,12 @@ class Phase7Validator {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
     
     // Check for Core packages (should be pinned exactly)
-    const corePackages = ['@adrper79-dot/errors', '@adrper79-dot/auth', '@adrper79-dot/neon'];
-    const hasCorePackages = corePackages.some(pkg => pkg.startsWith('@adrper79-dot'));
+    const corePackages = ['@latimer-woods-tech/errors', '@latimer-woods-tech/auth', '@latimer-woods-tech/neon'];
+    const hasCorePackages = corePackages.some(pkg => pkg.startsWith('@latimer-woods-tech'));
     
     if (!hasCorePackages) {
       return {
-        name: 'package.json has @adrper79-dot/* packages',
+        name: 'package.json has @latimer-woods-tech/* packages',
         pass: false,
         help: `  package.json must include core packages: ${corePackages.join(', ')}`
       };
@@ -260,7 +260,7 @@ class Phase7Validator {
     // Check versions are pinned (not ^)
     const deps = { ...pkg.dependencies, ...pkg.devDependencies };
     const badRanges = Object.entries(deps)
-      .filter(([name, version]) => name.startsWith('@adrper79-dot') && version.startsWith('^'))
+      .filter(([name, version]) => name.startsWith('@latimer-woods-tech') && version.startsWith('^'))
       .map(([name]) => name);
 
     if (badRanges.length > 0) {

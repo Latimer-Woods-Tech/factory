@@ -183,8 +183,8 @@ runtimeSurfaces:
     endpoint: /manifest
     auth: service-token
 packages:
-  - "@adrper79-dot/video"
-  - "@adrper79-dot/schedule"
+  - "@latimer-woods-tech/video"
+  - "@latimer-woods-tech/schedule"
 events:
   - video.requested
   - video.rendered

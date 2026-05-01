@@ -98,7 +98,7 @@ gh secret set CLOUDFLARE_API_TOKEN --repo {buyer-github-org}/{app}
 gh secret set CLOUDFLARE_ACCOUNT_ID --repo {buyer-github-org}/{app}
 ```
 
-If buyer wants to continue using `@adrper79-dot/*` packages, they also need:
+If buyer wants to continue using `@latimer-woods-tech/*` packages, they also need:
 
 ```bash
 gh secret set GH_PAT --repo {buyer-github-org}/{app}

@@ -28,8 +28,8 @@ SelfPrime and VideoKing have strong product and infrastructure synergies, but th
 
 | Synergy | Destination | Reason |
 |---|---|---|
-| Stream/R2 wrappers | Factory package: `@adrper79-dot/video` | Shared infrastructure, reusable by all apps |
-| Video calendar and queue | Factory package: `@adrper79-dot/schedule` + `apps/schedule-worker` | Shared scheduling infrastructure |
+| Stream/R2 wrappers | Factory package: `@latimer-woods-tech/video` | Shared infrastructure, reusable by all apps |
+| Video calendar and queue | Factory package: `@latimer-woods-tech/schedule` + `apps/schedule-worker` | Shared scheduling infrastructure |
 | Render pipeline | Factory workflow + `apps/video-studio` | Centralized non-Worker compute for Remotion/ffmpeg |
 | Landing-page walkthrough video | SelfPrime frontend | Product-specific presentation |
 | Practitioner training library | SelfPrime app, backed by Factory video services | Product-specific UX using shared video infrastructure |
@@ -204,8 +204,8 @@ flowchart TD
 
 | Capability | Current home | Required maturity work |
 |---|---|---|
-| Cloudflare Stream/R2 helper APIs | `@adrper79-dot/video` | Add signed playback policy helpers, lifecycle deletion helpers, test fixtures |
-| Video scheduling | `@adrper79-dot/schedule` | Add app tenancy fields, visibility, owner, content policy state, idempotency keys |
+| Cloudflare Stream/R2 helper APIs | `@latimer-woods-tech/video` | Add signed playback policy helpers, lifecycle deletion helpers, test fixtures |
+| Video scheduling | `@latimer-woods-tech/schedule` | Add app tenancy fields, visibility, owner, content policy state, idempotency keys |
 | Schedule API | `apps/schedule-worker` | Replace prototype DB adapter with production-safe Neon/Hyperdrive path; add auth scopes, pagination, metrics |
 | Cron dispatch | `apps/video-cron` | Add per-app concurrency, retry policy, backpressure, structured events |
 | Rendering | `render-video.yml` + `apps/video-studio` | Add app-specific brand profiles, template versioning, deterministic input contracts |

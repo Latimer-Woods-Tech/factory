@@ -50,7 +50,7 @@ This report should be read alongside:
 | HumanDesign (SelfPrime app repo) | `_external_reviews/humandesign` | Recent telemetry parity + a11y fixes landed and pushed; deterministic gate green; visual/frontend deploy workflows failing | local git log + `gh run list` |
 | VideoKing reference in Factory | `apps/videoking` + docs | Treated as pattern/reference surface, not live worker | `docs/service-registry.yml`, `SELFPRIME_VIDEOKING_SYNERGY_DEVELOPMENT_PLAN.md` |
 | VideoKing external implementation | `_external_reviews/videoking` | Rich implementation and docs; status report says staging-ready (self-reported) | `_external_reviews/videoking/PROJECT_STATUS_REPORT.md` |
-| Xico City | external repo `xico-city` (tracked by W360 docs) | Partially unblocked: vitest/script fixes landed; still blocked by npm auth (`@adrper79-dot/*`) and lockfile generation | `WORLD_CLASS_360_TASK_DASHBOARD.md` |
+| Xico City | external repo `xico-city` (tracked by W360 docs) | Partially unblocked: vitest/script fixes landed; still blocked by npm auth (`@latimer-woods-tech/*`) and lockfile generation | `WORLD_CLASS_360_TASK_DASHBOARD.md` |
 | Synergy infrastructure | `apps/schedule-worker`, `apps/video-cron` | Health checks verified 200 on 2026-04-29; smoke checks documented | `docs/service-registry.yml`, `SELFPRIME_VIDEOKING_SYNERGY_DEVELOPMENT_PLAN.md` |
 
 ---

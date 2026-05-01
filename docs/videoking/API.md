@@ -16,7 +16,7 @@ Authorization: Bearer <JWT_TOKEN>
 ```
 
 **JWT Token Source:**
-- Factory Auth service (`@adrper79-dot/auth`)
+- Factory Auth service (`@latimer-woods-tech/auth`)
 - Includes `sub` (creator ID), `aud` (videoking), `permissions` (role-based)
 - Expires after 7 days; refresh via POST /auth/refresh
 

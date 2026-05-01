@@ -1,6 +1,6 @@
 # Factory Core — Master Execution Plan: Stage 6+
 
-> **Status:** All 19 `@adrper79-dot/*` packages published at `v0.2.0`. `scaffold.mjs` + `setup-all-apps.mjs` live. All 6 app repos + `factory-admin` created.
+> **Status:** All 19 `@latimer-woods-tech/*` packages published at `v0.2.0`. `scaffold.mjs` + `setup-all-apps.mjs` live. All 6 app repos + `factory-admin` created.
 > **Audience:** Agent teams and operators executing the Factory app build-out.
 > **Date:** April 2026
 
@@ -20,7 +20,7 @@
 │   (Factory Core monorepo)   │
 │                             │
 │  packages/errors   v0.2.0   │──► GitHub Packages registry
-│  packages/auth     v0.2.0   │    npm.pkg.github.com/@adrper79-dot/*
+│  packages/auth     v0.2.0   │    npm.pkg.github.com/@latimer-woods-tech/*
 │  packages/neon     v0.2.0   │
 │  packages/...      v0.2.0   │
 │                             │
@@ -34,7 +34,7 @@
 │wordis-   │ │prime-    │     │cypher-healing  │  ...6 apps total
 │bond      │ │self      │     │                │
 │          │ │          │     │                │
-│@adrper   │ │@adrper   │     │@adrper79-dot/* │
+│@adrper   │ │@adrper   │     │@latimer-woods-tech/* │
 │79-dot/*  │ │79-dot/*  │     │pinned at 0.2.0 │
 │pinned    │ │pinned    │     │                │
 │at 0.2.0  │ │at 0.2.0  │     │                │
@@ -42,7 +42,7 @@
      │            │                   │
      └────────────┼───────────────────┘
                   │  Each app's CI:
-                  │  1. npm ci (pulls @adrper79-dot/*)
+                  │  1. npm ci (pulls @latimer-woods-tech/*)
                   │  2. typecheck + lint + test
                   │  3. wrangler deploy → staging / production
                   ▼
@@ -72,7 +72,7 @@
 Edit packages/neon/src/index.ts in Factory Core
     │
     ▼
-git push → CI publishes @adrper79-dot/neon@0.1.1
+git push → CI publishes @latimer-woods-tech/neon@0.1.1
     │
     ▼
 Renovate opens PR in every app repo automatically
@@ -104,7 +104,7 @@ Before any phase begins, have these credentials in your environment:
 ```bash
 # GitHub PAT — repo scope (full) grants: secret write, actions trigger, repo create
 export GITHUB_TOKEN="ghp_..."            # or GH_TOKEN — gh CLI uses this
-export NODE_AUTH_TOKEN="ghp_..."         # same PAT — npm uses this for @adrper79-dot/*
+export NODE_AUTH_TOKEN="ghp_..."         # same PAT — npm uses this for @latimer-woods-tech/*
 
 # Cloudflare — "Edit Cloudflare Workers" template (account-level, not zone-scoped)
 export CF_API_TOKEN="..."
@@ -133,7 +133,7 @@ A fine-grained PAT can be used instead of `repo` scope — grant:
 
 | Item | Status |
 |---|---|
-| All 19 packages | ✅ Published to GitHub Packages (`@adrper79-dot/*`, `v0.2.0`) |
+| All 19 packages | ✅ Published to GitHub Packages (`@latimer-woods-tech/*`, `v0.2.0`) |
 | `scaffold.mjs` | ✅ `packages/deploy/scripts/scaffold.mjs` |
 | `setup-all-apps.mjs` | ✅ `packages/deploy/scripts/setup-all-apps.mjs` |
 | Neon databases | ✅ Provisioned for all 6 original apps + xpelevator + xico-city |
@@ -169,13 +169,13 @@ Every app is designed so it can be transferred to a new owner with minimal frict
 - Factory Admin Dashboard — seller keeps
 - All other app repos — completely untouched
 
-**Buyer's options for `@adrper79-dot/*` packages:**
+**Buyer's options for `@latimer-woods-tech/*` packages:**
 1. Continue using Factory Core (pay for package access or packages go public)
 2. Eject — fork the packages they use, rename scope. Each package is self-contained (< 400 lines each). No lock-in.
 
 ### Versions Are Pinned Exactly (ADR-002)
 
-Apps pin `@adrper79-dot/neon@0.1.0` — not `^0.1.0`. Renovate opens a PR on every bump. No silent upgrades.
+Apps pin `@latimer-woods-tech/neon@0.1.0` — not `^0.1.0`. Renovate opens a PR on every bump. No silent upgrades.
 
 ### Cross-App Data Stays on Factory (ADR-007 + Plan)
 
@@ -190,7 +190,7 @@ The `factory_core` Neon database is **not transferred** on any app sale. It hold
 3. **Migration CI gate** — every app's CI dry-runs migrations against a Neon preview branch. No unapplied migrations can merge.
 4. **Parallel app onboarding** — 6 agents in parallel after Phase 6. Compresses sequential days into hours.
 5. **Rate limiting from day one** — `AUTH_RATE_LIMITER` binding in every app's `wrangler.jsonc`.
-6. **Contract tests** — agents verify real `@adrper79-dot/*` package behavior against a Neon test branch, not mocks.
+6. **Contract tests** — agents verify real `@latimer-woods-tech/*` package behavior against a Neon test branch, not mocks.
 7. **Blue/green via CF environments** — staging on PR, production on merge. Rollback: `wrangler rollback`.
 8. **SLO gate** — `docs/slo.md` is a required deliverable before any app is "production ready".
 9. **Sale playbook baked in** — transfer steps documented per app; nothing assumes perpetual Factory ownership.
@@ -262,7 +262,7 @@ CREATE INDEX idx_factory_events_app_id      ON factory_events (app_id);
 CREATE INDEX idx_factory_events_user_id     ON factory_events (user_id);
 CREATE INDEX idx_factory_events_created_at  ON factory_events (created_at DESC);
 
--- CRM leads (@adrper79-dot/crm)
+-- CRM leads (@latimer-woods-tech/crm)
 CREATE TABLE crm_leads (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id      TEXT NOT NULL,
@@ -277,7 +277,7 @@ CREATE TABLE crm_leads (
 CREATE INDEX idx_crm_leads_app_id  ON crm_leads (app_id);
 CREATE INDEX idx_crm_leads_status  ON crm_leads (status);
 
--- Compliance consents (@adrper79-dot/compliance)
+-- Compliance consents (@latimer-woods-tech/compliance)
 CREATE TABLE compliance_consents (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id      TEXT NOT NULL,
@@ -442,7 +442,7 @@ node packages/deploy/scripts/scaffold.mjs {app-name} \
 
 ```
 {app-name}/
-├── package.json              # @adrper79-dot/* deps pinned at 0.1.0
+├── package.json              # @latimer-woods-tech/* deps pinned at 0.1.0
 ├── wrangler.jsonc            # Hyperdrive + rate limiter bindings
 ├── tsconfig.json             # strict, @cloudflare/workers-types
 ├── .npmrc                    # GitHub Packages auth
@@ -456,7 +456,7 @@ node packages/deploy/scripts/scaffold.mjs {app-name} \
 │       └── migrations/       # Drizzle-generated SQL
 ├── vitest.config.ts          # 80/80/75 thresholds
 ├── .dev.vars.example         # local dev secrets template
-├── renovate.json             # Renovate config (pins @adrper79-dot/*)
+├── renovate.json             # Renovate config (pins @latimer-woods-tech/*)
 └── .github/workflows/
     ├── ci.yml                # typecheck + lint + test + migration dry-run
     └── deploy.yml            # wrangler deploy on main merge
@@ -470,14 +470,14 @@ git clone https://github.com/adrper79-dot/{app-name}
 cd {app-name}
 
 # Wordis Bond
-npm install @adrper79-dot/compliance@0.1.0 @adrper79-dot/crm@0.1.0
+npm install @latimer-woods-tech/compliance@0.1.0 @latimer-woods-tech/crm@0.1.0
 
 # CypherOfHealing / Prime Self Engine
-npm install @adrper79-dot/telephony@0.1.0 @adrper79-dot/llm@0.1.0 @adrper79-dot/copy@0.1.0
+npm install @latimer-woods-tech/telephony@0.1.0 @latimer-woods-tech/llm@0.1.0 @latimer-woods-tech/copy@0.1.0
 
 # iJustus
-npm install @adrper79-dot/telephony@0.1.0 @adrper79-dot/llm@0.1.0 \
-            @adrper79-dot/compliance@0.1.0 @adrper79-dot/crm@0.1.0
+npm install @latimer-woods-tech/telephony@0.1.0 @latimer-woods-tech/llm@0.1.0 \
+            @latimer-woods-tech/compliance@0.1.0 @latimer-woods-tech/crm@0.1.0
 ```
 
 Note: pin exact versions (`0.2.0` not `^0.2.0`) per ADR-002.
@@ -502,7 +502,7 @@ CREATE POLICY tenant_isolation ON {table_name}
   USING (tenant_id = current_setting('app.tenant_id', true));
 ```
 
-`withTenant(db, tenantId)` from `@adrper79-dot/neon` sets this session variable per request.
+`withTenant(db, tenantId)` from `@latimer-woods-tech/neon` sets this session variable per request.
 
 #### Step 5 — Write App-Specific Routes
 
@@ -511,8 +511,8 @@ Key pattern every route follows:
 
 ```typescript
 import { Hono } from 'hono';
-import { createDb, withTenant } from '@adrper79-dot/neon';
-import { requireRole } from '@adrper79-dot/auth';
+import { createDb, withTenant } from '@latimer-woods-tech/neon';
+import { requireRole } from '@latimer-woods-tech/auth';
 import type { Env } from '../env.js';
 
 const router = new Hono<{ Bindings: Env }>();
@@ -552,15 +552,15 @@ app.use('/auth/*', async (c, next) => {
 
 #### Step 7 — Contract Tests
 
-Write `src/contract.test.ts` that uses real `@adrper79-dot/*` packages against the Neon test branch. No mocks.
+Write `src/contract.test.ts` that uses real `@latimer-woods-tech/*` packages against the Neon test branch. No mocks.
 
 ```typescript
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createDb } from '@adrper79-dot/neon';
+import { createDb } from '@latimer-woods-tech/neon';
 
 const db = createDb({ connectionString: process.env['NEON_TEST_URL']! } as any);
 
-describe('@adrper79-dot/neon integration', () => {
+describe('@latimer-woods-tech/neon integration', () => {
   it('connects and queries', async () => {
     const result = await db.execute('SELECT 1 AS n');
     expect(result.rows[0]).toEqual({ n: 1 });
@@ -825,7 +825,7 @@ export const offers = pgTable('offers', {
 **URL: `admin.thefactory.dev`**
 **Repo: `adrper79-dot/factory-admin`**
 
-This is a standalone Cloudflare Worker with cross-app visibility. It is **not** the per-app `/admin` router from `@adrper79-dot/admin` — that is mounted inside each app.
+This is a standalone Cloudflare Worker with cross-app visibility. It is **not** the per-app `/admin` router from `@latimer-woods-tech/admin` — that is mounted inside each app.
 
 ```bash
 gh repo create adrper79-dot/factory-admin --private
@@ -865,13 +865,13 @@ factory-admin/
 
 ### 8.3 Auth
 
-Admin dashboard issues its own long-lived JWT via `@adrper79-dot/auth`. The `ADMIN_JWT_SECRET` is independent of any app secret.
+Admin dashboard issues its own long-lived JWT via `@latimer-woods-tech/auth`. The `ADMIN_JWT_SECRET` is independent of any app secret.
 
 ```typescript
 app.use('*', async (c, next) => {
   const token = c.req.header('Authorization')?.replace('Bearer ', '');
   if (!token) return c.json({ error: 'Unauthorized' }, 401);
-  // verify via @adrper79-dot/auth jwtMiddleware pattern
+  // verify via @latimer-woods-tech/auth jwtMiddleware pattern
   return next();
 });
 ```
@@ -944,7 +944,7 @@ wrangler secret delete STRIPE_SECRET_KEY --name {app}
 
 ### 5. GitHub Secrets (post-transfer, buyer handles)
 # Buyer sets: their own CF_API_TOKEN, CF_ACCOUNT_ID, PACKAGES_READ_TOKEN
-# or forks @adrper79-dot/* packages and removes GitHub Packages dependency
+# or forks @latimer-woods-tech/* packages and removes GitHub Packages dependency
 
 ### 6. DNS
 # Delegate domain to buyer's registrar / Cloudflare account
@@ -974,7 +974,7 @@ Each app repo's `renovate.json` (generated by scaffold.mjs):
   "registryUrls": ["https://npm.pkg.github.com"],
   "packageRules": [
     {
-      "matchPackagePrefixes": ["@adrper79-dot/"],
+      "matchPackagePrefixes": ["@latimer-woods-tech/"],
       "pinVersions": true,
       "automerge": false,
       "labels": ["factory-core-update"],

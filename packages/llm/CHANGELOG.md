@@ -9,7 +9,7 @@
 - Quality-gated package build with lint, typecheck, coverage, and ESM output.
 
 ### Fixed
-- Restored `@adrper79-dot/errors` and `@adrper79-dot/logger` as runtime dependencies so published consumers resolve package imports correctly.
+- Restored `@latimer-woods-tech/errors` and `@latimer-woods-tech/logger` as runtime dependencies so published consumers resolve package imports correctly.
 
 ### Verification
 - `npm install` regenerated the package lock and ran the package prepublish gate on Apr 29, 2026.

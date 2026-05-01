@@ -3,7 +3,7 @@
   "extends": ["config:recommended"],
   "packageRules": [
     {
-      "matchPackagePrefixes": ["@adrper79-dot/"],
+      "matchPackagePrefixes": ["@latimer-woods-tech/"],
       "registryUrls": ["https://npm.pkg.github.com"],
       "pinVersions": true,
       "automerge": false,

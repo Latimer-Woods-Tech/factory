@@ -21,8 +21,8 @@ import type {
   TestResult,
   TestRun,
   TestRunStatus,
-} from '@adrper79-dot/studio-core';
-import { complete, type LLMMessage } from '@adrper79-dot/llm';
+} from '@latimer-woods-tech/studio-core';
+import { complete, type LLMMessage } from '@latimer-woods-tech/llm';
 import type { AppEnv } from '../types.js';
 import { requireConfirmation } from '../middleware/require-confirmation.js';
 import { dispatchTestWorkflow, DispatchError } from '../lib/github-dispatch.js';
@@ -37,12 +37,12 @@ import {
 const tests = new Hono<AppEnv>();
 
 const KNOWN_SUITES = [
-  { id: 'studio-core', name: '@adrper79-dot/studio-core', path: 'packages/studio-core' },
-  { id: 'auth',        name: '@adrper79-dot/auth',        path: 'packages/auth' },
-  { id: 'errors',      name: '@adrper79-dot/errors',      path: 'packages/errors' },
-  { id: 'llm',         name: '@adrper79-dot/llm',         path: 'packages/llm' },
-  { id: 'neon',        name: '@adrper79-dot/neon',        path: 'packages/neon' },
-  { id: 'monitoring',  name: '@adrper79-dot/monitoring',  path: 'packages/monitoring' },
+  { id: 'studio-core', name: '@latimer-woods-tech/studio-core', path: 'packages/studio-core' },
+  { id: 'auth',        name: '@latimer-woods-tech/auth',        path: 'packages/auth' },
+  { id: 'errors',      name: '@latimer-woods-tech/errors',      path: 'packages/errors' },
+  { id: 'llm',         name: '@latimer-woods-tech/llm',         path: 'packages/llm' },
+  { id: 'neon',        name: '@latimer-woods-tech/neon',        path: 'packages/neon' },
+  { id: 'monitoring',  name: '@latimer-woods-tech/monitoring',  path: 'packages/monitoring' },
 ] as const;
 
 tests.get('/', (c) => c.json({ suites: KNOWN_SUITES }));

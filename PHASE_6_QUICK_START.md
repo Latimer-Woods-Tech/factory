@@ -207,7 +207,7 @@ CloudFlare Workers
 └── 6 Rate Limiter namespaces (pre-assigned IDs: 1001–1006)
 
 GitHub Actions Secrets (on all 6 app repos)
-├── GITHUB_TOKEN (to pull @adrper79-dot/*)
+├── GITHUB_TOKEN (to pull @latimer-woods-tech/*)
 ├── CF_API_TOKEN
 ├── CF_ACCOUNT_ID
 └── NEON_PREVIEW_URL

@@ -230,10 +230,10 @@ Requirements:
 
 ### Writing Tests
 
-Tests should use the Factory testing utilities from `@adrper79-dot/testing`:
+Tests should use the Factory testing utilities from `@latimer-woods-tech/testing`:
 
 ```typescript
-import { createMockDb, createMockAnalytics } from '@adrper79-dot/testing';
+import { createMockDb, createMockAnalytics } from '@latimer-woods-tech/testing';
 import { describe, it, expect, vi } from 'vitest';
 
 describe('POST /api/users', () => {
@@ -248,22 +248,22 @@ describe('POST /api/users', () => {
 
 ## Dependencies
 
-### Core Infrastructure (from @adrper79-dot/*)
+### Core Infrastructure (from @latimer-woods-tech/*)
 
 | Package | Purpose |
 |---------|---------|
-| `@adrper79-dot/errors` | Error types with context |
-| `@adrper79-dot/monitoring` | Sentry integration |
-| `@adrper79-dot/auth` | JWT & middleware |
-| `@adrper79-dot/neon` | Database queries |
-| `@adrper79-dot/analytics` | PostHog integration |
-| `@adrper79-dot/logger` | Structured logging |
+| `@latimer-woods-tech/errors` | Error types with context |
+| `@latimer-woods-tech/monitoring` | Sentry integration |
+| `@latimer-woods-tech/auth` | JWT & middleware |
+| `@latimer-woods-tech/neon` | Database queries |
+| `@latimer-woods-tech/analytics` | PostHog integration |
+| `@latimer-woods-tech/logger` | Structured logging |
 
 All core packages are pinned to exact versions (no `^` or `~`) to ensure consistency across all apps.
 
 To upgrade a core package:
 ```bash
-npm install @adrper79-dot/{package}@0.X.Y
+npm install @latimer-woods-tech/{package}@0.X.Y
 ```
 
 Then commit both `package.json` and `package-lock.json`.

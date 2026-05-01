@@ -100,10 +100,10 @@ write('package.json', JSON.stringify({
     lint: 'eslint src --max-warnings 0',
   },
   dependencies: {
-    '@adrper79-dot/auth':    '0.1.0',
-    '@adrper79-dot/errors':  '0.1.0',
-    '@adrper79-dot/logger':  '0.1.0',
-    '@adrper79-dot/neon':    '0.1.0',
+    '@latimer-woods-tech/auth':    '0.1.0',
+    '@latimer-woods-tech/errors':  '0.1.0',
+    '@latimer-woods-tech/logger':  '0.1.0',
+    '@latimer-woods-tech/neon':    '0.1.0',
     hono: '^4.6.0',
   },
   devDependencies: {
@@ -115,7 +115,7 @@ write('package.json', JSON.stringify({
 
 // ---------- .npmrc ----------
 write('.npmrc', [
-  '@adrper79-dot:registry=https://npm.pkg.github.com',
+  '@latimer-woods-tech:registry=https://npm.pkg.github.com',
   '//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}',
 ].join('\n') + '\n');
 
@@ -163,7 +163,7 @@ export interface Env {
 
 // ---------- src/index.ts ----------
 write('src/index.ts', `import { Hono } from 'hono';
-import { verifyToken } from '@adrper79-dot/auth';
+import { verifyToken } from '@latimer-woods-tech/auth';
 import { overviewRouter } from './routes/overview.js';
 import { appsRouter }    from './routes/apps.js';
 import { crmRouter }     from './routes/crm.js';
@@ -197,7 +197,7 @@ export default app;
 
 // ---------- src/routes/health.ts ----------
 write('src/routes/health.ts', `import { Hono } from 'hono';
-import { createDb } from '@adrper79-dot/neon';
+import { createDb } from '@latimer-woods-tech/neon';
 import type { Env } from '../env.js';
 
 export const healthRouter = new Hono<{ Bindings: Env }>();
@@ -236,7 +236,7 @@ healthRouter.get('/', async (c) => {
 
 // ---------- src/routes/overview.ts ----------
 write('src/routes/overview.ts', `import { Hono } from 'hono';
-import { createDb } from '@adrper79-dot/neon';
+import { createDb } from '@latimer-woods-tech/neon';
 import type { Env } from '../env.js';
 
 export const overviewRouter = new Hono<{ Bindings: Env }>();
@@ -289,7 +289,7 @@ appsRouter.get('/:id', (c) => {
 
 // ---------- src/routes/crm.ts ----------
 write('src/routes/crm.ts', `import { Hono } from 'hono';
-import { createDb } from '@adrper79-dot/neon';
+import { createDb } from '@latimer-woods-tech/neon';
 import type { Env } from '../env.js';
 
 export const crmRouter = new Hono<{ Bindings: Env }>();
@@ -306,7 +306,7 @@ crmRouter.get('/', async (c) => {
 
 // ---------- src/routes/events.ts ----------
 write('src/routes/events.ts', `import { Hono } from 'hono';
-import { createDb, sql } from '@adrper79-dot/neon';
+import { createDb, sql } from '@latimer-woods-tech/neon';
 import type { Env } from '../env.js';
 
 export const eventsRouter = new Hono<{ Bindings: Env }>();
@@ -356,7 +356,7 @@ jobs:
         with:
           node-version: '22'
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@adrper79-dot'
+          scope: '@latimer-woods-tech'
       - name: Install
         run: npm install
         env:
@@ -381,7 +381,7 @@ jobs:
         with:
           node-version: '22'
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@adrper79-dot'
+          scope: '@latimer-woods-tech'
       - name: Install
         run: npm install
         env:

@@ -21,7 +21,7 @@ This becomes the onboarding blueprint for the next app.
 
 ## Part 1: VideoKing Package Consumption Map
 
-### `@adrper79-dot/errors`
+### `@latimer-woods-tech/errors`
 
 **Purpose:** Shared error types and formatting conventions  
 **VideoKing Usage:** ✅ **Active**
@@ -36,7 +36,7 @@ This becomes the onboarding blueprint for the next app.
 
 **Consumption Pattern (for new apps):**
 ```typescript
-import { AppError, PaymentError, ValidationError } from '@adrper79-dot/errors';
+import { AppError, PaymentError, ValidationError } from '@latimer-woods-tech/errors';
 
 // In route handler
 if (!stripe_id) throw new ValidationError('stripe_id required for payout');
@@ -52,7 +52,7 @@ try { ... } catch (err) {
 
 ---
 
-### `@adrper79-dot/monitoring`
+### `@latimer-woods-tech/monitoring`
 
 **Purpose:** Error tracking, Sentry integration, event annotations  
 **VideoKing Usage:** ✅ **Active**
@@ -67,7 +67,7 @@ try { ... } catch (err) {
 
 **Consumption Pattern (for new apps):**
 ```typescript
-import { captureException, setContext } from '@adrper79-dot/monitoring';
+import { captureException, setContext } from '@latimer-woods-tech/monitoring';
 import { v4 as uuid } from 'uuid';
 
 // Middleware
@@ -91,7 +91,7 @@ try {
 
 ---
 
-### `@adrper79-dot/logger`
+### `@latimer-woods-tech/logger`
 
 **Purpose:** Structured JSON logging with correlation IDs  
 **VideoKing Usage:** ✅ **Active**
@@ -106,7 +106,7 @@ try {
 
 **Consumption Pattern (for new apps):**
 ```typescript
-import { logger } from '@adrper79-dot/logger';
+import { logger } from '@latimer-woods-tech/logger';
 
 // Batch operation
 logger.info('payout_batch_created', {
@@ -130,7 +130,7 @@ logger.error('payout_batch_failed', {
 
 ---
 
-### `@adrper79-dot/auth`
+### `@latimer-woods-tech/auth`
 
 **Purpose:** JWT token generation, verification, role-based middleware  
 **VideoKing Usage:** ✅ **Active**
@@ -145,7 +145,7 @@ logger.error('payout_batch_failed', {
 
 **Consumption Pattern (for new apps):**
 ```typescript
-import { authMiddleware, requireRole, generateToken, verifyToken } from '@adrper79-dot/auth';
+import { authMiddleware, requireRole, generateToken, verifyToken } from '@latimer-woods-tech/auth';
 
 // Protected route
 app.get('/api/earnings', authMiddleware, async (c) => {
@@ -174,7 +174,7 @@ app.post('/auth/login', async (c) => {
 
 ---
 
-### `@adrper79-dot/neon`
+### `@latimer-woods-tech/neon`
 
 **Purpose:** PostgreSQL connection pooling, query builders, migrations  
 **VideoKing Usage:** ✅ **Active**
@@ -189,8 +189,8 @@ app.post('/auth/login', async (c) => {
 
 **Consumption Pattern (for new apps):**
 ```typescript
-import { getConnection, withTx } from '@adrper79-dot/neon';
-import { earnings, payouts } from '@adrper79-dot/schedule/schema';
+import { getConnection, withTx } from '@latimer-woods-tech/neon';
+import { earnings, payouts } from '@latimer-woods-tech/schedule/schema';
 import { eq, sum } from 'drizzle-orm';
 
 // Single query
@@ -224,7 +224,7 @@ await withTx(env, async (tx) => {
 
 ---
 
-### `@adrper79-dot/stripe`
+### `@latimer-woods-tech/stripe`
 
 **Purpose:** Stripe API wrappers, webhook validation, idempotency keys  
 **VideoKing Usage:** ✅ **Active**
@@ -239,7 +239,7 @@ await withTx(env, async (tx) => {
 
 **Consumption Pattern (for new apps):**
 ```typescript
-import { createPayment, createTransfer, handleWebhook, validateSignature } from '@adrper79-dot/stripe';
+import { createPayment, createTransfer, handleWebhook, validateSignature } from '@latimer-woods-tech/stripe';
 
 // Checkout: Create payment intent
 app.post('/api/checkout', authMiddleware, async (c) => {
@@ -285,7 +285,7 @@ await createTransfer({
 
 ---
 
-### `@adrper79-dot/llm`
+### `@latimer-woods-tech/llm`
 
 **Purpose:** Anthropic/Grok/Groq API wrappers, prompt versioning, usage tracking  
 **VideoKing Usage:** ❌ **Not Used**
@@ -298,7 +298,7 @@ await createTransfer({
 
 **Consumption Pattern (future):**
 ```typescript
-import { generateText, moderateContent } from '@adrper79-dot/llm';
+import { generateText, moderateContent } from '@latimer-woods-tech/llm';
 
 // Video title/description generation
 const script = await generateText({
@@ -317,7 +317,7 @@ const isSafe = await moderateContent({
 
 ---
 
-### `@adrper79-dot/telephony`
+### `@latimer-woods-tech/telephony`
 
 **Purpose:** Telnyx + Deepgram + ElevenLabs wrappers for SMS, voice, and TTS  
 **VideoKing Usage:** ❌ **Not Used**
@@ -330,7 +330,7 @@ const isSafe = await moderateContent({
 
 ---
 
-### `@adrper79-dot/analytics`
+### `@latimer-woods-tech/analytics`
 
 **Purpose:** PostHog event tracking, funnel definitions, analytics package  
 **VideoKing Usage:** ✅ **Active**
@@ -346,7 +346,7 @@ const isSafe = await moderateContent({
 **Consumption Pattern (for new apps):**
 ```typescript
 // Backend
-import { track } from '@adrper79-dot/analytics';
+import { track } from '@latimer-woods-tech/analytics';
 
 app.post('/api/video-watch', authMiddleware, async (c) => {
   const { video_id, duration_seconds } = await c.req.json();
@@ -360,7 +360,7 @@ app.post('/api/video-watch', authMiddleware, async (c) => {
 });
 
 // Frontend (React)
-import { track } from '@adrper79-dot/analytics'; // Client-side SDK
+import { track } from '@latimer-woods-tech/analytics'; // Client-side SDK
 
 function SubscribeButton() {
   return (
@@ -380,7 +380,7 @@ function SubscribeButton() {
 
 ---
 
-### `@adrper79-dot/email`
+### `@latimer-woods-tech/email`
 
 **Purpose:** Resend email service + templating  
 **VideoKing Usage:** ⚠️ **Minimal**
@@ -394,7 +394,7 @@ function SubscribeButton() {
 
 **Consumption Pattern (for new apps):**
 ```typescript
-import { sendEmail } from '@adrper79-dot/email';
+import { sendEmail } from '@latimer-woods-tech/email';
 
 app.post('/webhooks/stripe/account.updated', async (c) => {
   const event = await c.req.json();
@@ -412,7 +412,7 @@ app.post('/webhooks/stripe/account.updated', async (c) => {
 
 ---
 
-### `@adrper79-dot/video`
+### `@latimer-woods-tech/video`
 
 **Purpose:** Cloudflare Stream + R2 wrappers for video storage and playback  
 **VideoKing Usage:** ✅ **Active**
@@ -426,7 +426,7 @@ app.post('/webhooks/stripe/account.updated', async (c) => {
 
 **Consumption Pattern (for new apps):**
 ```typescript
-import { uploadToStream, getStreamUrl } from '@adrper79-dot/video';
+import { uploadToStream, getStreamUrl } from '@latimer-woods-tech/video';
 
 // Upload
 app.post('/api/creator/upload', authMiddleware, async (c) => {
@@ -451,7 +451,7 @@ const streamUrl = getStreamUrl(videoStreamId);
 
 ---
 
-### `@adrper79-dot/schedule`
+### `@latimer-woods-tech/schedule`
 
 **Purpose:** Database schema + video production calendar + job scheduling  
 **VideoKing Usage:** ✅ **Active**
@@ -466,7 +466,7 @@ const streamUrl = getStreamUrl(videoStreamId);
 **Consumption Pattern (for new apps):**
 ```typescript
 // Schema is defined once in schedule package
-import { payouts, production_jobs, earnings } from '@adrper79-dot/schedule/schema';
+import { payouts, production_jobs, earnings } from '@latimer-woods-tech/schedule/schema';
 
 // Apps import and use
 const getCreatorEarnings = (conn, creatorId) =>
@@ -480,7 +480,7 @@ const getCreatorEarnings = (conn, creatorId) =>
 
 ---
 
-### `@adrper79-dot/deploy`
+### `@latimer-woods-tech/deploy`
 
 **Purpose:** Deployment automation scripts (not code; for ops and CI)  
 **VideoKing Usage:** ✅ **Used in CI**
@@ -504,7 +504,7 @@ const getCreatorEarnings = (conn, creatorId) =>
 
 ---
 
-### `@adrper79-dot/testing`
+### `@latimer-woods-tech/testing`
 
 **Purpose:** Mock factories, test fixtures, Vitest integration  
 **VideoKing Usage:** ✅ **Active**
@@ -518,7 +518,7 @@ const getCreatorEarnings = (conn, creatorId) =>
 
 **Consumption Pattern (for new apps):**
 ```typescript
-import { createMockUser, createMockStripeEvent } from '@adrper79-dot/testing';
+import { createMockUser, createMockStripeEvent } from '@latimer-woods-tech/testing';
 import { expect, it } from 'vitest';
 
 it('should process webhook and create payout', async () => {
@@ -538,7 +538,7 @@ it('should process webhook and create payout', async () => {
 
 ---
 
-### `@adrper79-dot/validation`
+### `@latimer-woods-tech/validation`
 
 **Purpose:** Worker-safe output quality validation for AI responses, synthetic monitors, and CI gates  
 **VideoKing Usage:** ❌ **Not Used**
@@ -548,12 +548,12 @@ it('should process webhook and create payout', async () => {
 | Exports used | n/a — added for SelfPrime output validation and future app adoption |
 | Where | CI gates, production synthetic checks, Worker response guards before rendering AI output |
 | App-specific layers | Required sections, required chart facts, brand voice terms, blocked phrases, and pass score |
-| Integration points | Pairs with `@adrper79-dot/llm`, records quality results through `@adrper79-dot/analytics`, reports critical failures through `@adrper79-dot/monitoring` |
+| Integration points | Pairs with `@latimer-woods-tech/llm`, records quality results through `@latimer-woods-tech/analytics`, reports critical failures through `@latimer-woods-tech/monitoring` |
 | Privacy posture | Emits rule IDs, scores, and redacted evidence snippets only; apps must not log raw private chart payloads |
 
 **Consumption Pattern (for new apps):**
 ```typescript
-import { validateAiOutput } from '@adrper79-dot/validation';
+import { validateAiOutput } from '@latimer-woods-tech/validation';
 
 const result = validateAiOutput(generatedReading, {
   minCharacters: 180,
@@ -582,7 +582,7 @@ if (!result.passed) {
 
 ---
 
-### `@adrper79-dot/compliance`
+### `@latimer-woods-tech/compliance`
 
 **Purpose:** Data retention, GDPR/CCPA compliance, audit logging  
 **VideoKing Usage:** ⚠️ **Minimal**
@@ -596,7 +596,7 @@ if (!result.passed) {
 
 **Consumption Pattern (for new apps):**
 ```typescript
-import { logAuditEvent, scheduleDataRetention } from '@adrper79-dot/compliance';
+import { logAuditEvent, scheduleDataRetention } from '@latimer-woods-tech/compliance';
 
 // Admin action
 app.post('/admin/creator/suspend', authMiddleware, requireRole('ADMIN'), async (c) => {
@@ -629,7 +629,7 @@ app.on('scheduled', async (c) => {
 
 ---
 
-### `@adrper79-dot/crm`
+### `@latimer-woods-tech/crm`
 
 **Purpose:** Creator relationship management + lifecycle tracking  
 **VideoKing Usage:** ❌ **Not Used**
@@ -642,7 +642,7 @@ app.on('scheduled', async (c) => {
 
 ---
 
-### `@adrper79-dot/social`
+### `@latimer-woods-tech/social`
 
 **Purpose:** Social discovery, sharing, and content distribution  
 **VideoKing Usage:** ❌ **Not Used**
@@ -655,7 +655,7 @@ app.on('scheduled', async (c) => {
 
 ---
 
-### `@adrper79-dot/copy`
+### `@latimer-woods-tech/copy`
 
 **Purpose:** Dynamic copy generation + A/B test variants  
 **VideoKing Usage:** ❌ **Not Used**
@@ -668,7 +668,7 @@ app.on('scheduled', async (c) => {
 
 ---
 
-### `@adrper79-dot/content`
+### `@latimer-woods-tech/content`
 
 **Purpose:** Content moderation, classification, recommendations  
 **VideoKing Usage:** ⚠️ **Minimal**
@@ -682,7 +682,7 @@ app.on('scheduled', async (c) => {
 
 **Consumption Pattern (for new apps):**
 ```typescript
-import { classifyContent } from '@adrper79-dot/content';
+import { classifyContent } from '@latimer-woods-tech/content';
 
 app.post('/api/creator/upload', authMiddleware, async (c) => {
   const { title, description } = await c.req.json();
@@ -704,7 +704,7 @@ app.post('/api/creator/upload', authMiddleware, async (c) => {
 
 ---
 
-### `@adrper79-dot/seo`
+### `@latimer-woods-tech/seo`
 
 **Purpose:** SEO metadata, sitemap generation, canonical URLs  
 **VideoKing Usage:** ⚠️ **Minimal**
@@ -717,7 +717,7 @@ app.post('/api/creator/upload', authMiddleware, async (c) => {
 
 **Consumption Pattern (for new apps):**
 ```typescript
-import { generateMetaTags } from '@adrper79-dot/seo';
+import { generateMetaTags } from '@latimer-woods-tech/seo';
 
 app.get('/video/:id', async (c) => {
   const video = await getVideo(req.params.id);
@@ -781,9 +781,9 @@ All app Workers should follow this pattern:
 
 ```typescript
 import app from 'hono';
-import { logger } from '@adrper79-dot/logger';
-import { authMiddleware } from '@adrper79-dot/auth';
-import { setContext, captureException } from '@adrper79-dot/monitoring';
+import { logger } from '@latimer-woods-tech/logger';
+import { authMiddleware } from '@latimer-woods-tech/auth';
+import { setContext, captureException } from '@latimer-woods-tech/monitoring';
 import { v4 as uuid } from 'uuid';
 
 const app = new Hono();
@@ -826,8 +826,8 @@ export default app;
 ### Database + Transaction Pattern
 
 ```typescript
-import { getConnection, withTx } from '@adrper79-dot/neon';
-import { logger } from '@adrper79-dot/logger';
+import { getConnection, withTx } from '@latimer-woods-tech/neon';
+import { logger } from '@latimer-woods-tech/logger';
 
 // Single query
 const getCreatorEarnings = async (env, creatorId) => {
@@ -880,22 +880,22 @@ const createPayoutBatch = async (env, creatorIds) => {
 **Use this when scaffolding a new app:**
 
 - [ ] **Core Packages (P0)**
-  - [ ] Import `@adrper79-dot/errors`
-  - [ ] Import `@adrper79-dot/monitoring`; initialize Sentry DSN
-  - [ ] Import `@adrper79-dot/logger`; wire correlation IDs
-  - [ ] Import `@adrper79-dot/auth`; add authMiddleware
-  - [ ] Import `@adrper79-dot/neon`; wire Hyperdrive
+  - [ ] Import `@latimer-woods-tech/errors`
+  - [ ] Import `@latimer-woods-tech/monitoring`; initialize Sentry DSN
+  - [ ] Import `@latimer-woods-tech/logger`; wire correlation IDs
+  - [ ] Import `@latimer-woods-tech/auth`; add authMiddleware
+  - [ ] Import `@latimer-woods-tech/neon`; wire Hyperdrive
 
 - [ ] **Operational Packages (P1)**
-  - [ ] Import `@adrper79-dot/testing`; add mock factories
+  - [ ] Import `@latimer-woods-tech/testing`; add mock factories
   - [ ] Add GitHub Actions workflow for deploy automation
   - [ ] Define app-specific SLOs (from T5.1 framework)
 
 - [ ] **Feature Packages (P2+)**
-  - [ ] If payments: Import `@adrper79-dot/stripe`
-  - [ ] If analytics: Import `@adrper79-dot/analytics`; instrument funnels
-  - [ ] If videos: Import `@adrper79-dot/video`
-  - [ ] If emails: Import `@adrper79-dot/email`; create templates
+  - [ ] If payments: Import `@latimer-woods-tech/stripe`
+  - [ ] If analytics: Import `@latimer-woods-tech/analytics`; instrument funnels
+  - [ ] If videos: Import `@latimer-woods-tech/video`
+  - [ ] If emails: Import `@latimer-woods-tech/email`; create templates
 
 - [ ] **Documentation**
   - [ ] Create README with package dependencies

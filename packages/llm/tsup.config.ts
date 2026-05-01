@@ -9,7 +9,7 @@ export default defineConfig({
   target: 'es2022',
   platform: 'neutral',
   // Bundle all workspace-local packages so the published dist is self-contained.
-  // Consumers don't need to install @adrper79-dot/errors or @adrper79-dot/logger
+  // Consumers don't need to install @latimer-woods-tech/errors or @latimer-woods-tech/logger
   // separately — they're inlined here.
-  noExternal: [/@adrper79-dot\/.*/],
+  noExternal: [/@latimer-woods-tech\/.*/],
 });

@@ -38,7 +38,7 @@ Before writing the plan, gather:
 
 ### Technical Constraints
 - **Factory stack required?** (Cloudflare Workers, Hono, Neon, Drizzle, Stripe)
-- **Existing packages needed?** (from @adrper79-dot/*)
+- **Existing packages needed?** (from @latimer-woods-tech/*)
 - **Third-party integrations?** (Stripe, Twilio, Anthropic, etc.)
 - **Scheduled/async work?** (queues, crons, webhooks)
 
@@ -301,7 +301,7 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@adrper79-dot'
+          scope: '@latimer-woods-tech'
       - run: npm ci
         env:
           NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN }}

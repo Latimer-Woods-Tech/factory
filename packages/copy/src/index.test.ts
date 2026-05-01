@@ -7,12 +7,12 @@ import {
 } from './index.js';
 import type { VoiceProfile } from './index.js';
 
-// Mock @adrper79-dot/llm so we don't make real network calls
-vi.mock('@adrper79-dot/llm', () => ({
+// Mock @latimer-woods-tech/llm so we don't make real network calls
+vi.mock('@latimer-woods-tech/llm', () => ({
   complete: vi.fn(),
 }));
 
-import { complete } from '@adrper79-dot/llm';
+import { complete } from '@latimer-woods-tech/llm';
 const mockComplete = vi.mocked(complete);
 
 const MOCK_ENV = {
@@ -117,7 +117,7 @@ describe('generateCopy', () => {
   it('throws InternalError when complete returns no data', async () => {
     mockComplete.mockResolvedValueOnce({ data: null, error: { code: 'LLM_ERROR', message: 'all providers failed', status: 500, retryable: false } });
 
-    const { InternalError } = await import('@adrper79-dot/errors');
+    const { InternalError } = await import('@latimer-woods-tech/errors');
     await expect(
       generateCopy({ prompt: 'Headline', appId: 'default', env: MOCK_ENV }),
     ).rejects.toBeInstanceOf(InternalError);

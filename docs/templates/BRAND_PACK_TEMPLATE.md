@@ -43,8 +43,8 @@
 
 ## 3) Shared system conformance
 
-- [ ] Uses `@adrper79-dot/design-tokens` for semantic tokens
-- [ ] Uses `@adrper79-dot/ui` primitives where applicable
+- [ ] Uses `@latimer-woods-tech/design-tokens` for semantic tokens
+- [ ] Uses `@latimer-woods-tech/ui` primitives where applicable
 - [ ] Accessibility baseline verified (focus states, contrast, keyboard)
 - [ ] No app-specific hardcoded brand values added to shared packages
 

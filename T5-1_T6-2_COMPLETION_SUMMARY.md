@@ -274,7 +274,7 @@ Updated [docs/IMPLEMENTATION_MASTER_INDEX.md](docs/IMPLEMENTATION_MASTER_INDEX.m
 - [x] **Videoking SLOs published:** All 9 services defined (3 tiers) with measurement methods and alert rules
 - [x] **Error Budget Policy adopted:** Code freeze at 80%, postmortem required for 100%, exceptions policy defined
 - [x] **Dashboard template created:** Grafana/Datadog ready; panels for real-time monitoring, trends, incidents
-- [x] **Monitoring package guidance referenced:** Cross-links to @adrper79-dot/monitoring
+- [x] **Monitoring package guidance referenced:** Cross-links to @latimer-woods-tech/monitoring
 
 ### T6.2 Exit Criteria
 

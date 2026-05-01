@@ -6,7 +6,7 @@
  * 
  * Usage in apps:
  * ```tsx
- * import { colors, spacing, typography } from '@adrper79-dot/design-system';
+ * import { colors, spacing, typography } from '@latimer-woods-tech/design-system';
  * 
  * const buttonStyles = {
  *   backgroundColor: colors.primary,

@@ -1,4 +1,4 @@
-# @adrper79-dot/validation
+# @latimer-woods-tech/validation
 
 Worker-safe validation primitives for AI output quality, synthetic monitors, and CI gates.
 

@@ -117,7 +117,7 @@ dba0c6e feat(deploy): add xico-city app — hyperdrive, schema, workflows
 
 ```
 ✅ Clones app repo from GitHub
-✅ Installs app-specific @adrper79-dot/* packages
+✅ Installs app-specific @latimer-woods-tech/* packages
 ✅ Generates canonical Drizzle schemas (app-specific)
 ✅ Runs migrations against Neon database
 ✅ Applies Row-Level Security (RLS) policies (multi-tenant)

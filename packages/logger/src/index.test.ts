@@ -1,12 +1,12 @@
 import { Hono } from 'hono';
 import { describe, expect, it, vi } from 'vitest';
 
-// Mock @adrper79-dot/monitoring before importing logger
-vi.mock('@adrper79-dot/monitoring', () => ({
+// Mock @latimer-woods-tech/monitoring before importing logger
+vi.mock('@latimer-woods-tech/monitoring', () => ({
   captureError: vi.fn().mockReturnValue('mock-sentry-event-id'),
 }));
 
-import { captureError } from '@adrper79-dot/monitoring';
+import { captureError } from '@latimer-woods-tech/monitoring';
 import { createLogger, withRequestId } from './index.js';
 
 // ---------------------------------------------------------------------------

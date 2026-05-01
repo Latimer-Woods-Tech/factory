@@ -143,7 +143,7 @@ Based on ElevenLabs API query on April 27, 2026:
 
 | Step | Secrets Used | Purpose |
 |------|--------------|---------|
-| **2. Install dependencies** | `GH_PAT` | npm auth for `@adrper79-dot/*` packages |
+| **2. Install dependencies** | `GH_PAT` | npm auth for `@latimer-woods-tech/*` packages |
 | **4. Generate script** | `ANTHROPIC_API_KEY` | Claude API for narration script |
 | **5. Generate narration** | `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_*` | Text-to-speech audio generation |
 | **6. Upload narration** | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_PUBLIC_DOMAIN` | S3-compatible R2 upload |

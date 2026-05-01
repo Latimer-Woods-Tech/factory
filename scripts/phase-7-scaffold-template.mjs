@@ -37,8 +37,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const APP_CONFIGS = {
   'wordis-bond': {
     packages: [
-      '@adrper79-dot/compliance@0.2.0',
-      '@adrper79-dot/crm@0.2.0'
+      '@latimer-woods-tech/compliance@0.2.0',
+      '@latimer-woods-tech/crm@0.2.0'
     ],
     rls: true,
     priority: 1,
@@ -46,9 +46,9 @@ const APP_CONFIGS = {
   },
   'cypher-healing': {
     packages: [
-      '@adrper79-dot/telephony@0.2.0',
-      '@adrper79-dot/llm@0.2.0',
-      '@adrper79-dot/copy@0.2.0'
+      '@latimer-woods-tech/telephony@0.2.0',
+      '@latimer-woods-tech/llm@0.2.0',
+      '@latimer-woods-tech/copy@0.2.0'
     ],
     rls: true,
     priority: 2,
@@ -56,9 +56,9 @@ const APP_CONFIGS = {
   },
   'prime-self': {
     packages: [
-      '@adrper79-dot/telephony@0.2.0',
-      '@adrper79-dot/llm@0.2.0',
-      '@adrper79-dot/copy@0.2.0'
+      '@latimer-woods-tech/telephony@0.2.0',
+      '@latimer-woods-tech/llm@0.2.0',
+      '@latimer-woods-tech/copy@0.2.0'
     ],
     rls: true,
     priority: 3,
@@ -66,10 +66,10 @@ const APP_CONFIGS = {
   },
   'ijustus': {
     packages: [
-      '@adrper79-dot/telephony@0.2.0',
-      '@adrper79-dot/llm@0.2.0',
-      '@adrper79-dot/compliance@0.2.0',
-      '@adrper79-dot/crm@0.2.0'
+      '@latimer-woods-tech/telephony@0.2.0',
+      '@latimer-woods-tech/llm@0.2.0',
+      '@latimer-woods-tech/compliance@0.2.0',
+      '@latimer-woods-tech/crm@0.2.0'
     ],
     rls: true,
     priority: 4,
@@ -91,14 +91,14 @@ const APP_CONFIGS = {
 
 // Standard packages all apps get
 const STANDARD_PACKAGES = [
-  '@adrper79-dot/errors@0.2.0',
-  '@adrper79-dot/logger@0.2.0',
-  '@adrper79-dot/monitoring@0.2.0',
-  '@adrper79-dot/auth@0.2.0',
-  '@adrper79-dot/neon@0.2.0',
-  '@adrper79-dot/stripe@0.2.0',
-  '@adrper79-dot/analytics@0.2.0',
-  '@adrper79-dot/email@0.2.0'
+  '@latimer-woods-tech/errors@0.2.0',
+  '@latimer-woods-tech/logger@0.2.0',
+  '@latimer-woods-tech/monitoring@0.2.0',
+  '@latimer-woods-tech/auth@0.2.0',
+  '@latimer-woods-tech/neon@0.2.0',
+  '@latimer-woods-tech/stripe@0.2.0',
+  '@latimer-woods-tech/analytics@0.2.0',
+  '@latimer-woods-tech/email@0.2.0'
 ];
 
 /**
@@ -617,7 +617,7 @@ ${Object.entries(APP_CONFIGS).map(([name, cfg]) =>
 ).join('\n')}
 
 Prerequisites:
-  - All 19 @adrper79-dot/* packages at v0.2.0
+  - All 19 @latimer-woods-tech/* packages at v0.2.0
   - Phase 6 infrastructure setup complete
   - GitHub repo created
   - Neon database created

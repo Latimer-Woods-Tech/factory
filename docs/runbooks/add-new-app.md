@@ -54,10 +54,10 @@ Add a schema entry to the `SCHEMAS` object with the app's canonical Drizzle ORM 
 
 ### 1c. `add-app-deps.mjs`
 
-Add an entry specifying which `@adrper79-dot/*` packages the app uses beyond the defaults:
+Add an entry specifying which `@latimer-woods-tech/*` packages the app uses beyond the defaults:
 
 ```js
-'{app}': ['@adrper79-dot/stripe'],  // only extras needed
+'{app}': ['@latimer-woods-tech/stripe'],  // only extras needed
 ```
 
 ---

@@ -11,13 +11,13 @@ import {
   VIDEO_CALENDAR_MIGRATION_STATEMENTS,
 } from './index.js';
 import type { VideoCalendarRow, ProductionBrief } from './index.js';
-import { ValidationError, InternalError, NotFoundError } from '@adrper79-dot/errors';
+import { ValidationError, InternalError, NotFoundError } from '@latimer-woods-tech/errors';
 
 // ---------------------------------------------------------------------------
-// Mock @adrper79-dot/neon
+// Mock @latimer-woods-tech/neon
 // ---------------------------------------------------------------------------
 
-vi.mock('@adrper79-dot/neon', () => ({
+vi.mock('@latimer-woods-tech/neon', () => ({
   sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values }),
 }));
 

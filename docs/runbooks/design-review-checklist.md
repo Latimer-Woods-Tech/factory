@@ -49,7 +49,7 @@
 
 - [ ] **Brand consistency checked**
   - Uses design system tokens (colors, typography, spacing)
-  - Follows existing component library (buttons, inputs, modals from `@adrper79-dot/studio-core`)
+  - Follows existing component library (buttons, inputs, modals from `@latimer-woods-tech/studio-core`)
   - Logo, brand colors, tone of voice aligned
 
 - [ ] **Accessibility color contrast verified**
@@ -306,7 +306,7 @@
 **Requirement:** Design uses existing design system; new patterns propose updates to system.
 
 - [ ] **Component reuse verified**
-  - Uses existing buttons, inputs, cards from `@adrper79-dot/studio-core` (not custom HTML)
+  - Uses existing buttons, inputs, cards from `@latimer-woods-tech/studio-core` (not custom HTML)
   - If new component needed, documented in RFC
   - Component library version pinned
 

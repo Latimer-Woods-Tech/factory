@@ -17,7 +17,7 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@adrper79-dot/errors": "workspace:*",
+    "@latimer-woods-tech/errors": "workspace:*",
     "hono": "^4.12.14"
   },
   "devDependencies": {

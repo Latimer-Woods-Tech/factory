@@ -12,7 +12,7 @@
  *
  * Env vars required:
  *   GH_TOKEN or GITHUB_TOKEN
- *   NODE_AUTH_TOKEN  (for npm install @adrper79-dot/* from GitHub Packages)
+ *   NODE_AUTH_TOKEN  (for npm install @latimer-woods-tech/* from GitHub Packages)
  */
 
 import { execSync } from 'node:child_process';
@@ -52,7 +52,7 @@ jobs:
         with:
           node-version: '22'
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@adrper79-dot'
+          scope: '@latimer-woods-tech'
       - name: Install
         run: npm install
         env:
@@ -77,7 +77,7 @@ jobs:
         with:
           node-version: '22'
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@adrper79-dot'
+          scope: '@latimer-woods-tech'
       - name: Install
         run: npm install
         env:

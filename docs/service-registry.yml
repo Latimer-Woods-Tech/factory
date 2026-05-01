@@ -247,7 +247,7 @@ pages:
       - CF_ACCOUNT_ID
 # ─── FACTORY PACKAGES ───────────────────────────────────────────────────────────
 #
-# Shared npm packages published to @adrper79-dot scope.
+# Shared npm packages published to @latimer-woods-tech scope.
 # See docs/packages/factory-capabilities-matrix.mdx for full documentation.
 #
 # Status key:
@@ -258,154 +258,154 @@ pages:
 #
 
 packages:
-  - name: "@adrper79-dot/errors"
+  - name: "@latimer-woods-tech/errors"
     status: "Foundation"
     version: "1.0.0"
     main_use: "Error types, FactoryBaseError, error handling"
     videoking_used: true
     depends_on: []
     
-  - name: "@adrper79-dot/monitoring"
+  - name: "@latimer-woods-tech/monitoring"
     status: "Foundation"
     version: "1.0.0"
     main_use: "Sentry integration, error tracking, APM"
     videoking_used: true
     depends_on: ["errors"]
     
-  - name: "@adrper79-dot/logger"
+  - name: "@latimer-woods-tech/logger"
     status: "Foundation"
     version: "1.0.0"
     main_use: "JSON structured logging"
     videoking_used: true
     depends_on: ["errors", "monitoring"]
     
-  - name: "@adrper79-dot/auth"
+  - name: "@latimer-woods-tech/auth"
     status: "Active"
     version: "1.0.0"
     main_use: "JWT auth, RBAC, middleware"
     videoking_used: true
     depends_on: ["errors", "logger"]
     
-  - name: "@adrper79-dot/neon"
+  - name: "@latimer-woods-tech/neon"
     status: "Active"
     version: "1.0.0"
     main_use: "Drizzle ORM, Hyperdrive, migrations, RLS"
     videoking_used: true
     depends_on: ["errors", "logger"]
     
-  - name: "@adrper79-dot/stripe"
+  - name: "@latimer-woods-tech/stripe"
     status: "Active"
     version: "1.0.0"
     main_use: "Stripe API, subscriptions, webhooks, payouts"
     videoking_used: true
     depends_on: ["errors", "logger", "neon"]
     
-  - name: "@adrper79-dot/llm"
+  - name: "@latimer-woods-tech/llm"
     status: "Active"
     version: "1.0.0"
     main_use: "Multi-provider LLM chain (Anthropic → Grok → Groq)"
     videoking_used: true
     depends_on: ["errors", "logger"]
     
-  - name: "@adrper79-dot/telephony"
+  - name: "@latimer-woods-tech/telephony"
     status: "Active"
     version: "1.0.0"
     main_use: "Telnyx, Deepgram STT, ElevenLabs TTS"
     videoking_used: true
     depends_on: ["errors", "logger", "llm"]
     
-  - name: "@adrper79-dot/analytics"
+  - name: "@latimer-woods-tech/analytics"
     status: "Active"
     version: "1.0.0"
     main_use: "PostHog + factory_events instrumentation"
     videoking_used: true
     depends_on: ["errors", "neon"]
     
-  - name: "@adrper79-dot/video"
+  - name: "@latimer-woods-tech/video"
     status: "Active"
     version: "1.0.0"
     main_use: "Cloudflare Stream + R2 wrappers"
     videoking_used: true
     depends_on: ["errors"]
     
-  - name: "@adrper79-dot/schedule"
+  - name: "@latimer-woods-tech/schedule"
     status: "Active"
     version: "1.0.0"
     main_use: "Video production calendar + priority scoring"
     videoking_used: true
     depends_on: ["errors", "neon", "video"]
     
-  - name: "@adrper79-dot/deploy"
+  - name: "@latimer-woods-tech/deploy"
     status: "Foundation"
     version: "1.0.0"
     main_use: "Deployment scripts (no runtime deps)"
     videoking_used: false
     depends_on: []
     
-  - name: "@adrper79-dot/testing"
+  - name: "@latimer-woods-tech/testing"
     status: "Foundation"
     version: "1.0.0"
     main_use: "Mock factories, vitest config"
     videoking_used: true
     depends_on: []
     
-  - name: "@adrper79-dot/email"
+  - name: "@latimer-woods-tech/email"
     status: "Staging"
     version: "0.1.0"
     main_use: "Resend email delivery"
     videoking_used: false
     depends_on: ["errors", "logger"]
     
-  - name: "@adrper79-dot/compliance"
+  - name: "@latimer-woods-tech/compliance"
     status: "Staging"
     version: "0.1.0"
     main_use: "GDPR, HIPAA, audit logging"
     videoking_used: false
     depends_on: ["neon"]
     
-  - name: "@adrper79-dot/admin"
+  - name: "@latimer-woods-tech/admin"
     status: "Staging"
     version: "0.1.0"
     main_use: "Admin dashboard capabilities"
     videoking_used: false
     depends_on: ["auth", "analytics"]
     
-  - name: "@adrper79-dot/crm"
+  - name: "@latimer-woods-tech/crm"
     status: "Staging"
     version: "0.1.0"
     main_use: "Customer relationship data layer"
     videoking_used: false
     depends_on: ["neon", "analytics"]
     
-  - name: "@adrper79-dot/content"
+  - name: "@latimer-woods-tech/content"
     status: "Staging"
     version: "0.1.0"
     main_use: "Content management + LLM copy"
     videoking_used: false
     depends_on: ["neon", "copy"]
     
-  - name: "@adrper79-dot/copy"
+  - name: "@latimer-woods-tech/copy"
     status: "Staging"
     version: "0.1.0"
     main_use: "LLM-based copy generation"
     videoking_used: false
     depends_on: ["llm"]
     
-  - name: "@adrper79-dot/seo"
+  - name: "@latimer-woods-tech/seo"
     status: "Foundation"
     version: "1.0.0"
     main_use: "SEO utilities (schema, sitemap)"
     videoking_used: false
     depends_on: []
     
-  - name: "@adrper79-dot/social"
+  - name: "@latimer-woods-tech/social"
     status: "Staging"
     version: "0.1.0"
     main_use: "Social media integration"
     videoking_used: false
     depends_on: ["content"]
     
-  - name: "@adrper79-dot/studio-core"
+  - name: "@latimer-woods-tech/studio-core"
     status: "Foundation"
     version: "0.1.0"
     main_use: "Studio/builder core (shared UI)"
