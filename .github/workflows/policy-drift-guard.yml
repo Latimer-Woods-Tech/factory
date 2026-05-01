@@ -1,0 +1,96 @@
+# =============================================================================
+# Policy Drift Guard
+# Detects and auto-resets org-level GitHub Actions policy drift.
+#
+# Why: 2026-05-01 the org `allowed_actions` setting silently flipped from
+#   `all` -> `local_only` overnight (likely from a UI click), which
+#   broke every reusable workflow across all 11 repos until Adrian noticed
+#   and reset it. This workflow catches that drift on a 30-min cadence and
+#   resets to the canonical state, opening a tracking issue when it happens.
+#
+# Canonical org policy:
+#   - enabled_repositories: all
+#   - allowed_actions: all
+#
+# Manual override: trigger with `mode: report-only` to log without resetting.
+# =============================================================================
+
+name: policy-drift-guard
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'reset (default) or report-only'
+        required: false
+        default: 'reset'
+        type: choice
+        options: [reset, report-only]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: Latimer-Woods-Tech
+
+      - name: Inspect org Actions permissions
+        id: inspect
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -e
+          resp=$(gh api /orgs/Latimer-Woods-Tech/actions/permissions)
+          echo "current: $resp"
+          enabled_repos=$(echo "$resp" | jq -r '.enabled_repositories')
+          allowed=$(echo "$resp" | jq -r '.allowed_actions // "all"')
+          echo "enabled_repositories=$enabled_repos" >> "$GITHUB_OUTPUT"
+          echo "allowed_actions=$allowed" >> "$GITHUB_OUTPUT"
+
+          drift=0
+          [ "$enabled_repos" != "all" ] && drift=1
+          [ "$allowed" != "all" ] && drift=1
+          echo "drift=$drift" >> "$GITHUB_OUTPUT"
+
+      - name: Reset drift
+        if: steps.inspect.outputs.drift == '1' && (github.event.inputs.mode != 'report-only')
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -e
+          echo "::warning::Org policy drift detected. Resetting to canonical state."
+          gh api -X PUT /orgs/Latimer-Woods-Tech/actions/permissions \
+            -F enabled_repositories=all \
+            -F allowed_actions=all
+          echo "Reset complete."
+
+      - name: Open tracking issue on drift
+        if: steps.inspect.outputs.drift == '1'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -e
+          title="policy-drift-guard: org Actions policy drifted on $(date -u +%Y-%m-%dT%H:%MZ)"
+          body="$(printf 'policy-drift-guard detected org-level Actions policy drift.\n\n**Observed**\n- enabled_repositories: `%s`\n- allowed_actions: `%s`\n\n**Expected**\n- enabled_repositories: `all`\n- allowed_actions: `all`\n\n**Action taken**\n%s\n\nLikely cause: someone clicked an Org Settings -> Actions UI option which silently rewrote the policy. Investigate audit log: https://github.com/organizations/Latimer-Woods-Tech/settings/audit-log\n' \
+            "${{ steps.inspect.outputs.enabled_repositories }}" \
+            "${{ steps.inspect.outputs.allowed_actions }}" \
+            "${{ github.event.inputs.mode == 'report-only' && 'Report-only mode — no reset performed.' || 'Auto-reset to canonical state. Verify next deploy.' }}")"
+          gh issue create \
+            --repo Latimer-Woods-Tech/factory \
+            --title "$title" \
+            --body "$body" \
+            --label policy-drift,automation
+
+      - name: All clear
+        if: steps.inspect.outputs.drift == '0'
+        run: echo "✅ No drift. Org Actions policy matches canonical state."
