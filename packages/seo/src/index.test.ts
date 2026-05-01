@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateMetaTags, generateSitemap, generateJsonLd } from './index.js';
-import { ValidationError } from '@adrper79-dot/errors';
+import { ValidationError } from '@latimer-woods-tech/errors';
 
 describe('generateMetaTags', () => {
   it('generates required meta and OG tags', () => {

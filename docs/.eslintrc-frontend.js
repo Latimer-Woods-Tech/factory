@@ -5,7 +5,7 @@
  * 
  * ```javascript
  * module.exports = {
- *   extends: ['./node_modules/@adrper79-dot/eslint-config/frontend'],
+ *   extends: ['./node_modules/@latimer-woods-tech/eslint-config/frontend'],
  *   // Override as needed for your app
  * };
  * ```

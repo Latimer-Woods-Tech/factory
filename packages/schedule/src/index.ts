@@ -1,13 +1,13 @@
-import { sql } from '@adrper79-dot/neon';
-import type { FactoryDb } from '@adrper79-dot/neon';
-import { ValidationError, InternalError, NotFoundError } from '@adrper79-dot/errors';
-import type { RenderJob, RenderJobType, RenderJobStatus } from '@adrper79-dot/video';
+import { sql } from '@latimer-woods-tech/neon';
+import type { FactoryDb } from '@latimer-woods-tech/neon';
+import { ValidationError, InternalError, NotFoundError } from '@latimer-woods-tech/errors';
+import type { RenderJob, RenderJobType, RenderJobStatus } from '@latimer-woods-tech/video';
 
 // Re-export the job types so consumers only need one import
-export type { RenderJob, RenderJobType, RenderJobStatus } from '@adrper79-dot/video';
+export type { RenderJob, RenderJobType, RenderJobStatus } from '@latimer-woods-tech/video';
 
 // Practitioner Studio entitlements + Stripe webhook (W360-005)
-// Re-exported from @adrper79-dot/neon where they live alongside drizzle-orm
+// Re-exported from @latimer-woods-tech/neon where they live alongside drizzle-orm
 export {
   studioPlanTable,
   studioCustomerTable,
@@ -46,7 +46,7 @@ export {
   type StripeSubscription,
   type StripeCustomer,
   type StripeInvoice,
-} from '@adrper79-dot/neon';
+} from '@latimer-woods-tech/neon';
 
 // ---------------------------------------------------------------------------
 // Domain types

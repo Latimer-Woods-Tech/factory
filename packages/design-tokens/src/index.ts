@@ -1,5 +1,5 @@
 /**
- * @adrper79-dot/design-tokens
+ * @latimer-woods-tech/design-tokens
  *
  * Design system tokens for all Factory applications.
  * Includes semantic colors, typography, spacing, motion, and focus styles.
@@ -12,7 +12,7 @@
  *
  * Usage:
  * ```typescript
- * import { colors, spacing, typography, motion } from '@adrper79-dot/design-tokens';
+ * import { colors, spacing, typography, motion } from '@latimer-woods-tech/design-tokens';
  *
  * const styles = {
  *   color: colors.text.primary,

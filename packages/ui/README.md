@@ -1,19 +1,19 @@
-# @adrper79-dot/ui
+# @latimer-woods-tech/ui
 
 **Accessible, reusable UI components for all Factory applications.**
 
-A comprehensive component library built with React, TypeScript, and WCAG 2.2 accessibility standards. All components use design tokens from `@adrper79-dot/design-tokens` for consistency across all Factory apps.
+A comprehensive component library built with React, TypeScript, and WCAG 2.2 accessibility standards. All components use design tokens from `@latimer-woods-tech/design-tokens` for consistency across all Factory apps.
 
 ## Installation
 
 ```bash
-npm install @adrper79-dot/ui @adrper79-dot/design-tokens react react-dom
+npm install @latimer-woods-tech/ui @latimer-woods-tech/design-tokens react react-dom
 ```
 
 ## Quick Start
 
 ```typescript
-import { Button, Input, Label, Alert } from '@adrper79-dot/ui';
+import { Button, Input, Label, Alert } from '@latimer-woods-tech/ui';
 
 export function LoginForm() {
   return (
@@ -44,7 +44,7 @@ export function LoginForm() {
 Accessible button component with multiple variants and sizes.
 
 ```typescript
-import { Button } from '@adrper79-dot/ui';
+import { Button } from '@latimer-woods-tech/ui';
 
 // Variants: primary, secondary, tertiary, danger
 <Button variant="primary">Save</Button>
@@ -75,7 +75,7 @@ import { Button } from '@adrper79-dot/ui';
 Fully accessible text input component.
 
 ```typescript
-import { Input } from '@adrper79-dot/ui';
+import { Input } from '@latimer-woods-tech/ui';
 
 // Basic usage
 <Input
@@ -123,7 +123,7 @@ import { Input } from '@adrper79-dot/ui';
 Semantic label component for form fields.
 
 ```typescript
-import { Label } from '@adrper79-dot/ui';
+import { Label } from '@latimer-woods-tech/ui';
 
 <Label htmlFor="username">Username</Label>
 <Input id="username" />
@@ -145,7 +145,7 @@ import { Label } from '@adrper79-dot/ui';
 Alert component for messages, warnings, and errors.
 
 ```typescript
-import { Alert } from '@adrper79-dot/ui';
+import { Alert } from '@latimer-woods-tech/ui';
 
 // Variants: info, success, warning, error
 <Alert variant="info">Information message</Alert>
@@ -210,7 +210,7 @@ it('Button is accessible', async () => {
 
 ## Integration with Design Tokens
 
-All components use design tokens from `@adrper79-dot/design-tokens`:
+All components use design tokens from `@latimer-woods-tech/design-tokens`:
 
 ```typescript
 // Components automatically use these tokens:
@@ -218,7 +218,7 @@ All components use design tokens from `@adrper79-dot/design-tokens`:
 // - spacing.*, typography.*, motion.*, focus.*, radii.*
 
 // To customize colors for your app, update tokens at theme level
-import { tokens } from '@adrper79-dot/design-tokens';
+import { tokens } from '@latimer-woods-tech/design-tokens';
 
 const customTheme = {
   ...tokens,
@@ -234,7 +234,7 @@ const customTheme = {
 All components are fully typed with TypeScript strict mode:
 
 ```typescript
-import { ButtonProps, InputProps, AlertProps } from '@adrper79-dot/ui';
+import { ButtonProps, InputProps, AlertProps } from '@latimer-woods-tech/ui';
 
 const buttonProps: ButtonProps = {
   variant: 'primary', // ✅ Type-safe
@@ -288,7 +288,7 @@ When adding new components:
 
 ```typescript
 import React, { forwardRef } from 'react';
-import { colors, spacing, focus, radii } from '@adrper79-dot/design-tokens';
+import { colors, spacing, focus, radii } from '@latimer-woods-tech/design-tokens';
 
 export interface ComponentProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
@@ -322,7 +322,7 @@ Part of the Factory monorepo. Internal use only.
 
 ```typescript
 import { useState } from 'react';
-import { Button, Input, Label, Alert } from '@adrper79-dot/ui';
+import { Button, Input, Label, Alert } from '@latimer-woods-tech/ui';
 
 export function SignUpForm() {
   const [email, setEmail] = useState('');

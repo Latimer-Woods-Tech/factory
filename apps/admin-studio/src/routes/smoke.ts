@@ -16,7 +16,7 @@ import {
   executeSmokeProbes,
   type Environment,
   type SmokeProbe,
-} from '@adrper79-dot/studio-core';
+} from '@latimer-woods-tech/studio-core';
 import type { AppEnv } from '../types.js';
 import { FACTORY_APPS, healthUrlFor } from '../lib/app-registry.js';
 import { listCatalog } from '../lib/catalog-store.js';

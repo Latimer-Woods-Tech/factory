@@ -1,5 +1,5 @@
 /**
- * Main export file for @adrper79-dot/ui
+ * Main export file for @latimer-woods-tech/ui
  * Re-exports all components with proper typing
  */
 

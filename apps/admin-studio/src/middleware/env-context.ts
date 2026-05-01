@@ -16,7 +16,7 @@ import {
   isEnvironment,
   isRole,
   isSessionExpired,
-} from '@adrper79-dot/studio-core';
+} from '@latimer-woods-tech/studio-core';
 
 /**
  * HS256 verification using Web Crypto only (Worker-safe — no `jsonwebtoken`).

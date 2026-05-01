@@ -1,4 +1,4 @@
-import { InternalError, ValidationError } from '@adrper79-dot/errors';
+import { InternalError, ValidationError } from '@latimer-woods-tech/errors';
 
 // ---------------------------------------------------------------------------
 // Shared types

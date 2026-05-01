@@ -276,7 +276,7 @@ export async function weeklyPayoutJob(env: Env) {
 
 ```typescript
 // src/db/trace.ts
-import { tracer } from '@adrper79-dot/monitoring';
+import { tracer } from '@latimer-woods-tech/monitoring';
 
 export class TracedQuery {
   private correlationId: string;

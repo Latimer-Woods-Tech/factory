@@ -61,7 +61,7 @@ export const colors = {
 **Usage:**
 ```tsx
 // In app components
-import { colors } from '@adrper79-dot/design-system';
+import { colors } from '@latimer-woods-tech/design-system';
 
 <button style={{ backgroundColor: colors.primary }}>Click me</button>
 ```
@@ -378,7 +378,7 @@ export function MediaCard({
 **App Adoption (Videoking):**
 ```tsx
 // apps/admin-studio/src/components/VideoCard.tsx (now thin wrapper)
-import { MediaCard } from '@adrper79-dot/design-system';
+import { MediaCard } from '@latimer-woods-tech/design-system';
 
 export function VideoCard({ video, creator, onClick, isSubscribed }) {
   return (

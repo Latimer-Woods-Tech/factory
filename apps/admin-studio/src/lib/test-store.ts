@@ -7,8 +7,8 @@
  *
  * @see migrations/0004_studio_test_runs.sql
  */
-import { createDb, sql, type FactoryDb, type HyperdriveBinding } from '@adrper79-dot/neon';
-import type { TestResult, TestRun, TestRunStatus } from '@adrper79-dot/studio-core';
+import { createDb, sql, type FactoryDb, type HyperdriveBinding } from '@latimer-woods-tech/neon';
+import type { TestResult, TestRun, TestRunStatus } from '@latimer-woods-tech/studio-core';
 
 const dbCache = new WeakMap<HyperdriveBinding, FactoryDb>();
 

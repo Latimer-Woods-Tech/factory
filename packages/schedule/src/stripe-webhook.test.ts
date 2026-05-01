@@ -19,13 +19,13 @@ import {
   refundCredits,
   getTotalAvailableCredits,
   type StudioEntitlement,
-} from '@adrper79-dot/neon';
+} from '@latimer-woods-tech/neon';
 
-// Mock @adrper79-dot/neon
+// Mock @latimer-woods-tech/neon
 // ---------------------------------------------------------------------------
 
-vi.mock('@adrper79-dot/neon', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@adrper79-dot/neon')>();
+vi.mock('@latimer-woods-tech/neon', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@latimer-woods-tech/neon')>();
   return {
     ...actual,
     sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values }),
@@ -39,7 +39,7 @@ let mockDb: ReturnType<typeof makeDb>;
 function makeDb(rowGroups: unknown[][] = [[]]) {
   let callIndex = 0;
   return {
-    execute: vi.fn((_query: unknown) => {
+    execute: vi.fn(() => {
       const result = rowGroups[callIndex % rowGroups.length] ?? [];
       callIndex++;
       return Promise.resolve({ rows: result });
@@ -82,7 +82,7 @@ describe('handleStripeWebhook', () => {
     mockDb = makeDb();
     const result = await handleStripeWebhook('{}', undefined, {} as never, WEBHOOK_SECRET);
     expect(result.statusCode).toBe(400);
-    expect(JSON.parse(result.body)).toMatchObject({ error: expect.stringContaining('Missing') });
+    expect(JSON.parse(result.body)).toMatchObject({ error: expect.stringContaining('Missing') as string });
   });
 
   it('returns 401 when signature is invalid', async () => {
@@ -148,7 +148,7 @@ describe('handleStripeWebhook', () => {
   });
 
   it('handles customer.subscription.updated and returns 200', async () => {
-    const { createDb } = await import('@adrper79-dot/neon');
+    const { createDb } = await import('@latimer-woods-tech/neon');
     mockDb = makeDb([
       [],                                              // UPDATE subscriptions
       [{ customer_id: 'cust-01', plan_id: 'plan-01' }], // SELECT for refresh
@@ -178,7 +178,7 @@ describe('handleStripeWebhook', () => {
   });
 
   it('handles customer.subscription.deleted and returns 200', async () => {
-    const { createDb } = await import('@adrper79-dot/neon');
+    const { createDb } = await import('@latimer-woods-tech/neon');
     mockDb = makeDb([
       [],                                              // UPDATE SET status = canceled
       [{ customer_id: 'cust-01', plan_id: 'plan-01' }], // SELECT for refresh

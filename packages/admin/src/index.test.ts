@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
 import { createAdminRouter } from './index';
-import type { FactoryDb } from '@adrper79-dot/neon';
-import type { Analytics } from '@adrper79-dot/analytics';
+import type { FactoryDb } from '@latimer-woods-tech/neon';
+import type { Analytics } from '@latimer-woods-tech/analytics';
 
 // ---------------------------------------------------------------------------
 // Helpers

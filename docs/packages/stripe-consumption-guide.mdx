@@ -3,7 +3,7 @@ export const metadata = {
   description: "Subscriptions, webhooks, and creator payouts",
 };
 
-# @adrper79-dot/stripe — Payments Consumption Guide
+# @latimer-woods-tech/stripe — Payments Consumption Guide
 
 **Last Updated:** April 28, 2026  
 **Target Audience:** Engineers building payments flows  
@@ -13,7 +13,7 @@ export const metadata = {
 
 ## Overview
 
-The `@adrper79-dot/stripe` package provides:
+The `@latimer-woods-tech/stripe` package provides:
 - **Stripe client** — Pre-configured with Factory-standard API version
 - **Webhook handler** — Validates & routes Stripe webhook events
 - **Subscription helpers** — State machine for subscription lifecycle
@@ -31,7 +31,7 @@ The `@adrper79-dot/stripe` package provides:
 
 ### 1. Install the package
 ```bash
-npm install @adrper79-dot/stripe
+npm install @latimer-woods-tech/stripe
 ```
 
 ### 2. Set Stripe secrets in environment
@@ -63,7 +63,7 @@ Get these from Stripe Dashboard → Developers → API Keys.
 ### 3. Create Stripe client in your Worker
 
 ```typescript
-import { createStripeClient } from '@adrper79-dot/stripe';
+import { createStripeClient } from '@latimer-woods-tech/stripe';
 
 const stripe = createStripeClient(env.STRIPE_SECRET_KEY);
 
@@ -133,7 +133,7 @@ interface SubscriptionStatus {
 ### Create Checkout Session
 
 ```typescript
-import { createStripeClient } from '@adrper79-dot/stripe';
+import { createStripeClient } from '@latimer-woods-tech/stripe';
 
 const stripe = createStripeClient(env.STRIPE_SECRET_KEY);
 
@@ -167,7 +167,7 @@ app.post('/api/checkout/create', async (c) => {
 ### Webhook Handler
 
 ```typescript
-import { stripeWebhookHandler } from '@adrper79-dot/stripe';
+import { stripeWebhookHandler } from '@latimer-woods-tech/stripe';
 
 app.post('/webhooks/stripe', stripeWebhookHandler({
   webhookSecret: env.STRIPE_WEBHOOK_SECRET,
@@ -314,7 +314,7 @@ app.post('/api/creator/enable-payouts',
 
 ### Execute Payout Batch
 
-From the `@adrper79-dot/schedule` package, execute daily payouts:
+From the `@latimer-woods-tech/schedule` package, execute daily payouts:
 
 ```typescript
 async function executePayout(creatorId, amount, connectedAccountId, stripe) {
@@ -470,7 +470,7 @@ async function handlePayoutCron(env) {
 Stripe methods throw `StripeAPIError`. Always catch and log:
 
 ```typescript
-import { InternalError, ErrorCodes } from '@adrper79-dot/errors';
+import { InternalError, ErrorCodes } from '@latimer-woods-tech/errors';
 import Stripe from 'stripe';
 
 try {

@@ -1,4 +1,4 @@
-# Changelog — `@adrper79-dot/video`
+# Changelog — `@latimer-woods-tech/video`
 
 All notable changes to this package will be documented in this file.
 

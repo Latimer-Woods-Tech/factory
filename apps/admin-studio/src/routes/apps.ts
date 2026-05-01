@@ -19,7 +19,7 @@ import {
   type AppHealthStatus,
   type DeployVersion,
   type Environment,
-} from '@adrper79-dot/studio-core';
+} from '@latimer-woods-tech/studio-core';
 import { FACTORY_APPS, healthUrlFor, workerNameFor } from '../lib/app-registry.js';
 
 const apps = new Hono<AppEnv>();

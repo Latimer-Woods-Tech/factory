@@ -52,7 +52,7 @@
 
 - **Vitest:** Unit + integration runner
 - **@vitest/pool/workers:** Cloudflare Worker simulation
-- **@adrper79-dot/testing:** Mock factories (Stripe API, database, LLM)
+- **@latimer-woods-tech/testing:** Mock factories (Stripe API, database, LLM)
 
 ---
 
@@ -69,7 +69,7 @@ import {
   mockDatabase,
   mockUser,
   mockAuthToken,
-} from '@adrper79-dot/testing';
+} from '@latimer-woods-tech/testing';
 
 describe('Subscription: Happy Path', () => {
   beforeEach(() => {
@@ -644,4 +644,4 @@ npm run test:money-moving -- --coverage
 **Helpful Resources:**
 - [Vitest Docs](https://vitest.dev/)
 - [Stripe Test Mode](https://stripe.com/docs/testing)
-- [@adrper79-dot/testing Mock Factories](../packages/testing/)
+- [@latimer-woods-tech/testing Mock Factories](../packages/testing/)

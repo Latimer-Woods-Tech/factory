@@ -1,5 +1,5 @@
 {
-  "name": "@adrper79-dot/admin",
+  "name": "@latimer-woods-tech/admin",
   "version": "0.2.0",
   "private": false,
   "publishConfig": {
@@ -27,10 +27,10 @@
     "prepublish": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
-    "@adrper79-dot/errors": "file:../errors",
-    "@adrper79-dot/auth": "file:../auth",
-    "@adrper79-dot/analytics": "file:../analytics",
-    "@adrper79-dot/neon": "file:../neon",
+    "@latimer-woods-tech/errors": "file:../errors",
+    "@latimer-woods-tech/auth": "file:../auth",
+    "@latimer-woods-tech/analytics": "file:../analytics",
+    "@latimer-woods-tech/neon": "file:../neon",
     "hono": "^4.12.14"
   },
   "devDependencies": {

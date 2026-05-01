@@ -1,5 +1,5 @@
 {
-  "name": "@adrper79-dot/stripe",
+  "name": "@latimer-woods-tech/stripe",
   "version": "0.2.0",
   "private": false,
   "publishConfig": {
@@ -27,9 +27,9 @@
     "prepublish": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
-    "@adrper79-dot/errors": "file:../errors",
-    "@adrper79-dot/logger": "file:../logger",
-    "@adrper79-dot/neon": "file:../neon",
+    "@latimer-woods-tech/errors": "file:../errors",
+    "@latimer-woods-tech/logger": "file:../logger",
+    "@latimer-woods-tech/neon": "file:../neon",
     "hono": "^4.12.14",
     "stripe": "^17.4.0"
   },

@@ -152,7 +152,7 @@ export interface SentryCloudflareConfig {
  *
  * @example
  * ```typescript
- * import { withSentry, createSentryCloudflareConfig } from '@adrper79-dot/monitoring';
+ * import { withSentry, createSentryCloudflareConfig } from '@latimer-woods-tech/monitoring';
  * import app from './app.js';
  * import type { Env } from './env.js';
  *
@@ -200,7 +200,7 @@ export { withSentry } from '@sentry/cloudflare';
  *
  * @example
  * ```typescript
- * import { wrapMcpServerWithSentry } from '@adrper79-dot/monitoring';
+ * import { wrapMcpServerWithSentry } from '@latimer-woods-tech/monitoring';
  * import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
  *
  * const server = wrapMcpServerWithSentry(

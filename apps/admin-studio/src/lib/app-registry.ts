@@ -13,7 +13,7 @@
  * `{name}-production.adrper79.workers.dev` for prod-style).
  */
 
-import type { Environment } from '@adrper79-dot/studio-core';
+import type { Environment } from '@latimer-woods-tech/studio-core';
 
 export interface FactoryApp {
   /** Stable id, matches `service-registry.yml`. */

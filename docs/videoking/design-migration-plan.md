@@ -128,7 +128,7 @@ Record in:
 🎉 Phase 1: Component Cleanup Complete
 
 We removed 4 duplicate components:
-- ❌ ButtonCustom (use @adrper79-dot/design-system Button)
+- ❌ ButtonCustom (use @latimer-woods-tech/design-system Button)
 - ❌ HeadingCustom (use Factory Heading)
 - ❌ TextInput (use Factory Input)
 - ❌ CheckboxSingle (use Factory Checkbox)
@@ -154,7 +154,7 @@ Next: Extract generics to Factory (W3–W4)
 
 ### Goals
 1. Generalize 8 components
-2. Publish to @adrper79-dot/design-system v0.1.1+
+2. Publish to @latimer-woods-tech/design-system v0.1.1+
 3. Ensure accessibility compliance (WCAG 2.2 AA)
 4. Add comprehensive tests (90%+ coverage)
 
@@ -389,7 +389,7 @@ Extract these simpler components in parallel:
 - **Tests added:** 90%+ coverage each
 - **Accessibility:** WCAG 2.2 AA verified
 - **Effort:** 24 hours (Lead 14h + Support 10h)
-- **Deliverable:** @adrper79-dot/design-system v0.2.0
+- **Deliverable:** @latimer-woods-tech/design-system v0.2.0
 
 ---
 
@@ -419,7 +419,7 @@ import { Toast } from '../components/Toast';
 **After:**
 ```tsx
 // Import Factory versions
-import { FormField, Spinner, Toast } from '@adrper79-dot/design-system';
+import { FormField, Spinner, Toast } from '@latimer-woods-tech/design-system';
 
 // Keep app-specific
 import { VideoPlayer } from '../components/video/VideoPlayer';
@@ -478,7 +478,7 @@ npm test -- --coverage
 ```
 
 **Handle failures:**
-- If import fails: Check node_modules/@adrper79-dot/design-system exists
+- If import fails: Check node_modules/@latimer-woods-tech/design-system exists
 - If test fails: Verify Factory component API matches app usage
 - If coverage drops: Add tests for new Factory integrations
 

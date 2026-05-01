@@ -201,7 +201,7 @@ export RATE_LIMITER_NEIGHBOR_AID="1006"
 export GITHUB_TOKEN="ghp_..."
 
 for app in wordis-bond cypher-healing prime-self ijustus the-calling neighbor-aid; do
-  gh repo create adrper79-dot/$app \
+  gh repo create Latimer-Woods-Tech/$app \
     --private \
     --description "Factory App: $app"
 done
@@ -214,12 +214,12 @@ gh repo list adrper79-dot
 
 Expected: 6 repositories visible
 
-- [ ] `adrper79-dot/wordis-bond` created
-- [ ] `adrper79-dot/cypher-healing` created
-- [ ] `adrper79-dot/prime-self` created
-- [ ] `adrper79-dot/ijustus` created
-- [ ] `adrper79-dot/the-calling` created
-- [ ] `adrper79-dot/neighbor-aid` created
+- [ ] `Latimer-Woods-Tech/wordis-bond` created
+- [ ] `Latimer-Woods-Tech/cypher-healing` created
+- [ ] `Latimer-Woods-Tech/prime-self` created
+- [ ] `Latimer-Woods-Tech/ijustus` created
+- [ ] `Latimer-Woods-Tech/the-calling` created
+- [ ] `Latimer-Woods-Tech/neighbor-aid` created
 
 ---
 
@@ -315,7 +315,7 @@ node packages/deploy/scripts/setup-all-apps.mjs
 **Verification:**
 ```bash
 # Check GitHub secrets on one app
-gh secret list --repo adrper79-dot/wordis-bond
+gh secret list --repo Latimer-Woods-Tech/wordis-bond
 
 # Check Wrangler secrets (local test)
 wrangler secret list --name wordis-bond
@@ -352,7 +352,7 @@ If Phase 6 fails and needs to be rolled back:
 1. **Delete GitHub repositories:**
    ```bash
    for app in wordis-bond cypher-healing prime-self ijustus the-calling neighbor-aid; do
-     gh repo delete adrper79-dot/$app --yes
+     gh repo delete Latimer-Woods-Tech/$app --yes
    done
    ```
 
@@ -408,8 +408,8 @@ Once Phase 6 is complete:
 - **CloudFlare Dashboard:** https://dash.cloudflare.com
 - **Sentry Dashboard:** https://sentry.io/organizations/
 - **PostHog Dashboard:** https://app.posthog.com/
-- **GitHub Organizations:** https://github.com/organizations/adrper79-dot/repositories
-- **Factory Core Repo:** https://github.com/adrper79-dot/Factory
+- **GitHub Organizations:** https://github.com/organizations/Latimer-Woods-Tech/repositories
+- **Factory Core Repo:** https://github.com/Latimer-Woods-Tech/Factory
 
 ---
 
