@@ -1,6 +1,6 @@
-import { sql } from '@adrper79-dot/neon';
-import type { FactoryDb } from '@adrper79-dot/neon';
-import { InternalError, NotFoundError, ValidationError, ErrorCodes } from '@adrper79-dot/errors';
+import { sql } from '@latimer-woods-tech/neon';
+import type { FactoryDb } from '@latimer-woods-tech/neon';
+import { InternalError, NotFoundError, ValidationError, ErrorCodes } from '@latimer-woods-tech/errors';
 
 // ---------------------------------------------------------------------------
 // Types

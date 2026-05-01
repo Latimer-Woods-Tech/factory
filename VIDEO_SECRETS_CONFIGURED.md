@@ -107,18 +107,18 @@ echo "https://schedule.adrper79.workers.dev" | gh secret set SCHEDULE_WORKER_URL
 **Update Secrets**:
 ```powershell
 # Replace placeholders with real values
-echo "REAL_ACCESS_KEY_FROM_CLOUDFLARE" | gh secret set R2_ACCESS_KEY_ID --repo adrper79-dot/Factory
-echo "REAL_SECRET_KEY_FROM_CLOUDFLARE" | gh secret set R2_SECRET_ACCESS_KEY --repo adrper79-dot/Factory
+echo "REAL_ACCESS_KEY_FROM_CLOUDFLARE" | gh secret set R2_ACCESS_KEY_ID --repo Latimer-Woods-Tech/Factory
+echo "REAL_SECRET_KEY_FROM_CLOUDFLARE" | gh secret set R2_SECRET_ACCESS_KEY --repo Latimer-Woods-Tech/Factory
 
 # Get public domain from bucket settings
-echo "pub-XXXXXX.r2.dev" | gh secret set R2_PUBLIC_DOMAIN --repo adrper79-dot/Factory
+echo "pub-XXXXXX.r2.dev" | gh secret set R2_PUBLIC_DOMAIN --repo Latimer-Woods-Tech/Factory
 ```
 
 ### Phase 2C: Verify Secrets (2 min)
 
 ```powershell
 # Ensure all 14 secrets exist
-gh secret list --repo adrper79-dot/Factory | Select-String -Pattern "ELEVENLABS|R2_|WORKER|CLOUDFLARE|CF_API|GH_PAT|ANTHROPIC|SCHEDULE"
+gh secret list --repo Latimer-Woods-Tech/Factory | Select-String -Pattern "ELEVENLABS|R2_|WORKER|CLOUDFLARE|CF_API|GH_PAT|ANTHROPIC|SCHEDULE"
 
 # Expected output: 14 matching secrets with timestamps
 ```
@@ -143,7 +143,7 @@ Based on ElevenLabs API query on April 27, 2026:
 
 | Step | Secrets Used | Purpose |
 |------|--------------|---------|
-| **2. Install dependencies** | `GH_PAT` | npm auth for `@adrper79-dot/*` packages |
+| **2. Install dependencies** | `GH_PAT` | npm auth for `@latimer-woods-tech/*` packages |
 | **4. Generate script** | `ANTHROPIC_API_KEY` | Claude API for narration script |
 | **5. Generate narration** | `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_*` | Text-to-speech audio generation |
 | **6. Upload narration** | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_PUBLIC_DOMAIN` | S3-compatible R2 upload |
@@ -185,7 +185,7 @@ $secrets = @(
 )
 
 foreach ($secret in $secrets) {
-  gh secret delete $secret --repo adrper79-dot/Factory
+  gh secret delete $secret --repo Latimer-Woods-Tech/Factory
 }
 
 # Workflow will fail until secrets are reconfigured

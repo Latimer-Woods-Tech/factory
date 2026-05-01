@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createEmailClient } from './index.js';
-import { InternalError } from '@adrper79-dot/errors';
+import { InternalError } from '@latimer-woods-tech/errors';
 
 const BASE_CONFIG = {
   resendApiKey: 'test-key',

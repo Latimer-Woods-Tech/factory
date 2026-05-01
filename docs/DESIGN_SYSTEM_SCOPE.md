@@ -25,13 +25,13 @@ These **MUST be shared** across all apps; no exceptions.
 
 | Asset | Reason | Location |
 |-------|--------|----------|
-| **Typography Scale** | Users should recognize heading hierarchy across apps | `@adrper79-dot/design-tokens` |
-| **Color Accessibility** | WCAG 4.5:1 contrast ratios are universal | `@adrper79-dot/design-tokens` |
-| **Motion Timing** | Reduces cognitive load if modals/toasts animate identically | `@adrper79-dot/design-tokens` |
-| **Spacing Scale** (8px grid) | CSS consistency; easier to reason about alignment | `@adrper79-dot/design-tokens` |
-| **Focus Styles** | Keyboard navigation must look consistent | `@adrper79-dot/design-tokens` |
-| **Error Colors** (red), **Success** (green), **Info** (blue) | Users expect status to look the same | `@adrper79-dot/design-tokens` |
-| **Dark Mode Support** | If any app supports it, all must handle color tokens identically | `@adrper79-dot/design-tokens` |
+| **Typography Scale** | Users should recognize heading hierarchy across apps | `@latimer-woods-tech/design-tokens` |
+| **Color Accessibility** | WCAG 4.5:1 contrast ratios are universal | `@latimer-woods-tech/design-tokens` |
+| **Motion Timing** | Reduces cognitive load if modals/toasts animate identically | `@latimer-woods-tech/design-tokens` |
+| **Spacing Scale** (8px grid) | CSS consistency; easier to reason about alignment | `@latimer-woods-tech/design-tokens` |
+| **Focus Styles** | Keyboard navigation must look consistent | `@latimer-woods-tech/design-tokens` |
+| **Error Colors** (red), **Success** (green), **Info** (blue) | Users expect status to look the same | `@latimer-woods-tech/design-tokens` |
+| **Dark Mode Support** | If any app supports it, all must handle color tokens identically | `@latimer-woods-tech/design-tokens` |
 | **Component API** (forwardRef, className) | One pattern for component consumption across apps | TypeScript spec |
 
 ### Tier 1: Recommended Shared (Most Apps)
@@ -40,14 +40,14 @@ These **SHOULD be shared** unless you have a specific reason not to.
 
 | Asset | Why It's Shared | When It's App-Specific | Location |
 |-------|---|---|---|
-| **Button Component** (primary/secondary/tertiary) | Same interaction everywhere | If app needs unique visual language (e.g., game UI) | `@adrper79-dot/ui` |
-| **Input Component** (text, email, password) | Same form UX everywhere | If app uses unconventional input paradigm | `@adrper79-dot/ui` |
-| **Modal Component** | Consistent dialog behavior | If app needs custom modal animation/layout | `@adrper79-dot/ui` |
-| **Toast/Notification** | Consistent placement + exit timing | If app needs unique notification style | `@adrper79-dot/ui` |
-| **Navigation Patterns** (tabs, breadcrumbs, drawer) | Users learn once; works everywhere | If app uses unique navigation model | `@adrper79-dot/ui` |
-| **Loading Spinner** | Familiar loading indication | If app has branded loader | `@adrper79-dot/ui` |
-| **Form Validation Patterns** | Real-time feedback, error messages | If app has domain-specific validation UX | `@adrper79-dot/ui` |
-| **Checkbox, Radio, Select** | Standard form controls | Rarely needs overrides | `@adrper79-dot/ui` |
+| **Button Component** (primary/secondary/tertiary) | Same interaction everywhere | If app needs unique visual language (e.g., game UI) | `@latimer-woods-tech/ui` |
+| **Input Component** (text, email, password) | Same form UX everywhere | If app uses unconventional input paradigm | `@latimer-woods-tech/ui` |
+| **Modal Component** | Consistent dialog behavior | If app needs custom modal animation/layout | `@latimer-woods-tech/ui` |
+| **Toast/Notification** | Consistent placement + exit timing | If app needs unique notification style | `@latimer-woods-tech/ui` |
+| **Navigation Patterns** (tabs, breadcrumbs, drawer) | Users learn once; works everywhere | If app uses unique navigation model | `@latimer-woods-tech/ui` |
+| **Loading Spinner** | Familiar loading indication | If app has branded loader | `@latimer-woods-tech/ui` |
+| **Form Validation Patterns** | Real-time feedback, error messages | If app has domain-specific validation UX | `@latimer-woods-tech/ui` |
+| **Checkbox, Radio, Select** | Standard form controls | Rarely needs overrides | `@latimer-woods-tech/ui` |
 
 ### Tier 2: Likely App-Specific
 
@@ -69,16 +69,16 @@ These belong in Factory **packages**, not design system.
 
 | Asset | Package Owner | Why |
 |-------|---|---|
-| **Operator Table** | `@adrper79-dot/admin-ui` | Only admin apps use it; consumer apps don't |
-| **Moderation UI** | `@adrper79-dot/admin-ui` | Domain-specific tooling |
-| **Video Player** | `@adrper79-dot/video` | Complex stateful component; versioned with video backend |
-| **Analytics Dashboard** | `@adrper79-dot/analytics` | Specialized visualization patterns |
+| **Operator Table** | `@latimer-woods-tech/admin-ui` | Only admin apps use it; consumer apps don't |
+| **Moderation UI** | `@latimer-woods-tech/admin-ui` | Domain-specific tooling |
+| **Video Player** | `@latimer-woods-tech/video` | Complex stateful component; versioned with video backend |
+| **Analytics Dashboard** | `@latimer-woods-tech/analytics` | Specialized visualization patterns |
 
 ---
 
 ## Part 2: Design System Architecture
 
-### Factory-Level Components (`@adrper79-dot/ui`)
+### Factory-Level Components (`@latimer-woods-tech/ui`)
 
 ✅ **Shared across all apps.**
 
@@ -87,7 +87,7 @@ These belong in Factory **packages**, not design system.
 **Components:**
 
 ```
-@adrper79-dot/ui/
+@latimer-woods-tech/ui/
 ├── Button
 │   ├── Button.tsx
 │   ├── Button.stories.tsx
@@ -107,10 +107,10 @@ These belong in Factory **packages**, not design system.
 └── index.ts
 ```
 
-**Tokens Package (`@adrper79-dot/design-tokens`):**
+**Tokens Package (`@latimer-woods-tech/design-tokens`):**
 
 ```
-@adrper79-dot/design-tokens/
+@latimer-woods-tech/design-tokens/
 ├── colors/
 │   ├── semantic.json (error, success, info, warning)
 │   ├── wcag.json (accessible color pairs)
@@ -128,14 +128,14 @@ These belong in Factory **packages**, not design system.
 **Installation in App:**
 
 ```bash
-npm install @adrper79-dot/ui @adrper79-dot/design-tokens
+npm install @latimer-woods-tech/ui @latimer-woods-tech/design-tokens
 ```
 
 **Usage:**
 
 ```typescript
-import { Button } from '@adrper79-dot/ui';
-import { colors, spacing } from '@adrper79-dot/design-tokens';
+import { Button } from '@latimer-woods-tech/ui';
+import { colors, spacing } from '@latimer-woods-tech/design-tokens';
 
 <Button variant="primary" size="lg">
   Save
@@ -188,7 +188,7 @@ function SubmitButton() {
 }
 
 // ✅ Do: use shared Button, extend with VideoKing styling
-import { Button } from '@adrper79-dot/ui';
+import { Button } from '@latimer-woods-tech/ui';
 
 function VideoKingSubscribeButton() {
   return (
@@ -208,7 +208,7 @@ function VideoKingSubscribeButton() {
 // }
 ```
 
-### Operator / Admin Components (`@adrper79-dot/admin-ui`)
+### Operator / Admin Components (`@latimer-woods-tech/admin-ui`)
 
 ✅ **Shared across all admin apps.**  
 📌 **Separate from consumer-facing UI** (different UX goals)
@@ -219,7 +219,7 @@ function VideoKingSubscribeButton() {
 
 ```typescript
 // admin-ui package exports operator patterns
-import { OperatorTable, StatusChip, ConfirmationModal } from '@adrper79-dot/admin-ui';
+import { OperatorTable, StatusChip, ConfirmationModal } from '@latimer-woods-tech/admin-ui';
 ```
 
 ---
@@ -232,11 +232,11 @@ import { OperatorTable, StatusChip, ConfirmationModal } from '@adrper79-dot/admi
 
 **Option A: Keep It App-Specific (Best Choice for VideoKing)**
 - Lives in `apps/videoking/src/components/`
-- Extract reusable sub-components (animation helpers, color utilities) to `@adrper79-dot/design-tokens` if useful elsewhere
+- Extract reusable sub-components (animation helpers, color utilities) to `@latimer-woods-tech/design-tokens` if useful elsewhere
 
 **Option B: Promote to Shared (When Multiple Apps Need It)**
 - After 2+ apps have reimplemented something similar, consider promotion
-- Move to `@adrper79-dot/ui` with full test coverage + documentation
+- Move to `@latimer-woods-tech/ui` with full test coverage + documentation
 - Apps update import paths and deprecate local versions
 - Major version bump in tokens package
 
@@ -247,10 +247,10 @@ import { OperatorTable, StatusChip, ConfirmationModal } from '@adrper79-dot/admi
 **Not Shared (Best Choice):**
 - VideoKing's `VideoPlayer` stays app-specific (heavily optimized for VideoKing's content model)
 - App B builds its own `VideoPlayer` (different features, controls, layout)
-- Both import `@adrper79-dot/video` for common video utilities (sizing, aspect ratios, encoding specs)
+- Both import `@latimer-woods-tech/video` for common video utilities (sizing, aspect ratios, encoding specs)
 
 **Shared (If Both Apps Have Identical Requirements):**
-- Extract common behavior to `@adrper79-dot/ui` or new package
+- Extract common behavior to `@latimer-woods-tech/ui` or new package
 - Unlikely for complex components; reserved for basic UI abstractions
 
 ---
@@ -259,7 +259,7 @@ import { OperatorTable, StatusChip, ConfirmationModal } from '@adrper79-dot/admi
 
 ### Colors (Semantic Mapping)
 
-**Define semantic tokens in `@adrper79-dot/design-tokens`:**
+**Define semantic tokens in `@latimer-woods-tech/design-tokens`:**
 
 ```json
 {
@@ -282,7 +282,7 @@ import { OperatorTable, StatusChip, ConfirmationModal } from '@adrper79-dot/admi
 
 ```typescript
 // tailwind.config.js
-import { colors } from '@adrper79-dot/design-tokens';
+import { colors } from '@latimer-woods-tech/design-tokens';
 
 export default {
   theme: {
@@ -375,13 +375,13 @@ export default {
 
 1. Install shared packages:
    ```bash
-   npm install @adrper79-dot/ui @adrper79-dot/design-tokens
+   npm install @latimer-woods-tech/ui @latimer-woods-tech/design-tokens
    ```
 
 2. Configure Tailwind:
    ```javascript
    // tailwind.config.js
-   import { tailwindConfig } from '@adrper79-dot/design-tokens';
+   import { tailwindConfig } from '@latimer-woods-tech/design-tokens';
    
    export default {
      ...tailwindConfig,
@@ -396,20 +396,20 @@ export default {
 3. Create app-specific components folder:
    ```
    src/components/
-   ├── shared/        (use @adrper79-dot/ui here)
+   ├── shared/        (use @latimer-woods-tech/ui here)
    └── app-x/         (App X brand components)
    ```
 
 **Week 2: Component Inventory**
 
 1. List all components App X needs
-2. Check if they exist in `@adrper79-dot/ui`
+2. Check if they exist in `@latimer-woods-tech/ui`
 3. If not, create in `src/components/app-x/`
 4. If multiple apps might reuse, flag for promotion (don't promote immediately)
 
 **Ongoing: Dependency Upgrades**
 
-When `@adrper79-dot/ui` ships new version:
+When `@latimer-woods-tech/ui` ships new version:
 - Minor version: backward compatible; upgrade freely
 - Major version: breaking changes; review before upgrading
 
@@ -422,7 +422,7 @@ When `@adrper79-dot/ui` ships new version:
 | Component | Location | Candidate for Shared? | Reason |
 |-----------|----------|---|---|
 | Button (custom) | src/components/Button | No | VideoKing-specific animation |
-| Modal | src/components/Modal | Yes → Migrate to `@adrper79-dot/ui` | Generic pattern |
+| Modal | src/components/Modal | Yes → Migrate to `@latimer-woods-tech/ui` | Generic pattern |
 | Toast | src/components/Toast | Yes → Migrate | Generic pattern |
 | VideoPlayer | src/components/VideoPlayer | No | Complex, VideoKing-specific |
 | CreatorCard | src/components/CreatorCard | No | Domain app-specific |
@@ -433,14 +433,14 @@ When `@adrper79-dot/ui` ships new version:
 ### Phased Migration Plan (Phase C/D)
 
 **Phase C (May 15–June 15):**
-- [ ] Extract Modal, Toast, Spinner, Input, Checkbox, Select to `@adrper79-dot/ui`
-- [ ] Bump `@adrper79-dot/ui` to v0.2.0
+- [ ] Extract Modal, Toast, Spinner, Input, Checkbox, Select to `@latimer-woods-tech/ui`
+- [ ] Bump `@latimer-woods-tech/ui` to v0.2.0
 - [ ] Update VideoKing imports (use shared components)
 - [ ] VideoKing retains Button (custom), VideoPlayer, CreatorCard, SubscribeFlow
 
 **Phase D (June 15+):**
 - [ ] Promote Button → If another app needs exact same animation, move to shared; otherwise keep VideoKing-specific
-- [ ] Create App X; measure reuse of `@adrper79-dot/ui` components
+- [ ] Create App X; measure reuse of `@latimer-woods-tech/ui` components
 - [ ] Identify patterns that recur; promote top 3 to v1.0 of shared UI
 
 ---
@@ -451,11 +451,11 @@ When `@adrper79-dot/ui` ships new version:
 - [x] Shared vs app-specific boundaries defined
 - [x] Architecture documented (Factory UI package, app-level components, operator UI package)
 - [x] Component ownership model documented (who maintains what)
-- [x] Token design system created (`@adrper79-dot/design-tokens` spec)
+- [x] Token design system created (`@latimer-woods-tech/design-tokens` spec)
 - [x] VideoKing reuse strategy documented (audit + migration plan)
 - [x] Tailwind configuration strategy documented
-- [ ] `@adrper79-dot/ui` v0.1 released with 5 core components (May 5–8)
-- [ ] `@adrper79-dot/design-tokens` v1.0 released (May 5)
+- [ ] `@latimer-woods-tech/ui` v0.1 released with 5 core components (May 5–8)
+- [ ] `@latimer-woods-tech/design-tokens` v1.0 released (May 5)
 - [ ] VideoKing migrated to use shared tokens + components (May 8–12)
 - [ ] New app scaffolding template includes design system setup (May 15)
 
@@ -470,5 +470,5 @@ When `@adrper79-dot/ui` ships new version:
 ---
 
 **Status:** ✅ T1.4 READY FOR IMPLEMENTATION  
-**Next Action:** Release `@adrper79-dot/design-tokens` v1.0 (May 5); extract VideoKing shared components (May 5–8)
+**Next Action:** Release `@latimer-woods-tech/design-tokens` v1.0 (May 5); extract VideoKing shared components (May 5–8)
 

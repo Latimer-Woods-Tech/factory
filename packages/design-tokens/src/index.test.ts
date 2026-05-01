@@ -12,7 +12,7 @@ import {
   tokens,
 } from './index';
 
-describe('@adrper79-dot/design-tokens', () => {
+describe('@latimer-woods-tech/design-tokens', () => {
   describe('colors', () => {
     it('exports semantic colors', () => {
       expect(colors.primary).toBe('#0052CC');

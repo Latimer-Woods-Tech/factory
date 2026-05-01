@@ -1,21 +1,21 @@
 /**
  * Audit log persistence.
  *
- * Phase B: writes to `studio_audit_log` via `@adrper79-dot/neon`.
+ * Phase B: writes to `studio_audit_log` via `@latimer-woods-tech/neon`.
  * Phase A only logged to console; the DB write is best-effort and never
  * blocks the response (failures are logged but swallowed).
  *
  * @see apps/admin-studio/migrations/0001_studio_audit_log.sql
  */
 
-import { createDb, sql, type FactoryDb, type HyperdriveBinding } from '@adrper79-dot/neon';
+import { createDb, sql, type FactoryDb, type HyperdriveBinding } from '@latimer-woods-tech/neon';
 import {
   type AuditEntry,
   type AuditRow,
   type AuditQuery,
   type AuditPage,
   toAuditEntry,
-} from '@adrper79-dot/studio-core';
+} from '@latimer-woods-tech/studio-core';
 
 /**
  * Single Drizzle client instance per Worker invocation.

@@ -123,7 +123,7 @@ Analytics (PostHog):
   … (5 more apps)
 
 GitHub Secrets:
-  → Store 50+ secrets in github.com/adrper79-dot/wordis-bond repo
+  → Store 50+ secrets in github.com/Latimer-Woods-Tech/wordis-bond repo
   … (5 more apps)
 
 ✅ DRY RUN COMPLETE — Review plan above, then execute with:
@@ -196,9 +196,9 @@ node scripts/phase-6-orchestrator.mjs
 … (PostHog setup, takes ~5-10 minutes, can be skipped if no POSTHOG_API_KEY)
 
 🔑 Storing GitHub Actions Secrets...
-✅ Stored 52 secrets in github.com/adrper79-dot/wordis-bond
+✅ Stored 52 secrets in github.com/Latimer-Woods-Tech/wordis-bond
    HYPERDRIVE_ID, NEON_CONN_STR, SENTRY_DSN, POSTHOG_API_KEY, JWT_SECRET, …
-✅ Stored 52 secrets in github.com/adrper79-dot/cypher-healing
+✅ Stored 52 secrets in github.com/Latimer-Woods-Tech/cypher-healing
 … (secret storage for all 6 apps, takes ~5-10 minutes)
 
 ⚡ Running setup-all-apps.mjs...
@@ -247,7 +247,7 @@ wrangler hyperdrive list
 
 ```bash
 # Check secrets were stored in one app repo
-gh repo view adrper79-dot/wordis-bond --json secretsCount
+gh repo view Latimer-Woods-Tech/wordis-bond --json secretsCount
 # Expected: "secretsCount": 52
 ```
 
@@ -351,7 +351,7 @@ Error: gh: Repository not found
 **Fix:** Verify repository name is correct:
 ```bash
 # Check repo exists
-gh repo view adrper79-dot/wordis-bond
+gh repo view Latimer-Woods-Tech/wordis-bond
 ```
 
 If repo doesn't exist, Phase 6 requires repo creation first. Update CLAUDE.md if needed.
@@ -377,7 +377,7 @@ wrangler hyperdrive delete factory_core_hyperdrive
 # … (repeat for all 7)
 
 # Delete all app repos (via GitHub.com)
-gh repo delete adrper79-dot/wordis-bond --confirm
+gh repo delete Latimer-Woods-Tech/wordis-bond --confirm
 # … (repeat for all 6)
 ```
 

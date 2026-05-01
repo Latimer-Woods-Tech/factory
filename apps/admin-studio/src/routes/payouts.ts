@@ -18,7 +18,7 @@ import {
   ValidationError,
   ErrorCodes,
   toErrorResponse,
-} from '@adrper79-dot/errors';
+} from '@latimer-woods-tech/errors';
 import Stripe from 'stripe';
 import { eq, desc, and, gte } from 'drizzle-orm';
 import {

@@ -10,12 +10,12 @@ const mocks = vi.hoisted(() => ({
   updateJobStatus: vi.fn(),
 }));
 
-vi.mock('@adrper79-dot/neon', () => ({
+vi.mock('@latimer-woods-tech/neon', () => ({
   createDb: vi.fn(() => mocks.db),
   sql: { raw: vi.fn((statement: string) => ({ statement })) },
 }));
 
-vi.mock('@adrper79-dot/schedule', () => ({
+vi.mock('@latimer-woods-tech/schedule', () => ({
   VIDEO_CALENDAR_DDL: 'CREATE TABLE IF NOT EXISTS video_calendar (id text);',
   VIDEO_CALENDAR_MIGRATION_STATEMENTS: [
     'CREATE TABLE IF NOT EXISTS video_calendar (id text);',

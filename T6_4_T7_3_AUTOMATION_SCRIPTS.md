@@ -516,7 +516,7 @@ function formatSlackMessage(summaries) {
               type: 'plain_text',
               text: 'View Full Scorecard',
             },
-            url: 'https://github.com/adrper79-dot/factory/blob/main/IMPLEMENTATION_SCORECARD.md',
+            url: 'https://github.com/Latimer-Woods-Tech/factory/blob/main/IMPLEMENTATION_SCORECARD.md',
           },
         ],
       },

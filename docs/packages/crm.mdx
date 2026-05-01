@@ -1,22 +1,22 @@
 ---
-title: "@adrper79-dot/crm"
+title: "@latimer-woods-tech/crm"
 description: Lead tracking, conversion events, and customer health view.
 ---
 
-# @adrper79-dot/crm
+# @latimer-woods-tech/crm
 
-CRM primitives: lead upsert, subscription conversion tracking, and a customer health view with churn risk scoring. Depends on `@adrper79-dot/neon` and `@adrper79-dot/analytics`.
+CRM primitives: lead upsert, subscription conversion tracking, and a customer health view with churn risk scoring. Depends on `@latimer-woods-tech/neon` and `@latimer-woods-tech/analytics`.
 
 ## Installation
 
 ```bash
-npm install @adrper79-dot/crm
+npm install @latimer-woods-tech/crm
 ```
 
 ## Database
 
 ```typescript
-import { CREATE_CRM_LEADS_TABLE } from '@adrper79-dot/crm';
+import { CREATE_CRM_LEADS_TABLE } from '@latimer-woods-tech/crm';
 await db.execute(CREATE_CRM_LEADS_TABLE);
 ```
 
@@ -57,7 +57,7 @@ function trackLead(db: Db, opts: {
 
 ### `trackConversion(db, opts, analytics?)`
 
-Updates a lead's status and MRR. Optionally fires a `subscription.converted` event to `@adrper79-dot/analytics`.
+Updates a lead's status and MRR. Optionally fires a `subscription.converted` event to `@latimer-woods-tech/analytics`.
 
 ```typescript
 function trackConversion(
@@ -92,7 +92,7 @@ Churn risk is computed from days since last event and subscription status.
 ## Example
 
 ```typescript
-import { trackLead, trackConversion, getCustomerView } from '@adrper79-dot/crm';
+import { trackLead, trackConversion, getCustomerView } from '@latimer-woods-tech/crm';
 
 // On sign-up
 await trackLead(db, {

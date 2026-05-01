@@ -29,7 +29,7 @@ A **unified browser-based control plane** for the Factory ecosystem that lets a 
 | **Wrong environment errors** (deploying staging code to prod, editing prod DB by accident) | Implicit context — easy to forget which terminal/branch you're in | **Environment Context Lock** — every action requires explicit env selection with visual confirmation |
 | Cannot edit without VS Code | Local clone + git workflow required | Monaco editor in browser + GitHub API commits |
 | Cannot run tests selectively | Must run `npm test` locally or wait for full CI | Test Runner UI — pick suites, files, or single tests |
-| AI assistance trapped in IDE | GitHub Copilot only works in VS Code | Native AI chat using `@adrper79-dot/llm` |
+| AI assistance trapped in IDE | GitHub Copilot only works in VS Code | Native AI chat using `@latimer-woods-tech/llm` |
 | Non-technical team blocked | All changes require developer | Visual CMS + role-based gates |
 | Deployment opacity | "Did it deploy? Is it healthy?" | Live deployment dashboard with health checks |
 | Log archaeology | Tabs across Sentry, PostHog, Cloudflare | Unified log viewer with cross-service correlation |
@@ -170,7 +170,7 @@ Visual CMS for non-technical users.
 | **WYSIWYG Editor** | TipTap-based markdown editor | 🟢 | Planned |
 | **Workflow States** | draft → review → approved → published | 🟢 | Planned |
 | **Scheduled Publishing** | Calendar view, schedule for future | 🟢 | Planned |
-| **AI Copy Assistant** | "Write a launch post" → drafts via @adrper79-dot/copy | 🟢 | Planned |
+| **AI Copy Assistant** | "Write a launch post" → drafts via @latimer-woods-tech/copy | 🟢 | Planned |
 | **SEO Editor** | Meta tags, OG images, schema.org JSON-LD | 🟢 | Planned |
 | **Image Library** | R2-backed asset manager | 🟢 | Planned |
 | **Video Studio Integration** | Trigger video generation from content | 🟢 | Planned |
@@ -231,7 +231,7 @@ Things you'll want once you start using Studio.
                           ┌─────────────────────────┐
                           │  studio.thefactory.dev  │
                           │  Cloudflare Worker      │
-                          │  (Hono + @adrper79-dot/*)│
+                          │  (Hono + @latimer-woods-tech/*)│
                           └────────────┬────────────┘
                                        │
             ┌──────────────────────────┼──────────────────────────────┐
@@ -326,7 +326,7 @@ Factory/
 
 ### Why Two Apps (Worker + Pages)?
 
-- **`admin-studio`** (Worker): API only, can call other Workers via Service Bindings, can use `@adrper79-dot/llm` server-side, holds secrets
+- **`admin-studio`** (Worker): API only, can call other Workers via Service Bindings, can use `@latimer-woods-tech/llm` server-side, holds secrets
 - **`admin-studio-ui`** (Pages): Static React, deployed to CF Pages with custom domain, talks to API via fetch
 - **Why split?** CF Workers max 1MB, React bundle is ~500KB. CF Pages serves static + Worker handles API. Standard pattern.
 
@@ -426,8 +426,8 @@ export function requireEnv(ctx: EnvContext, allowed: Environment[]): void {
 // apps/admin-studio/src/middleware/env-context.ts
 
 import { createMiddleware } from 'hono/factory';
-import { verifyToken } from '@adrper79-dot/auth';
-import type { EnvJWTPayload, EnvContext } from '@adrper79-dot/studio-core';
+import { verifyToken } from '@latimer-woods-tech/auth';
+import type { EnvJWTPayload, EnvContext } from '@latimer-woods-tech/studio-core';
 
 export const envContextMiddleware = createMiddleware<{
   Variables: { envContext: EnvContext };
@@ -526,7 +526,7 @@ Vitest runs in Node, not Workers. Studio cannot execute tests in itself.
    ▼
 3. Studio dispatches GitHub Actions workflow:
    gh workflow run test-on-demand.yml
-     --repo adrper79-dot/wordis-bond
+     --repo Latimer-Woods-Tech/wordis-bond
      -f filter="src/auth/**"
      -f studio_run_id="run_abc123"
    │
@@ -634,7 +634,7 @@ jobs:
    - User clicks "Apply" → in-place edit in Monaco
 
 ### Provider Chain (Already Exists)
-Reuses `@adrper79-dot/llm`: Claude → Grok → Groq fallback.
+Reuses `@latimer-woods-tech/llm`: Claude → Grok → Groq fallback.
 
 ### Context Window Strategy
 - **Default:** Current file + 3 imports/imported-by + relevant schema

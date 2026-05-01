@@ -21,7 +21,7 @@
     "APP_ID": "selfprime",
     "DEFAULT_COMPOSITION_ID": "MarketingVideo",
     "ENVIRONMENT": "development",
-    "GITHUB_REPO": "adrper79-dot/Factory",
+    "GITHUB_REPO": "Latimer-Woods-Tech/factory",
     "SCHEDULE_WORKER_URL": "https://schedule-worker.adrper79.workers.dev"
   },
   "env": {
@@ -46,7 +46,7 @@
         "APP_ID": "selfprime",
         "DEFAULT_COMPOSITION_ID": "MarketingVideo",
         "ENVIRONMENT": "production",
-        "GITHUB_REPO": "adrper79-dot/Factory",
+        "GITHUB_REPO": "Latimer-Woods-Tech/factory",
         "SCHEDULE_WORKER_URL": "https://schedule-worker.adrper79.workers.dev"
       }
     }

@@ -3,7 +3,7 @@ export const metadata = {
   description: "Drizzle ORM, Hyperdrive, Migrations, and RLS patterns",
 };
 
-# @adrper79-dot/neon — Database Consumption Guide
+# @latimer-woods-tech/neon — Database Consumption Guide
 
 **Last Updated:** April 28, 2026  
 **Target Audience:** Backend engineers working with PostgreSQL  
@@ -13,7 +13,7 @@ export const metadata = {
 
 ## Overview
 
-The `@adrper79-dot/neon` package provides:
+The `@latimer-woods-tech/neon` package provides:
 - **Drizzle ORM client** — Type-safe queries bound to Neon + Hyperdrive
 - **Migrations layer** — Run Drizzle-generated SQL migrations
 - **Row-Level Security (RLS) integration** — Set `app.tenant_id` context for automatic data filtering
@@ -31,7 +31,7 @@ The `@adrper79-dot/neon` package provides:
 
 ### 1. Install the package
 ```bash
-npm install @adrper79-dot/neon
+npm install @latimer-woods-tech/neon
 ```
 
 ### 2. Add Hyperdrive binding to `wrangler.jsonc`
@@ -96,7 +96,7 @@ This creates migration files in `drizzle/migrations/`.
 
 ```typescript
 import { Hono } from 'hono';
-import { createDb, runMigrations, setTenantId } from '@adrper79-dot/neon';
+import { createDb, runMigrations, setTenantId } from '@latimer-woods-tech/neon';
 
 const app = new Hono();
 
@@ -160,7 +160,7 @@ await db.delete(users).where(eq(users.id, userId));
 In multi-tenant apps, use `setTenantId()` to automatically filter data by tenant:
 
 ```typescript
-import { setTenantId } from '@adrper79-dot/neon';
+import { setTenantId } from '@latimer-woods-tech/neon';
 
 app.get('/api/videos', async (c) => {
   const user = c.get('user');
@@ -232,7 +232,7 @@ Creates `drizzle/migrations/0001_add_video_duration_field.sql`.
 ### Run Migrations in Worker
 
 ```typescript
-import { createDb, runMigrations } from '@adrper79-dot/neon';
+import { createDb, runMigrations } from '@latimer-woods-tech/neon';
 
 export default {
   async fetch(req, env) {
@@ -288,7 +288,7 @@ export const payoutBatches = pgTable('payout_batches', {
 ### DLQ Recording on Webhook Failure
 
 ```typescript
-import { createDb, setTenantId, sql } from '@adrper79-dot/neon';
+import { createDb, setTenantId, sql } from '@latimer-woods-tech/neon';
 import { deadLetterQueue } from './schema';
 import { insertInto } from 'drizzle-orm';
 
@@ -370,7 +370,7 @@ async function createPayoutBatch(creatorEarnings, db, tenantId) {
 When Drizzle ORM doesn't fit, use raw SQL:
 
 ```typescript
-import { createDb, sql } from '@adrper79-dot/neon';
+import { createDb, sql } from '@latimer-woods-tech/neon';
 
 // ✅ Parameterized query (safe from SQL injection)
 const result = await db.execute(
@@ -448,7 +448,7 @@ const creator = await db.query.users.findFirst({
 ### DB Errors
 
 ```typescript
-import { InternalError, NotFoundError, ErrorCodes } from '@adrper79-dot/errors';
+import { InternalError, NotFoundError, ErrorCodes } from '@latimer-woods-tech/errors';
 
 try {
   const user = await db.query.users.findFirst({
@@ -482,7 +482,7 @@ try {
 ### Mock Database
 
 ```typescript
-import { mockDb } from '@adrper79-dot/testing';
+import { mockDb } from '@latimer-woods-tech/testing';
 
 describe('Payout Service', () => {
   it('creates batch for pending creators', async () => {

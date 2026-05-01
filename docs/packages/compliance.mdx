@@ -1,16 +1,16 @@
 ---
-title: "@adrper79-dot/compliance"
+title: "@latimer-woods-tech/compliance"
 description: TCPA suppression, FDCPA contact windows, and immutable consent logging.
 ---
 
-# @adrper79-dot/compliance
+# @latimer-woods-tech/compliance
 
-TCPA suppression list management, FDCPA 24-hour contact window enforcement, and immutable consent records. Depends on `@adrper79-dot/neon`.
+TCPA suppression list management, FDCPA 24-hour contact window enforcement, and immutable consent records. Depends on `@latimer-woods-tech/neon`.
 
 ## Installation
 
 ```bash
-npm install @adrper79-dot/compliance
+npm install @latimer-woods-tech/compliance
 ```
 
 ## Database
@@ -20,7 +20,7 @@ import {
   CREATE_COMPLIANCE_CONSENTS_TABLE,
   CREATE_COMPLIANCE_CONTACTS_TABLE,
   CREATE_TCPA_SUPPRESSION_TABLE,
-} from '@adrper79-dot/compliance';
+} from '@latimer-woods-tech/compliance';
 
 await db.execute(CREATE_COMPLIANCE_CONSENTS_TABLE);
 await db.execute(CREATE_COMPLIANCE_CONTACTS_TABLE);
@@ -90,7 +90,7 @@ function recordContact(db: Db, opts: {
 ## Example
 
 ```typescript
-import { checkTCPA, logConsent, checkFDCPA, recordContact } from '@adrper79-dot/compliance';
+import { checkTCPA, logConsent, checkFDCPA, recordContact } from '@latimer-woods-tech/compliance';
 
 // Before placing a call
 const tcpa = await checkTCPA({ db, phone: '+15551234567' });

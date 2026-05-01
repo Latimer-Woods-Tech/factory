@@ -8,7 +8,7 @@ description: Add Factory Core packages to a Cloudflare Workers app in minutes.
 ## Prerequisites
 
 - Cloudflare Workers project with `wrangler.jsonc`
-- Neon Postgres database (for packages that need `@adrper79-dot/neon`)
+- Neon Postgres database (for packages that need `@latimer-woods-tech/neon`)
 - Node.js 20+
 
 ## Install packages
@@ -17,12 +17,12 @@ Install only the packages your app needs:
 
 ```bash
 # Minimal: errors + logger + auth
-npm install @adrper79-dot/errors @adrper79-dot/logger @adrper79-dot/auth
+npm install @latimer-woods-tech/errors @latimer-woods-tech/logger @latimer-woods-tech/auth
 
 # Full stack
-npm install @adrper79-dot/errors @adrper79-dot/monitoring @adrper79-dot/logger \
-            @adrper79-dot/auth @adrper79-dot/neon @adrper79-dot/stripe \
-            @adrper79-dot/analytics @adrper79-dot/llm @adrper79-dot/email
+npm install @latimer-woods-tech/errors @latimer-woods-tech/monitoring @latimer-woods-tech/logger \
+            @latimer-woods-tech/auth @latimer-woods-tech/neon @latimer-woods-tech/stripe \
+            @latimer-woods-tech/analytics @latimer-woods-tech/llm @latimer-woods-tech/email
 ```
 
 ## Configure bindings
@@ -54,8 +54,8 @@ wrangler secret put STRIPE_WEBHOOK_SECRET
 
 ```typescript
 import { Hono } from 'hono';
-import { jwtMiddleware, requireRole } from '@adrper79-dot/auth';
-import { createLogger } from '@adrper79-dot/logger';
+import { jwtMiddleware, requireRole } from '@latimer-woods-tech/auth';
+import { createLogger } from '@latimer-woods-tech/logger';
 
 type Env = {
   DB: Hyperdrive;

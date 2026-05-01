@@ -214,7 +214,7 @@ Bulk Operations:
 
 ## Appendix: Error Codes
 
-All errors follow `@adrper79-dot/errors` standard:
+All errors follow `@latimer-woods-tech/errors` standard:
 
 ```typescript
 STRIPE_OAUTH_FAILED = 'STRIPE_OAUTH_FAILED' // OAuth exchange failed

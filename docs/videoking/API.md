@@ -16,7 +16,7 @@ Authorization: Bearer <JWT_TOKEN>
 ```
 
 **JWT Token Source:**
-- Factory Auth service (`@adrper79-dot/auth`)
+- Factory Auth service (`@latimer-woods-tech/auth`)
 - Includes `sub` (creator ID), `aud` (videoking), `permissions` (role-based)
 - Expires after 7 days; refresh via POST /auth/refresh
 
@@ -583,5 +583,5 @@ All SDKs handle authentication, rate limiting, and retries automatically.
 ## Support
 
 - **Documentation:** [Videoking Docs](https://docs.videoking.local)
-- **Issues:** Report on [GitHub Discussions](https://github.com/orgs/adrper79-dot/discussions)
+- **Issues:** Report on [GitHub Discussions](https://github.com/orgs/Latimer-Woods-Tech/discussions)
 - **Slack:** #videoking-api (Factory team only)

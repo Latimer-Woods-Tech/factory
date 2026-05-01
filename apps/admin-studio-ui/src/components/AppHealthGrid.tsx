@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../lib/api.js';
 import { statusBadgeClass, statusDotClass } from '../lib/status.js';
-import type { AppHealth } from '@adrper79-dot/studio-core';
+import type { AppHealth } from '@latimer-woods-tech/studio-core';
 
 interface Props {
   env: string;

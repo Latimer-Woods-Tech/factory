@@ -5,7 +5,7 @@
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Environment } from '@adrper79-dot/studio-core';
+import type { Environment } from '@latimer-woods-tech/studio-core';
 import { useSession } from '../stores/session.js';
 import { apiFetch } from '../lib/api.js';
 

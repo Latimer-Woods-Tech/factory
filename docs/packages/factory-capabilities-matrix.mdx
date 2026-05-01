@@ -15,28 +15,28 @@ export const metadata = {
 
 | Package | Status | Primary Use | Videoking Uses? | Est. Learning Curve |
 |---------|--------|-------------|-----------------|-------------------|
-| **@adrper79-dot/errors** | Foundation | Error types, FactoryBaseError | ✅ Yes | 30 min |
-| **@adrper79-dot/monitoring** | Foundation | Sentry integration, error tracking | ✅ Yes | 1 hour |
-| **@adrper79-dot/logger** | Foundation | Structured logging (JSON) | ✅ Yes | 45 min |
-| **@adrper79-dot/auth** | Active | JWT auth, RBAC, middleware | ✅ Yes | 2 hours |
-| **@adrper79-dot/neon** | Active | Drizzle ORM + Hyperdrive, migrations | ✅ Yes | 3 hours |
-| **@adrper79-dot/stripe** | Active | Stripe API client, webhooks, subscriptions | ✅ Yes | 2 hours |
-| **@adrper79-dot/llm** | Active | Multi-provider LLM chain (Anthropic → Grok → Groq) | ✅ Yes | 2 hours |
-| **@adrper79-dot/telephony** | Active | Telnyx voice, Deepgram STT, ElevenLabs TTS | ✅ Yes | 3 hours |
-| **@adrper79-dot/analytics** | Active | PostHog + factory_events table instrumentation | ✅ Yes | 2 hours |
-| **@adrper79-dot/email** | Staging | Resend email delivery | ⏳ Planned | 1 hour |
-| **@adrper79-dot/deploy** | Foundation | Deployment scripts (no runtime deps) | ✅ Shared | 1 hour |
-| **@adrper79-dot/testing** | Foundation | Mock factories, vitest config | ✅ Yes | 1 hour |
-| **@adrper79-dot/compliance** | Staging | GDPR, HIPAA, compliance audit | ⏳ Planned | 2 hours |
-| **@adrper79-dot/video** | Active | Cloudflare Stream + R2 wrappers | ✅ Yes | 2 hours |
-| **@adrper79-dot/schedule** | Active | Video production calendar + priority scoring | ✅ Yes | 2 hours |
-| **@adrper79-dot/admin** | Staging | Admin dashboard capabilities (auth + analytics) | ⏳ Planned | 2 hours |
-| **@adrper79-dot/crm** | Staging | Customer relationship data layer | ⏳ Planned | 2 hours |
-| **@adrper79-dot/content** | Staging | Content + LLM-generated copy | ⏳ Planned | 2 hours |
-| **@adrper79-dot/copy** | Staging | LLM-based copy generation | ⏳ Planned | 1.5 hours |
-| **@adrper79-dot/seo** | Foundation | SEO utilities (schema, sitemap, robots.txt) | ⏳ Planned | 1 hour |
-| **@adrper79-dot/social** | Staging | Social media integration (built on content) | ⏳ Planned | 2 hours |
-| **@adrper79-dot/studio-core** | Foundation | Studio/builder core (shared UI logic) | ⏳ Planned | 3 hours |
+| **@latimer-woods-tech/errors** | Foundation | Error types, FactoryBaseError | ✅ Yes | 30 min |
+| **@latimer-woods-tech/monitoring** | Foundation | Sentry integration, error tracking | ✅ Yes | 1 hour |
+| **@latimer-woods-tech/logger** | Foundation | Structured logging (JSON) | ✅ Yes | 45 min |
+| **@latimer-woods-tech/auth** | Active | JWT auth, RBAC, middleware | ✅ Yes | 2 hours |
+| **@latimer-woods-tech/neon** | Active | Drizzle ORM + Hyperdrive, migrations | ✅ Yes | 3 hours |
+| **@latimer-woods-tech/stripe** | Active | Stripe API client, webhooks, subscriptions | ✅ Yes | 2 hours |
+| **@latimer-woods-tech/llm** | Active | Multi-provider LLM chain (Anthropic → Grok → Groq) | ✅ Yes | 2 hours |
+| **@latimer-woods-tech/telephony** | Active | Telnyx voice, Deepgram STT, ElevenLabs TTS | ✅ Yes | 3 hours |
+| **@latimer-woods-tech/analytics** | Active | PostHog + factory_events table instrumentation | ✅ Yes | 2 hours |
+| **@latimer-woods-tech/email** | Staging | Resend email delivery | ⏳ Planned | 1 hour |
+| **@latimer-woods-tech/deploy** | Foundation | Deployment scripts (no runtime deps) | ✅ Shared | 1 hour |
+| **@latimer-woods-tech/testing** | Foundation | Mock factories, vitest config | ✅ Yes | 1 hour |
+| **@latimer-woods-tech/compliance** | Staging | GDPR, HIPAA, compliance audit | ⏳ Planned | 2 hours |
+| **@latimer-woods-tech/video** | Active | Cloudflare Stream + R2 wrappers | ✅ Yes | 2 hours |
+| **@latimer-woods-tech/schedule** | Active | Video production calendar + priority scoring | ✅ Yes | 2 hours |
+| **@latimer-woods-tech/admin** | Staging | Admin dashboard capabilities (auth + analytics) | ⏳ Planned | 2 hours |
+| **@latimer-woods-tech/crm** | Staging | Customer relationship data layer | ⏳ Planned | 2 hours |
+| **@latimer-woods-tech/content** | Staging | Content + LLM-generated copy | ⏳ Planned | 2 hours |
+| **@latimer-woods-tech/copy** | Staging | LLM-based copy generation | ⏳ Planned | 1.5 hours |
+| **@latimer-woods-tech/seo** | Foundation | SEO utilities (schema, sitemap, robots.txt) | ⏳ Planned | 1 hour |
+| **@latimer-woods-tech/social** | Staging | Social media integration (built on content) | ⏳ Planned | 2 hours |
+| **@latimer-woods-tech/studio-core** | Foundation | Studio/builder core (shared UI logic) | ⏳ Planned | 3 hours |
 
 ---
 
@@ -44,7 +44,7 @@ export const metadata = {
 
 ### Foundation Tier (Stable, Zero-Risk)
 
-#### **@adrper79-dot/errors**
+#### **@latimer-woods-tech/errors**
 - **What it does:** Defines standard error types for all Factory apps
 - **Key exports:** `FactoryBaseError`, `FactoryErrorShape`, `ErrorCodes`, error subclasses (`AuthError`, `NotFoundError`, `ValidationError`, `InternalError`, `ForbiddenError`)
 - **When to use:** Everywhere — catch Factory errors, throw errors that consumers can handle uniformly
@@ -53,7 +53,7 @@ export const metadata = {
 - **Videoking usage:** All error handling; DLQ failure recording; webhook error classification
 - **Real example:**
   ```typescript
-  import { AuthError, ValidationError, ErrorCodes } from '@adrper79-dot/errors';
+  import { AuthError, ValidationError, ErrorCodes } from '@latimer-woods-tech/errors';
   
   if (!email) {
     throw new ValidationError('Email is required', {
@@ -63,7 +63,7 @@ export const metadata = {
   }
   ```
 
-#### **@adrper79-dot/monitoring**
+#### **@latimer-woods-tech/monitoring**
 - **What it does:** Sentry error tracking + APM (Application Performance Monitoring)
 - **Key exports:** `initSentry`, `captureException`, `captureMessage`, error middleware
 - **When to use:** Initialize once in Worker entry point; all unhandled errors auto-captured
@@ -72,7 +72,7 @@ export const metadata = {
 - **Videoking usage:** Auto-capture of webhook failures, API errors, DLQ events; performance traces for video render pipeline
 - **Real example:**
   ```typescript
-  import { initSentry } from '@adrper79-dot/monitoring';
+  import { initSentry } from '@latimer-woods-tech/monitoring';
   
   export default initSentry({
     dsn: env.SENTRY_DSN,
@@ -82,7 +82,7 @@ export const metadata = {
   })(app);
   ```
 
-#### **@adrper79-dot/logger**
+#### **@latimer-woods-tech/logger**
 - **What it does:** JSON structured logging to stdout
 - **Key exports:** `createLogger`, logger with `.info()`, `.warn()`, `.error()`, `.debug()`
 - **When to use:** Log meaningful events (job started, payment processed, error occurred)
@@ -91,13 +91,13 @@ export const metadata = {
 - **Videoking usage:** Payout batch logs, webhook processing, admin API activity
 - **Real example:**
   ```typescript
-  import { createLogger } from '@adrper79-dot/logger';
+  import { createLogger } from '@latimer-woods-tech/logger';
   
   const logger = createLogger('PayoutService');
   logger.info('Payout batch created', { batchId, creatorCount, totalUsd });
   ```
 
-#### **@adrper79-dot/deploy**
+#### **@latimer-woods-tech/deploy**
 - **What it does:** Deployment scripts and CI/CD helpers
 - **Key exports:** Functions for generating version tags, publish scripts, rollback helpers
 - **When to use:** In GitHub Actions workflows during release
@@ -106,7 +106,7 @@ export const metadata = {
 - **Videoking usage:** Monorepo publish via GitHub Actions
 - **Real example:** Used in `.github/workflows/publish.yml`
 
-#### **@adrper79-dot/testing**
+#### **@latimer-woods-tech/testing**
 - **What it does:** Mock factories, fixture generators, vitest config for Workers
 - **Key exports:** Mock DB, mock auth middleware, fixture generators
 - **When to use:** In test files for unit + integration tests
@@ -115,7 +115,7 @@ export const metadata = {
 - **Videoking usage:** All `.test.ts` files; DLQ recovery testing, payout batch mock data
 - **Real example:**
   ```typescript
-  import { mockDb, mockAuthMiddleware } from '@adrper79-dot/testing';
+  import { mockDb, mockAuthMiddleware } from '@latimer-woods-tech/testing';
   
   describe('PayoutService', () => {
     it('creates batch for pending creators', async () => {
@@ -125,7 +125,7 @@ export const metadata = {
   });
   ```
 
-#### **@adrper79-dot/seo**
+#### **@latimer-woods-tech/seo**
 - **What it does:** SEO utilities — schema.org JSON-LD, sitemap generation, robots.txt
 - **Key exports:** `generateSchema`, `generateSitemap`, `robotsTxt`
 - **When to use:** In landing page / public-facing endpoints
@@ -134,7 +134,7 @@ export const metadata = {
 - **Videoking usage:** Homepage schema markup, sitemap for creator portfolio pages
 - **Real example:**
   ```typescript
-  import { generateSchema } from '@adrper79-dot/seo';
+  import { generateSchema } from '@latimer-woods-tech/seo';
   
   const schema = generateSchema({
     type: 'VideoObject',
@@ -145,7 +145,7 @@ export const metadata = {
   });
   ```
 
-#### **@adrper79-dot/studio-core**
+#### **@latimer-woods-tech/studio-core**
 - **What it does:** Shared UI primitives for builder/studio interfaces (buttons, forms, layouts)
 - **Key exports:** React components, hooks, Tailwind utilities
 - **When to use:** In frontend (Next.js) apps
@@ -158,7 +158,7 @@ export const metadata = {
 
 ### Active Tier (Production Use, Well-Tested)
 
-#### **@adrper79-dot/auth**
+#### **@latimer-woods-tech/auth**
 - **What it does:** JWT token creation, validation, RBAC (role-based access control), middleware
 - **Key exports:** `createToken`, `verifyToken`, `rbacMiddleware`, token types
 - **When to use:** Every protected API endpoint; all routes requiring authorization
@@ -181,7 +181,7 @@ export const metadata = {
   ```
 - **Real example:**
   ```typescript
-  import { rbacMiddleware } from '@adrper79-dot/auth';
+  import { rbacMiddleware } from '@latimer-woods-tech/auth';
   
   app.post('/api/admin/payouts/batch', 
     rbacMiddleware(['admin', 'owner']),
@@ -192,7 +192,7 @@ export const metadata = {
   );
   ```
 
-#### **@adrper79-dot/neon**
+#### **@latimer-woods-tech/neon**
 - **What it does:** Drizzle ORM client bound to Neon Hyperdrive, migrations layer
 - **Key exports:** `createDb`, `setTenantId`, `runMigrations`, re-exported `sql` from drizzle-orm
 - **When to use:** All database access; initialization in Worker entry point
@@ -205,7 +205,7 @@ export const metadata = {
   - DLQ, payout_batches, video_calendar tables
 - **Real example:**
   ```typescript
-  import { createDb, setTenantId, sql } from '@adrper79-dot/neon';
+  import { createDb, setTenantId, sql } from '@latimer-woods-tech/neon';
   
   const db = createDb(env.DB);
   
@@ -216,7 +216,7 @@ export const metadata = {
   });
   ```
 
-#### **@adrper79-dot/stripe**
+#### **@latimer-woods-tech/stripe**
 - **What it does:** Stripe client, webhook validation, subscription lifecycle helpers
 - **Key exports:** `createStripeClient`, `stripeWebhookHandler`, `SubscriptionStatus`, methods for checkout, cancellation
 - **When to use:** Payment endpoints; webhook handlers; subscription state machine
@@ -238,7 +238,7 @@ export const metadata = {
   ```
 - **Real example:**
   ```typescript
-  import { createStripeClient, stripeWebhookHandler } from '@adrper79-dot/stripe';
+  import { createStripeClient, stripeWebhookHandler } from '@latimer-woods-tech/stripe';
   
   const stripe = createStripeClient(env.STRIPE_SECRET_KEY);
   
@@ -256,7 +256,7 @@ export const metadata = {
   }));
   ```
 
-#### **@adrper79-dot/llm**
+#### **@latimer-woods-tech/llm**
 - **What it does:** Multi-provider LLM chain: tries Anthropic Claude first, falls back to Grok, then Groq
 - **Key exports:** `createLlmChain`, `chatCompletion`, `streamCompletion`, provider fallback logic
 - **When to use:** Any LLM inference (content generation, script writing, embeddings)
@@ -269,7 +269,7 @@ export const metadata = {
   - Fallback: if Anthropic is rate-limited, automatically retry with Grok
 - **Real example:**
   ```typescript
-  import { createLlmChain } from '@adrper79-dot/llm';
+  import { createLlmChain } from '@latimer-woods-tech/llm';
   
   const llm = createLlmChain({
     anthropicKey: env.ANTHROPIC_API_KEY,
@@ -286,7 +286,7 @@ export const metadata = {
   // Automatically retries with Grok or Groq if Anthropic fails
   ```
 
-#### **@adrper79-dot/telephony**
+#### **@latimer-woods-tech/telephony**
 - **What it does:** Phone call orchestration: Telnyx (voice), Deepgram (speech-to-text), ElevenLabs (text-to-speech)
 - **Key exports:** `initTelephony`, `startCall`, `transcribeAudio`, `synthesizeSpeech`, event handlers
 - **When to use:** Interactive voice experiences, live Q&A calls, customer support
@@ -295,7 +295,7 @@ export const metadata = {
 - **Videoking usage:** Creator live calls, audience Q&A during interactive videos
 - **Real example:**
   ```typescript
-  import { initTelephony } from '@adrper79-dot/telephony';
+  import { initTelephony } from '@latimer-woods-tech/telephony';
   
   const telephony = initTelephony({
     telnyxApiKey: env.TELNYX_API_KEY,
@@ -311,7 +311,7 @@ export const metadata = {
   });
   ```
 
-#### **@adrper79-dot/analytics**
+#### **@latimer-woods-tech/analytics**
 - **What it does:** Dual-write instrumentation to PostHog (product analytics) and factory_events table (revenue + compliance events)
 - **Key exports:** `initAnalytics`, `.track()`, `.identify()`, `.businessEvent()`, `.page()`
 - **When to use:** Every meaningful user action (signup, watch, subscribe, create content)
@@ -325,7 +325,7 @@ export const metadata = {
   - Aligns with journeys from Phase A ("user journeys & telemetry")
 - **Real example:**
   ```typescript
-  import { initAnalytics } from '@adrper79-dot/analytics';
+  import { initAnalytics } from '@latimer-woods-tech/analytics';
   
   const analytics = initAnalytics({
     postHogKey: env.POSTHOG_API_KEY,
@@ -349,7 +349,7 @@ export const metadata = {
   }, viewerId);
   ```
 
-#### **@adrper79-dot/video**
+#### **@latimer-woods-tech/video**
 - **What it does:** Cloudflare Stream & R2 wrappers for video upload, transcoding, streaming, and storage
 - **Key exports:** `createStreamClient`, `uploadVideo`, `getStreamEmbed`, `deleteVideo`, R2 helpers
 - **When to use:** All video operations (read: upload, play, delete)
@@ -362,7 +362,7 @@ export const metadata = {
   - Transcripts stored in R2 (captions, SEO)
 - **Real example:**
   ```typescript
-  import { createStreamClient } from '@adrper79-dot/video';
+  import { createStreamClient } from '@latimer-woods-tech/video';
   
   const stream = createStreamClient({
     accountId: env.CF_ACCOUNT_ID,
@@ -380,7 +380,7 @@ export const metadata = {
   });
   ```
 
-#### **@adrper79-dot/schedule**
+#### **@latimer-woods-tech/schedule**
 - **What it does:** Video production calendar + priority scoring based on PostHog engagement signals
 - **Key exports:** `VideoCalendarService`, `.getPendingJobs()`, `.scorePriority()`, `.updateJobStatus()`
 - **When to use:** In cron Workers to dispatch video renders; in admin UI to track pipeline
@@ -393,7 +393,7 @@ export const metadata = {
   - Updates job status as renders complete
 - **Real example:**
   ```typescript
-  import { createScheduleService } from '@adrper79-dot/schedule';
+  import { createScheduleService } from '@latimer-woods-tech/schedule';
   
   const schedule = createScheduleService(db);
   
@@ -419,7 +419,7 @@ export const metadata = {
 
 ### Staging Tier (Tested, Rollout Plan)
 
-#### **@adrper79-dot/email**
+#### **@latimer-woods-tech/email**
 - **What it does:** Email delivery via Resend
 - **Status:** Tested, scheduled for Phase C
 - **When to use:** Transactional emails (password reset, verification, notifications)
@@ -428,7 +428,7 @@ export const metadata = {
 - **Dependencies:** errors, logger
 - **Videoking rollout:** Creator notifications, viewer subscription receipts
 
-#### **@adrper79-dot/compliance**
+#### **@latimer-woods-tech/compliance**
 - **What it does:** GDPR, HIPAA, SOC 2 audit logging
 - **Status:** Tested, rollout starting Phase C
 - **When to use:** Data privacy compliance, audit trails
@@ -437,7 +437,7 @@ export const metadata = {
 - **Dependencies:** neon
 - **Videoking rollout:** User data deletion requests, creator earning audits
 
-#### **@adrper79-dot/admin**
+#### **@latimer-woods-tech/admin**
 - **What it does:** Admin dashboard capabilities (auth + analytics)
 - **Status:** Built atop auth + analytics, UI rollout Phase C
 - **When to use:** Admin-only endpoints
@@ -446,7 +446,7 @@ export const metadata = {
 - **Dependencies:** auth, analytics
 - **Videoking usage:** DLQ dashboard, payout history, creator earnings reports
 
-#### **@adrper79-dot/crm**
+#### **@latimer-woods-tech/crm**
 - **What it does:** Customer relationship management data layer
 - **Status:** Schema designed, rollout Phase C
 - **When to use:** Creator engagement, viewer lifecycle management
@@ -455,7 +455,7 @@ export const metadata = {
 - **Dependencies:** neon, analytics
 - **Videoking usage:** Creator nurture campaigns, churn prediction
 
-#### **@adrper79-dot/content**
+#### **@latimer-woods-tech/content**
 - **What it does:** Content management + LLM-generated copy
 - **Status:** Built on neon + copy package
 - **When to use:** Blog, resource library, community content
@@ -464,7 +464,7 @@ export const metadata = {
 - **Dependencies:** neon, copy
 - **Videoking usage:** Creator profile bios, video descriptions
 
-#### **@adrper79-dot/copy**
+#### **@latimer-woods-tech/copy**
 - **What it does:** LLM-based copy generation (headlines, descriptions, CTAs)
 - **Status:** Core logic stable, UI rollout Phase C
 - **When to use:** Auto-suggest features, bulk content generation
@@ -473,7 +473,7 @@ export const metadata = {
 - **Dependencies:** llm
 - **Videoking usage:** Video title/description suggestions, creator bio auto-completion
 
-#### **@adrper79-dot/social**
+#### **@latimer-woods-tech/social**
 - **What it does:** Social media integration (Twitter/X, Instagram, LinkedIn)
 - **Status:** APIs tested, auth flows Phase C
 - **When to use:** Cross-post creator content
@@ -544,43 +544,43 @@ START: Do I need feature X?
 ### Scenario 1: Launching a Viewer/Creator Marketplace App
 
 **Minimum Foundation (Day 1–3):**
-1. `@adrper79-dot/errors` — Error handling
-2. `@adrper79-dot/monitoring` — Sentry setup
-3. `@adrper79-dot/auth` — JWT + RBAC
-4. `@adrper79-dot/neon` — Database + migrations
-5. `@adrper79-dot/testing` — Unit tests
+1. `@latimer-woods-tech/errors` — Error handling
+2. `@latimer-woods-tech/monitoring` — Sentry setup
+3. `@latimer-woods-tech/auth` — JWT + RBAC
+4. `@latimer-woods-tech/neon` — Database + migrations
+5. `@latimer-woods-tech/testing` — Unit tests
 
 **Week 1–2:**
-6. `@adrper79-dot/stripe` — Payments (subscriptions + payouts)
-7. `@adrper79-dot/analytics` — User funnels
-8. `@adrper79-dot/video` — Video upload + streaming
-9. `@adrper79-dot/schedule` — Content production pipeline
+6. `@latimer-woods-tech/stripe` — Payments (subscriptions + payouts)
+7. `@latimer-woods-tech/analytics` — User funnels
+8. `@latimer-woods-tech/video` — Video upload + streaming
+9. `@latimer-woods-tech/schedule` — Content production pipeline
 
 **Week 3–4:**
-10. `@adrper79-dot/email` — Transactional emails
-11. `@adrper79-dot/logger` — Structured logging for ops
-12. `@adrper79-dot/seo` — Landing page schema + sitemap
+10. `@latimer-woods-tech/email` — Transactional emails
+11. `@latimer-woods-tech/logger` — Structured logging for ops
+12. `@latimer-woods-tech/seo` — Landing page schema + sitemap
 
 **Backlog (Phase C):**
-- `@adrper79-dot/crm` — Viewer retention
-- `@adrper79-dot/compliance` — GDPR audit
-- `@adrper79-dot/social` — Auto-share creator content
+- `@latimer-woods-tech/crm` — Viewer retention
+- `@latimer-woods-tech/compliance` — GDPR audit
+- `@latimer-woods-tech/social` — Auto-share creator content
 
 ### Scenario 2: Voice/Interactive App
 
 **Start with:**
 1. Core: errors, monitoring, auth, neon
-2. Add: `@adrper79-dot/telephony` — Voice infrastructure
-3. Add: `@adrper79-dot/llm` — LLM responses for conversational UX
-4. Add: `@adrper79-dot/analytics` — Call tracking, engagement
+2. Add: `@latimer-woods-tech/telephony` — Voice infrastructure
+3. Add: `@latimer-woods-tech/llm` — LLM responses for conversational UX
+4. Add: `@latimer-woods-tech/analytics` — Call tracking, engagement
 
 ### Scenario 3: Content Platform (No Video)
 
 **Start with:**
 1. Core: errors, monitoring, auth, neon
-2. Add: `@adrper79-dot/content` + `@adrper79-dot/copy` — Content + LLM copy
-3. Add: `@adrper79-dot/analytics` — Reading time, engagement
-4. Skip: `@adrper79-dot/video`, `@adrper79-dot/telephony`
+2. Add: `@latimer-woods-tech/content` + `@latimer-woods-tech/copy` — Content + LLM copy
+3. Add: `@latimer-woods-tech/analytics` — Reading time, engagement
+4. Skip: `@latimer-woods-tech/video`, `@latimer-woods-tech/telephony`
 
 ---
 
@@ -588,7 +588,7 @@ START: Do I need feature X?
 
 ### Per-Package Export Checklist
 
-For **@adrper79-dot/auth:**
+For **@latimer-woods-tech/auth:**
 ```typescript
 // ALWAYS exported
 export interface TokenPayload { sub, tenantId, role, iat, exp }
@@ -597,7 +597,7 @@ export function verifyToken(token: string, secret: string): Promise<TokenPayload
 export function rbacMiddleware(allowedRoles: string[]): MiddlewareHandler
 ```
 
-For **@adrper79-dot/neon:**
+For **@latimer-woods-tech/neon:**
 ```typescript
 // ALWAYS exported
 export type FactoryDb = NeonHttpDatabase
@@ -607,7 +607,7 @@ export function runMigrations(db: FactoryDb, options: RunMigrationsOptions): Pro
 export { sql } from 'drizzle-orm'
 ```
 
-For **@adrper79-dot/stripe:**
+For **@latimer-woods-tech/stripe:**
 ```typescript
 // ALWAYS exported
 export function createStripeClient(secretKey: string): Stripe
@@ -615,7 +615,7 @@ export function stripeWebhookHandler(options: StripeWebhookHandlerOptions): Midd
 export interface SubscriptionStatus { customerId, status, tier, currentPeriodEnd, cancelAtPeriodEnd }
 ```
 
-For **@adrper79-dot/analytics:**
+For **@latimer-woods-tech/analytics:**
 ```typescript
 // ALWAYS exported
 export interface Analytics {
@@ -627,7 +627,7 @@ export interface Analytics {
 export function initAnalytics(config: AnalyticsConfig): Analytics
 ```
 
-For **@adrper79-dot/monitoring:**
+For **@latimer-woods-tech/monitoring:**
 ```typescript
 // ALWAYS exported
 export function initSentry(config: MonitoringConfig): (app: Hono) => Hono
@@ -671,7 +671,7 @@ export function captureMessage(message: string, level: 'info' | 'warning' | 'err
 1. **Always initialize monitoring first** — Sentry should be the first middleware
 2. **Validate auth before accessing DB** — RBAC → DB query, never the reverse
 3. **Log errors with context** — Include userId, tenantId, requestId for debugging
-4. **Test package integration** — Use mock factories from `@adrper79-dot/testing`
+4. **Test package integration** — Use mock factories from `@latimer-woods-tech/testing`
 5. **Keep packages platform-neutral** — No Node.js built-ins; use `TextEncoder` not `Buffer`
 6. **Extend thoughtfully** — If a package doesn't fit, propose an extension before building custom
 
@@ -702,7 +702,7 @@ auth → neon → stripe
 ## Support & Extension
 
 ### How to Request a Package Extension
-1. Open an issue in Factory Core: `@adrper79-dot/* package name: feature request`
+1. Open an issue in Factory Core: `@latimer-woods-tech/* package name: feature request`
 2. Explain the gap and why it needs to be in Factory (not your app)
 3. Link real app usage (e.g., videoking uses case)
 4. Platform team reviews in weekly factory-core standup
@@ -715,7 +715,7 @@ auth → neon → stripe
 4. Platform team adds to roadmap after Phase C stabilization
 
 ### Where to Find Help
-- **Factory Core Repo:** https://github.com/adrper79-dot/factory-core
+- **Factory Core Repo:** https://github.com/Latimer-Woods-Tech/factory-core
 - **Package READMEs:** `packages/{name}/README.md`
 - **Runbooks:** `docs/runbooks/`
 - **Sample App:** Videoking usage in `_external_reviews/videoking/`

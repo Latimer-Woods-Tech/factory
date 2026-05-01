@@ -32,7 +32,7 @@ All code exists in the Factory monorepo. This is a **deployment and integration*
 | `schedule-worker` not deployed | No job queue API | 20 min |
 | `video-cron` not deployed | No automated job dispatch | 20 min |
 | `video_calendar` table doesn't exist | Can't track jobs | 5 min |
-| Prime Self missing `@adrper79-dot/video` + `schedule` | Can't schedule videos | 10 min |
+| Prime Self missing `@latimer-woods-tech/video` + `schedule` | Can't schedule videos | 10 min |
 | Prime Self UI has no Stream iframe | Can't display videos | 15 min |
 
 **Total Deployment Time**: ~2 hours  
@@ -220,7 +220,7 @@ Props: {
 **Verification**:
 ```bash
 # List all secrets
-gh secret list --repo adrper79-dot/Factory | Select-String -Pattern "ELEVENLABS|R2_|WORKER"
+gh secret list --repo Latimer-Woods-Tech/Factory | Select-String -Pattern "ELEVENLABS|R2_|WORKER"
 
 # Verify R2 bucket exists
 gh run list --workflow="provision-r2.yml" --limit 1
@@ -354,7 +354,7 @@ wrangler tail video-cron --format pretty
 
 ```bash
 cd prime-self
-npm install @adrper79-dot/video@^0.2.0 @adrper79-dot/schedule@^0.2.0
+npm install @latimer-woods-tech/video@^0.2.0 @latimer-woods-tech/schedule@^0.2.0
 ```
 
 **4.2 Add video scheduling endpoint**
@@ -363,9 +363,9 @@ npm install @adrper79-dot/video@^0.2.0 @adrper79-dot/schedule@^0.2.0
 ```typescript
 import { Hono } from 'hono';
 import type { Env } from '../types';
-import { scheduleVideo } from '@adrper79-dot/schedule';
+import { scheduleVideo } from '@latimer-woods-tech/schedule';
 import { makeDb } from '../lib/db';
-import { verifyJwt } from '@adrper79-dot/auth';
+import { verifyJwt } from '@latimer-woods-tech/auth';
 
 export const videos = new Hono<{ Bindings: Env }>();
 
@@ -635,7 +635,7 @@ Once manual workflow is verified, enable automated video generation:
 
 **Add to `prime-self/src/middleware/analytics.ts`**:
 ```typescript
-import { scheduleVideo } from '@adrper79-dot/schedule';
+import { scheduleVideo } from '@latimer-woods-tech/schedule';
 
 // After successful user action (e.g., report generated)
 if (engagement.eventName === 'report_generated') {
@@ -726,7 +726,7 @@ curl https://schedule-worker.adrper79.workers.dev/jobs/pending?limit=1 \
 
 ### Sentry Alerts
 
-**Add to Sentry project** (use `@adrper79-dot/monitoring`):
+**Add to Sentry project** (use `@latimer-woods-tech/monitoring`):
 - Alert: `schedule-worker` error rate > 5% (15 min window)
 - Alert: `video-cron` no successful runs in 2 hours
 - Alert: `render-video.yml` failure rate > 10% (daily)
@@ -839,7 +839,7 @@ curl -X PATCH "https://schedule-worker.adrper79.workers.dev/jobs/$JOB_ID" \
 - [ ] Cron logs show "No pending jobs" every hour
 
 ### Phase 4 Complete ✅
-- [ ] Prime Self has `@adrper79-dot/video` + `schedule` installed
+- [ ] Prime Self has `@latimer-woods-tech/video` + `schedule` installed
 - [ ] POST /videos/schedule returns 201 with job ID
 - [ ] GET /videos/:jobId returns job status
 

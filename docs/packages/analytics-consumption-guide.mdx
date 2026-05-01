@@ -3,7 +3,7 @@ export const metadata = {
   description: "PostHog + factory_events instrumentation patterns",
 };
 
-# @adrper79-dot/analytics — Analytics Consumption Guide
+# @latimer-woods-tech/analytics — Analytics Consumption Guide
 
 **Last Updated:** April 28, 2026  
 **Target Audience:** Backend engineers building user interactions  
@@ -13,7 +13,7 @@ export const metadata = {
 
 ## Overview
 
-The `@adrper79-dot/analytics` package provides:
+The `@latimer-woods-tech/analytics` package provides:
 - **Dual-write instrumentation** — PostHog (product analytics) + `factory_events` (compliance & revenue)
 - **User event tracking** — `.track()`, `.identify()`, `.page()`
 - **Business event logging** — `.businessEvent()` (revenue, compliance only)
@@ -31,7 +31,7 @@ The `@adrper79-dot/analytics` package provides:
 
 ### 1. Install the package
 ```bash
-npm install @adrper79-dot/analytics
+npm install @latimer-woods-tech/analytics
 ```
 
 ### 2. Set PostHog key in environment
@@ -57,8 +57,8 @@ Get from PostHog Dashboard → Settings → API Keys.
 ### 3. Initialize analytics in your Worker
 
 ```typescript
-import { initAnalytics } from '@adrper79-dot/analytics';
-import { createDb } from '@adrper79-dot/neon';
+import { initAnalytics } from '@latimer-woods-tech/analytics';
+import { createDb } from '@latimer-woods-tech/neon';
 
 const db = createDb(env.DB);
 

@@ -1,5 +1,5 @@
 {
-  "name": "@adrper79-dot/schedule",
+  "name": "@latimer-woods-tech/schedule",
   "version": "0.2.2",
   "private": false,
   "publishConfig": {
@@ -27,9 +27,9 @@
     "prepublish": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
-    "@adrper79-dot/errors": "file:../errors",
-    "@adrper79-dot/neon": "file:../neon",
-    "@adrper79-dot/video": "file:../video"
+    "@latimer-woods-tech/errors": "file:../errors",
+    "@latimer-woods-tech/neon": "file:../neon",
+    "@latimer-woods-tech/video": "file:../video"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

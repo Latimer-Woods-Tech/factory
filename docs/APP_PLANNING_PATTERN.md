@@ -38,7 +38,7 @@ Before writing the plan, gather:
 
 ### Technical Constraints
 - **Factory stack required?** (Cloudflare Workers, Hono, Neon, Drizzle, Stripe)
-- **Existing packages needed?** (from @adrper79-dot/*)
+- **Existing packages needed?** (from @latimer-woods-tech/*)
 - **Third-party integrations?** (Stripe, Twilio, Anthropic, etc.)
 - **Scheduled/async work?** (queues, crons, webhooks)
 
@@ -53,7 +53,7 @@ Before writing the plan, gather:
 
 ```bash
 # Clone the repo
-git clone https://github.com/adrper79-dot/{app-name}
+git clone https://github.com/Latimer-Woods-Tech/{app-name}
 cd {app-name}
 
 # Verify Factory scaffold (should already be present)

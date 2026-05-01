@@ -13,7 +13,7 @@
  */
 import { Hono } from 'hono';
 import type { AppEnv } from '../types.js';
-import { isEnvironment, type AuditQuery } from '@adrper79-dot/studio-core';
+import { isEnvironment, type AuditQuery } from '@latimer-woods-tech/studio-core';
 import { queryAuditEntries } from '../lib/audit-store.js';
 
 const audit = new Hono<AppEnv>();

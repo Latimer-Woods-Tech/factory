@@ -1,15 +1,15 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import { createDb, sql } from '@adrper79-dot/neon';
-import { toErrorResponse, ValidationError, AuthError } from '@adrper79-dot/errors';
+import { createDb, sql } from '@latimer-woods-tech/neon';
+import { toErrorResponse, ValidationError, AuthError } from '@latimer-woods-tech/errors';
 import {
   getPendingJobs,
   getVideoJob,
   scheduleVideo,
   updateJobStatus,
   VIDEO_CALENDAR_MIGRATION_STATEMENTS,
-} from '@adrper79-dot/schedule';
-import type { TriggerSource, RenderJobStatus } from '@adrper79-dot/schedule';
+} from '@latimer-woods-tech/schedule';
+import type { TriggerSource, RenderJobStatus } from '@latimer-woods-tech/schedule';
 import type { Env } from './env.js';
 
 type RenderType = 'marketing' | 'training' | 'walkthrough';

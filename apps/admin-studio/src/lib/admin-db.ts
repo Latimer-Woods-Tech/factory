@@ -1,14 +1,14 @@
 /**
  * Typed Drizzle client for Admin Studio operator routes.
  *
- * Separate from the untyped createDb exported by @adrper79-dot/neon so that
+ * Separate from the untyped createDb exported by @latimer-woods-tech/neon so that
  * operator routes get full Drizzle query-builder inference without coupling
  * the shared neon package to any app-specific schema.
  */
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../schema.js';
-import type { HyperdriveBinding } from '@adrper79-dot/neon';
+import type { HyperdriveBinding } from '@latimer-woods-tech/neon';
 
 export type AdminDb = ReturnType<typeof createAdminDb>;
 

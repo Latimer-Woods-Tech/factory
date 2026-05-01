@@ -1,10 +1,10 @@
-# `@adrper79-dot/schedule`
+# `@latimer-woods-tech/schedule`
 
 Automated video production calendar for the Factory content flywheel.
 
 ## Overview
 
-`@adrper79-dot/schedule` manages the `video_calendar` Postgres table and provides the scheduling, queue, and priority-scoring logic that drives the fully automated video pipeline.
+`@latimer-woods-tech/schedule` manages the `video_calendar` Postgres table and provides the scheduling, queue, and priority-scoring logic that drives the fully automated video pipeline.
 
 **Pipeline:**  
 PostHog signals → `scorePriority` → `scheduleVideo` → cron queue → GitHub Actions render → `updateJobStatus` → Cloudflare Stream embed
@@ -12,7 +12,7 @@ PostHog signals → `scorePriority` → `scheduleVideo` → cron queue → GitHu
 ## Installation
 
 ```bash
-npm install @adrper79-dot/schedule
+npm install @latimer-woods-tech/schedule
 ```
 
 ## Database setup
@@ -20,7 +20,7 @@ npm install @adrper79-dot/schedule
 Run the DDL once during bootstrap or migration:
 
 ```ts
-import { VIDEO_CALENDAR_DDL } from '@adrper79-dot/schedule';
+import { VIDEO_CALENDAR_DDL } from '@latimer-woods-tech/schedule';
 await db.execute(VIDEO_CALENDAR_DDL);
 ```
 
@@ -47,7 +47,7 @@ The `video_calendar` table schema:
 ### Schedule a video
 
 ```ts
-import { scheduleVideo } from '@adrper79-dot/schedule';
+import { scheduleVideo } from '@latimer-woods-tech/schedule';
 
 const job = await scheduleVideo(db, {
   appId: 'prime_self',
@@ -60,7 +60,7 @@ const job = await scheduleVideo(db, {
 ### Process the queue (cron trigger)
 
 ```ts
-import { getPendingJobs, updateJobStatus, toRenderJob } from '@adrper79-dot/schedule';
+import { getPendingJobs, updateJobStatus, toRenderJob } from '@latimer-woods-tech/schedule';
 
 const pending = await getPendingJobs(db, 5);
 for (const row of pending) {
@@ -73,7 +73,7 @@ for (const row of pending) {
 ### Score videos by engagement
 
 ```ts
-import { scorePriority, setPerformanceScore } from '@adrper79-dot/schedule';
+import { scorePriority, setPerformanceScore } from '@latimer-woods-tech/schedule';
 
 const score = scorePriority({
   completionRate: 40,   // % of viewers who finished

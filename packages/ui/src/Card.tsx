@@ -5,7 +5,7 @@
  */
 
 import React, { forwardRef, type HTMLAttributes, type ReactNode } from 'react';
-import { colors, spacing, radii, shadows } from '@adrper79-dot/design-tokens';
+import { colors, spacing, radii, shadows } from '@latimer-woods-tech/design-tokens';
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   /** Card content */
