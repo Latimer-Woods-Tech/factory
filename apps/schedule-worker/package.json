@@ -10,9 +10,9 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@latimer-woods-tech/errors": "0.2.0",
-    "@latimer-woods-tech/neon": "0.2.3",
-    "@latimer-woods-tech/schedule": "0.2.2",
+    "@latimer-woods-tech/errors": "file:../../packages/errors",
+    "@latimer-woods-tech/neon": "file:../../packages/neon",
+    "@latimer-woods-tech/schedule": "file:../../packages/schedule",
     "@neondatabase/serverless": "^0.10.4",
     "drizzle-orm": "^0.43.0",
     "hono": "^4.12.14",
