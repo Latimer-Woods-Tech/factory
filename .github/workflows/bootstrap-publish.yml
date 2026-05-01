@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: '24'
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@adrper79-dot'
+          scope: '@latimer-woods-tech'
 
       - name: Publish all packages in dependency order
         run: |
@@ -64,7 +64,7 @@ jobs:
             npm run build
 
             # Publish (skip prepublish quality gate — CI has already validated)
-            npm publish --ignore-scripts
+            npm publish --ignore-scripts --access public
 
             popd
           done
