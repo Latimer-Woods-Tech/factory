@@ -526,7 +526,7 @@ Vitest runs in Node, not Workers. Studio cannot execute tests in itself.
    ▼
 3. Studio dispatches GitHub Actions workflow:
    gh workflow run test-on-demand.yml
-     --repo adrper79-dot/wordis-bond
+     --repo Latimer-Woods-Tech/wordis-bond
      -f filter="src/auth/**"
      -f studio_run_id="run_abc123"
    │

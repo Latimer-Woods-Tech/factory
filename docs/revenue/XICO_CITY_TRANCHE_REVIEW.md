@@ -1,7 +1,7 @@
 # Xico City — Tranche Opportunity Review
 
 **Date:** 2026-04-29  
-**Reviewed repo:** `adrper79-dot/xico-city`  
+**Reviewed repo:** `Latimer-Woods-Tech/xico-city`
 **Verdict:** promising tranche asset and now committed to the full World Class 360 build, but not ready until the foundation is repaired first.
 
 > **April 29 decision:** Build Xico City all the way through the World Class 360 plan. The earlier tranche-MVP framing is superseded for this iteration. The transaction-ready MVP remains the first proof gate, not the final target.

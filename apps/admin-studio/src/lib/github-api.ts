@@ -17,7 +17,7 @@
  */
 import type { RepoBranch, RepoFileContent, RepoPullRequest, RepoTreeNode } from '@adrper79-dot/studio-core';
 
-const FACTORY_OWNER = 'adrper79-dot';
+const FACTORY_OWNER = 'Latimer-Woods-Tech';
 const FACTORY_REPO = 'factory';
 const API_BASE = 'https://api.github.com';
 

@@ -2,6 +2,12 @@
 
 This runbook covers local development setup for a Factory app Worker.
 
+For team handoff onboarding, pair this with:
+
+- `docs/operations/WARM_HANDOFF_PORTFOLIO_MASTER_REPORT_2026-04-30.md`
+- `docs/ESSENTIAL_OWNERS_GUIDE.md`
+- `docs/service-registry.yml`
+
 ## Prerequisites
 
 - Node.js 20+
@@ -12,7 +18,7 @@ This runbook covers local development setup for a Factory app Worker.
 ## 1. Clone the repo
 
 ```bash
-git clone https://github.com/adrper79-dot/{app}.git
+git clone https://github.com/Latimer-Woods-Tech/{app}.git
 cd {app}
 ```
 

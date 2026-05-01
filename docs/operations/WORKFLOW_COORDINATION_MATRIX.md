@@ -57,7 +57,7 @@ Every deploy workflow should expose or call a gate with these fields:
 
 | ID | Task | Exit criteria |
 |---|---|---|
-| WCM-001 | Add deploy-gate helper script or reusable workflow | At least one Worker deploy consumes a shared health gate |
+| WCM-001 | Add deploy-gate helper script or reusable workflow | ✅ Completed — shared health-gate contract implemented in `scripts/verify-http-endpoint.mjs` and consumed by deploy workflows for schedule-worker, video-cron, synthetic-monitor, and admin-studio |
 | WCM-002 | Add analytics event verification gate | Critical launch flows assert required PostHog/factory_events events |
 | WCM-003 | Add webhook replay drills | Stripe/video webhook replay documented and testable |
 | WCM-004 | Add failure-recovery drills | Render failure and checkout failure paths have operator recovery evidence |

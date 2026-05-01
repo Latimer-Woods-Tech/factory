@@ -583,5 +583,5 @@ All SDKs handle authentication, rate limiting, and retries automatically.
 ## Support
 
 - **Documentation:** [Videoking Docs](https://docs.videoking.local)
-- **Issues:** Report on [GitHub Discussions](https://github.com/orgs/adrper79-dot/discussions)
+- **Issues:** Report on [GitHub Discussions](https://github.com/orgs/Latimer-Woods-Tech/discussions)
 - **Slack:** #videoking-api (Factory team only)

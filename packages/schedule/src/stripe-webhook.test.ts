@@ -36,10 +36,23 @@ vi.mock('@adrper79-dot/neon', async (importOriginal) => {
 // We need a module-level db mock ref so tests can configure rows
 let mockDb: ReturnType<typeof makeDb>;
 
+function parseUnknownJson(text: string): unknown {
+  return JSON.parse(text) as unknown;
+}
+
+function extractErrorMessage(payload: unknown): string | undefined {
+  if (typeof payload !== 'object' || payload === null || !('error' in payload)) {
+    return undefined;
+  }
+
+  const error = (payload as { error: unknown }).error;
+  return typeof error === 'string' ? error : undefined;
+}
+
 function makeDb(rowGroups: unknown[][] = [[]]) {
   let callIndex = 0;
   return {
-    execute: vi.fn((_query: unknown) => {
+    execute: vi.fn(() => {
       const result = rowGroups[callIndex % rowGroups.length] ?? [];
       callIndex++;
       return Promise.resolve({ rows: result });
@@ -82,7 +95,8 @@ describe('handleStripeWebhook', () => {
     mockDb = makeDb();
     const result = await handleStripeWebhook('{}', undefined, {} as never, WEBHOOK_SECRET);
     expect(result.statusCode).toBe(400);
-    expect(JSON.parse(result.body)).toMatchObject({ error: expect.stringContaining('Missing') });
+    const parsed = parseUnknownJson(result.body);
+    expect(extractErrorMessage(parsed)).toContain('Missing');
   });
 
   it('returns 401 when signature is invalid', async () => {

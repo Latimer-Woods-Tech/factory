@@ -34,7 +34,7 @@
 
 ---
 
-## External App Repos (adrper79-dot organization)
+## External App Repos (Latimer-Woods-Tech organization)
 
 ### Live/Active Apps
 

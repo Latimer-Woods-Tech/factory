@@ -26,7 +26,7 @@ import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 
 // ---------- helpers ----------
-const REPO = 'adrper79-dot/factory-admin';
+const REPO = 'Latimer-Woods-Tech/factory-admin';
 const TOKEN = process.env['GH_TOKEN'] ?? process.env['GITHUB_TOKEN'] ?? '';
 if (!TOKEN) throw new Error('GH_TOKEN or GITHUB_TOKEN must be set');
 

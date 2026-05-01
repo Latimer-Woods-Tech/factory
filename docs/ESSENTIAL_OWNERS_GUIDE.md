@@ -225,7 +225,7 @@ No, Factory is not yet as integrated with GitHub as it could be.
 The biggest missing pieces are:
 
 1. **Multi-repo awareness**
-   - current repo API client is hard-coded to `adrper79-dot/factory`
+   - current repo API client is hard-coded to `Latimer-Woods-Tech/factory`
    - Factory operations span multiple repos and Pages/Workers surfaces
 
 2. **PR review workflow**
@@ -438,6 +438,27 @@ If the goal is to make Factory materially easier to own and operate, the next hi
 - `apps/admin-studio/src/routes/ai.ts` — AI chat/proposal operations
 - `_external_reviews/videoking/apps/web/wrangler.toml` — NicheStream frontend domain/base URL config
 - `_external_reviews/videoking/apps/worker/wrangler.toml` — NicheStream API route/domain config
+
+---
+
+## 12. Warm Handoff Addendum (2026-04-30)
+
+For a complete team transition package, use this order:
+
+1. `docs/operations/WARM_HANDOFF_PORTFOLIO_MASTER_REPORT_2026-04-30.md`
+2. `docs/APP_SCOPE_REGISTRY.md`
+3. `docs/service-registry.yml`
+4. `docs/runbooks/getting-started.md`
+5. `docs/runbooks/transfer.md`
+6. `docs/operations/WORLD_CLASS_360_TASK_DASHBOARD.md`
+
+Minimum handoff proof required before owner sign-off:
+
+- Latest CI status snapshot per critical repo.
+- Latest deploy and curl verification snapshot per live endpoint.
+- Open blocker register with owner, unblock condition, and target date.
+- Secrets and binding ownership matrix (no secret values in docs).
+- A staging dry-run portability test for at least one app.
 
 ---
 

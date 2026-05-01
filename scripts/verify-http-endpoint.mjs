@@ -10,6 +10,10 @@ if (!args.url) {
   fail('Missing required --url argument');
 }
 
+if ((args.service && !args.environment) || (!args.service && args.environment)) {
+  fail('--service and --environment must be provided together when using deploy-gate metadata');
+}
+
 const expectedStatus = parsePositiveInteger(args.status ?? '200', '--status');
 const retries = parsePositiveInteger(args.retries ?? String(DEFAULT_RETRIES), '--retries');
 const delayMs = parsePositiveInteger(args.delayMs ?? String(DEFAULT_DELAY_MS), '--delay-ms');
@@ -29,10 +33,15 @@ for (let attempt = 1; attempt <= retries; attempt += 1) {
     if (!jsonFailure && !bodyFailure) {
       console.log(JSON.stringify({
         ok: true,
+        service: args.service ?? null,
+        environment: args.environment ?? null,
         url: args.url,
         status: result.status,
         attempt,
         durationMs: result.durationMs,
+        expectedStatus,
+        runId: args.runId ?? process.env.GITHUB_RUN_ID ?? null,
+        rollbackRef: args.rollbackRef ?? null,
         checkedAt: new Date().toISOString(),
       }));
       verified = true;

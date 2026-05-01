@@ -318,7 +318,7 @@ See [Lessons Learned Runbook](../../docs/runbooks/lessons-learned.md) for soluti
 echo $CF_API_TOKEN
 
 # If empty, set it
-export CF_API_TOKEN=$(gh secret get CF_API_TOKEN --repo adrper79-dot/{app})
+export CF_API_TOKEN=$(gh secret get CF_API_TOKEN --repo Latimer-Woods-Tech/{app})
 
 # Try again
 wrangler deploy --env staging

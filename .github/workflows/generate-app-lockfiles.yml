@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: adrper79-dot/${{ matrix.app }}
+          repository: Latimer-Woods-Tech/${{ matrix.app }}
           token: ${{ secrets.GH_PAT }}
           path: app
 

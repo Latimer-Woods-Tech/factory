@@ -246,8 +246,8 @@ RATE_LIMITER_NEIGHBOR_AID=1006
 set -e
 
 for app in wordis-bond cypher-healing prime-self ijustus the-calling neighbor-aid; do
-  echo "Creating repo: adrper79-dot/$app..."
-  gh repo create adrper79-dot/$app \
+  echo "Creating repo: Latimer-Woods-Tech/$app..."
+  gh repo create Latimer-Woods-Tech/$app \
     --private \
     --description "Factory App: $app" \
     --add-readme \
@@ -354,11 +354,11 @@ After completing all steps, verify:
 - [ ] **Hyperdrive**: 7 instances created + wrangler sees them
   - Test: `wrangler hyperdrive list` shows 7 entries
   
-- [ ] **GitHub Repos**: 6 app repos exist in adrper79-dot org
-  - Test: `gh repo list adrper79-dot` shows 6 apps
+- [ ] **GitHub Repos**: 6 app repos exist in Latimer-Woods-Tech org
+  - Test: `gh repo list Latimer-Woods-Tech` shows 6 apps
   
 - [ ] **GitHub Secrets**: All app repos have secrets set
-  - Test: `gh secret list --repo adrper79-dot/wordis-bond` shows SENTRY_DSN, POSTHOG_KEY, etc.
+  - Test: `gh secret list --repo Latimer-Woods-Tech/wordis-bond` shows SENTRY_DSN, POSTHOG_KEY, etc.
   
 - [ ] **Sentry**: 6 projects exist with DSNs recorded
   

@@ -1,3 +1,5 @@
+> HISTORICAL DOCUMENT: superseded by WORLD_CLASS_360_TASK_DASHBOARD.md and WORLD_CLASS_IMPLEMENTATION_DASHBOARD.md
+
 # Factory Core Phase 6-7 Delivery Summary
 
 **Delivery Date:** April 27, 2026  

@@ -193,6 +193,11 @@ export function FunctionsTab() {
           {refreshMsg}
         </div>
       )}
+      {smokeErr && (
+        <div className="rounded border border-red-700 bg-red-950/40 px-3 py-2 text-sm text-red-300">
+          Smoke run failed: {smokeErr}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]">
         <aside className="rounded border border-slate-800 bg-slate-900 p-3">

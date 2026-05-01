@@ -1,3 +1,5 @@
+> HISTORICAL DOCUMENT: superseded by WORLD_CLASS_360_TASK_DASHBOARD.md and WORLD_CLASS_IMPLEMENTATION_DASHBOARD.md
+
 # Stage 0 Complete
 Date: 2026-04-23
 Packages scaffolded: 19

@@ -17,15 +17,36 @@ import * as path from 'path';
 
 const BASE_SCREENSHOTS_DIR = path.join(__dirname, '..', 'screenshots-baseline');
 const ACTUAL_SCREENSHOTS_DIR = path.join(__dirname, '..', 'test-results/screenshots');
+const STRICT_GATES = process.env.UI_REGRESSION_STRICT === '1';
 
-function actualScreenshotPath(routeName: string, viewport: 'desktop' | 'mobile' | 'tablet') {
-  return path.join(ACTUAL_SCREENSHOTS_DIR, routeName, `${viewport}.png`);
+function projectSlug(projectName: string): string {
+  return projectName.replace(/[^a-zA-Z0-9_-]/g, '-');
+}
+
+function actualScreenshotPath(
+  routeName: string,
+  viewport: 'desktop' | 'mobile' | 'tablet',
+  projectName: string,
+) {
+  return path.join(ACTUAL_SCREENSHOTS_DIR, projectSlug(projectName), routeName, `${viewport}.png`);
+}
+
+function assertGate(condition: boolean, message: string): void {
+  if (STRICT_GATES) {
+    expect(condition, message).toBe(true);
+    return;
+  }
+  expect.soft(condition, message).toBe(true);
 }
 
 test.describe('UI Regression Gates — Homepage', () => {
-  test('captures baseline screenshots (desktop, mobile, tablet)', async ({ page }) => {
+  test('captures baseline screenshots (desktop, mobile, tablet)', async ({ page }, testInfo) => {
     await page.goto('/');
-    const paths = await captureScreenshots(page, 'homepage', ACTUAL_SCREENSHOTS_DIR);
+    const paths = await captureScreenshots(
+      page,
+      'homepage',
+      path.join(ACTUAL_SCREENSHOTS_DIR, projectSlug(testInfo.project.name)),
+    );
     
     // Verify all viewports captured
     expect(paths.desktop).toBeTruthy();
@@ -33,15 +54,24 @@ test.describe('UI Regression Gates — Homepage', () => {
     expect(paths.tablet).toBeTruthy();
   });
 
-  test('detects visual regression (desktop)', async ({ page }) => {
+  test('detects visual regression (desktop)', async ({ page }, testInfo) => {
     await page.goto('/');
     const routeName = 'homepage-latest';
-    await captureScreenshots(page, routeName, ACTUAL_SCREENSHOTS_DIR);
+    await captureScreenshots(
+      page,
+      routeName,
+      path.join(ACTUAL_SCREENSHOTS_DIR, projectSlug(testInfo.project.name)),
+    );
 
-    const baselineDesktop = path.join(BASE_SCREENSHOTS_DIR, 'homepage', 'desktop.png');
+    const baselineDesktop = path.join(
+      BASE_SCREENSHOTS_DIR,
+      projectSlug(testInfo.project.name),
+      'homepage',
+      'desktop.png',
+    );
     const diffResult: ScreenshotDiffResult = await compareScreenshots(
-      'homepage-desktop',
-      actualScreenshotPath(routeName, 'desktop'),
+      `homepage-desktop-${projectSlug(testInfo.project.name)}`,
+      actualScreenshotPath(routeName, 'desktop', testInfo.project.name),
       baselineDesktop,
       150, // Allow ~0.15% pixel change
     );
@@ -49,92 +79,121 @@ test.describe('UI Regression Gates — Homepage', () => {
     // Log difference for debugging
     console.info(`Homepage desktop diff: ${diffResult.message}`);
     
-    // Soft assert for visibility, but don't fail on baseline creation
-    expect.soft(diffResult.match).toBe(true);
+    assertGate(diffResult.match, diffResult.message);
   });
 
-  test('detects visual regression (mobile)', async ({ page }) => {
+  test('detects visual regression (mobile)', async ({ page }, testInfo) => {
     await page.goto('/');
     const routeName = 'homepage-mobile';
-    await captureScreenshots(page, routeName, ACTUAL_SCREENSHOTS_DIR);
+    await captureScreenshots(
+      page,
+      routeName,
+      path.join(ACTUAL_SCREENSHOTS_DIR, projectSlug(testInfo.project.name)),
+    );
 
-    const baselineMobile = path.join(BASE_SCREENSHOTS_DIR, 'homepage', 'mobile.png');
+    const baselineMobile = path.join(
+      BASE_SCREENSHOTS_DIR,
+      projectSlug(testInfo.project.name),
+      'homepage',
+      'mobile.png',
+    );
     const diffResult: ScreenshotDiffResult = await compareScreenshots(
-      'homepage-mobile',
-      actualScreenshotPath(routeName, 'mobile'),
+      `homepage-mobile-${projectSlug(testInfo.project.name)}`,
+      actualScreenshotPath(routeName, 'mobile', testInfo.project.name),
       baselineMobile,
       100,
     );
 
     console.info(`Homepage mobile diff: ${diffResult.message}`);
-    expect.soft(diffResult.match).toBe(true);
+    assertGate(diffResult.match, diffResult.message);
   });
 
   test('performance budget (Lighthouse)', async ({ page }) => {
     await page.goto('/');
-    const metrics = await collectLighthouse(page, 'homepage');
+    const metrics = await collectLighthouse(page, 'homepage', { skipLocalhost: true });
 
-    if (metrics) {
-      console.info(
-        `Homepage Lighthouse: perf=${metrics.performance} a11y=${metrics.accessibility} fcp=${metrics.fcp}ms lcp=${metrics.lcp}ms cls=${metrics.cls}`,
-      );
-      
-      const budget = DEFAULT_PERFORMANCE_BUDGETS.homepage;
-      // Soft assert for non-blocking observability
-      expect.soft(metrics.performance).toBeGreaterThanOrEqual(budget.performanceScore - 5); // -5 tolerance
-      expect.soft(metrics.fcp).toBeLessThan(budget.fcp + 200); // +200ms tolerance
-      expect.soft(metrics.lcp).toBeLessThan(budget.lcp + 300);
+    if (!metrics) {
+      test.skip(true, '[homepage] Lighthouse metrics unavailable in this runtime');
+      return;
     }
+
+    console.info(
+      `Homepage Lighthouse: perf=${metrics.performance} a11y=${metrics.accessibility} fcp=${metrics.fcp}ms lcp=${metrics.lcp}ms cls=${metrics.cls}`,
+    );
+
+    const budget = DEFAULT_PERFORMANCE_BUDGETS.homepage;
+    assertLighthouseBudget(metrics, budget);
   });
 });
 
 test.describe('UI Regression Gates — Pricing Page', () => {
-  test('detects visual regression', async ({ page }) => {
+  test('detects visual regression', async ({ page }, testInfo) => {
     await page.goto('/pricing');
     const routeName = 'pricing';
-    await captureScreenshots(page, routeName, ACTUAL_SCREENSHOTS_DIR);
+    await captureScreenshots(
+      page,
+      routeName,
+      path.join(ACTUAL_SCREENSHOTS_DIR, projectSlug(testInfo.project.name)),
+    );
 
-    const baselineDesktop = path.join(BASE_SCREENSHOTS_DIR, 'pricing', 'desktop.png');
+    const baselineDesktop = path.join(
+      BASE_SCREENSHOTS_DIR,
+      projectSlug(testInfo.project.name),
+      'pricing',
+      'desktop.png',
+    );
     const diffResult: ScreenshotDiffResult = await compareScreenshots(
-      'pricing-desktop',
-      actualScreenshotPath(routeName, 'desktop'),
+      `pricing-desktop-${projectSlug(testInfo.project.name)}`,
+      actualScreenshotPath(routeName, 'desktop', testInfo.project.name),
       baselineDesktop,
       100,
     );
 
     console.info(`Pricing desk diff: ${diffResult.message}`);
-    expect.soft(diffResult.match).toBe(true);
+    assertGate(diffResult.match, diffResult.message);
   });
 
   test('performance budget (Lighthouse)', async ({ page }) => {
     await page.goto('/pricing');
-    const metrics = await collectLighthouse(page, 'pricing');
+    const metrics = await collectLighthouse(page, 'pricing', { skipLocalhost: true });
 
-    if (metrics) {
-      console.info(
-        `Pricing Lighthouse: perf=${metrics.performance} a11y=${metrics.accessibility}`,
-      );
-      expect.soft(metrics.performance).toBeGreaterThanOrEqual(75);
+    if (!metrics) {
+      test.skip(true, '[pricing] Lighthouse metrics unavailable in this runtime');
+      return;
     }
+
+    console.info(
+      `Pricing Lighthouse: perf=${metrics.performance} a11y=${metrics.accessibility}`,
+    );
+    assertLighthouseBudget(metrics, DEFAULT_PERFORMANCE_BUDGETS.pricing);
   });
 });
 
 test.describe('UI Regression Gates — Practitioners Page', () => {
-  test('detects visual regression', async ({ page }) => {
+  test('detects visual regression', async ({ page }, testInfo) => {
     await page.goto('/practitioners');
     const routeName = 'practitioners';
-    await captureScreenshots(page, routeName, ACTUAL_SCREENSHOTS_DIR);
+    await captureScreenshots(
+      page,
+      routeName,
+      path.join(ACTUAL_SCREENSHOTS_DIR, projectSlug(testInfo.project.name)),
+    );
 
-    const baselineDesktop = path.join(BASE_SCREENSHOTS_DIR, 'practitioners', 'desktop.png');
+    const baselineDesktop = path.join(
+      BASE_SCREENSHOTS_DIR,
+      projectSlug(testInfo.project.name),
+      'practitioners',
+      'desktop.png',
+    );
     const diffResult: ScreenshotDiffResult = await compareScreenshots(
-      'practitioners-desktop',
-      actualScreenshotPath(routeName, 'desktop'),
+      `practitioners-desktop-${projectSlug(testInfo.project.name)}`,
+      actualScreenshotPath(routeName, 'desktop', testInfo.project.name),
       baselineDesktop,
       150,
     );
 
     console.info(`Practitioners diff: ${diffResult.message}`);
-    expect.soft(diffResult.match).toBe(true);
+    assertGate(diffResult.match, diffResult.message);
   });
 });
 

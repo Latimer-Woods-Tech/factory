@@ -1,0 +1,126 @@
+name: UI Regression Gates
+
+on:
+  pull_request:
+    paths:
+      - 'apps/prime-self-smoke/**'
+      - 'packages/testing/**'
+      - '.github/workflows/ui-regression-gates.yml'
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Base URL to test (default: https://selfprime.net)'
+        required: false
+        default: 'https://selfprime.net'
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  regression:
+    name: Visual + Performance regression (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium-desktop, mobile-chrome, mobile-safari]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: |
+            apps/prime-self-smoke/package-lock.json
+            packages/testing/package-lock.json
+
+      - name: Install testing package dependencies
+        working-directory: packages/testing
+        run: npm ci
+
+      - name: Build testing package
+        working-directory: packages/testing
+        run: npm run build
+
+      - name: Install smoke dependencies
+        working-directory: apps/prime-self-smoke
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: apps/prime-self-smoke
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Run regression gates (${{ matrix.project }})
+        working-directory: apps/prime-self-smoke
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url || 'https://selfprime.net' }}
+          UI_REGRESSION_STRICT: '1'
+        run: npx playwright test tests/regression-gates.spec.ts --project=${{ matrix.project }}
+
+      - name: Upload regression artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-regression-${{ matrix.project }}-${{ github.run_id }}
+          path: |
+            apps/prime-self-smoke/playwright-report/
+            apps/prime-self-smoke/test-results/
+          retention-days: 7
+
+  a11y:
+    name: Accessibility gate (axe)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: |
+            apps/prime-self-smoke/package-lock.json
+            packages/testing/package-lock.json
+
+      - name: Install testing package dependencies
+        working-directory: packages/testing
+        run: npm ci
+
+      - name: Build testing package
+        working-directory: packages/testing
+        run: npm run build
+
+      - name: Install smoke dependencies
+        working-directory: apps/prime-self-smoke
+        run: npm ci
+
+      - name: Install Playwright browsers (chromium)
+        working-directory: apps/prime-self-smoke
+        run: npx playwright install --with-deps chromium
+
+      - name: Run accessibility gate
+        working-directory: apps/prime-self-smoke
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url || 'https://selfprime.net' }}
+        run: npx playwright test tests/accessibility.spec.ts --project=chromium-desktop
+
+      - name: Upload a11y artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-a11y-${{ github.run_id }}
+          path: |
+            apps/prime-self-smoke/playwright-report/
+            apps/prime-self-smoke/test-results/
+          retention-days: 7

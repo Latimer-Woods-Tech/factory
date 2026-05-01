@@ -102,7 +102,7 @@ Legacy `SMOKE_EMAIL` / `SMOKE_PASSWORD` aliases are no longer used by CI workflo
 
 ### For Factory Core (monorepo)
 
-1. Navigate to: **https://github.com/adrper79-dot/Factory/settings/secrets/actions**
+1. Navigate to: **https://github.com/Latimer-Woods-Tech/factory/settings/secrets/actions**
 2. Click "New repository secret"
 3. Add each secret from the inventory above
 4. **Verify in workflows**: Go to Actions → select any workflow → check "Secrets" are populated
@@ -113,7 +113,7 @@ The original 6 apps (prime-self, wordis-bond, cypher-healing, the-calling, ijust
 
 Standalone apps added after Stage 6 (xpelevator, xico-city, and any future apps) use their own `setup-{app}-secrets.yml` workflow in the Factory repo instead.
 
-1. Navigate to: **https://github.com/adrper79-dot/{app}/settings/secrets/actions**
+1. Navigate to: **https://github.com/Latimer-Woods-Tech/{app}/settings/secrets/actions**
 2. Click "New repository secret"
 3. Add secrets from "Required for Each App Repository" table
 4. Commit the app's `wrangler.jsonc` to reference via interpolation
@@ -185,7 +185,7 @@ openssl rand -base64 32 | wrangler secret put JWT_SECRET --env production --name
 **Fix**: 
 1. Generate new GitHub PAT: https://github.com/settings/tokens?type=beta
 2. Scopes needed: `read:packages` only
-3. Update Secret: **https://github.com/adrper79-dot/{repo}/settings/secrets/actions**
+3. Update Secret: **https://github.com/Latimer-Woods-Tech/{repo}/settings/secrets/actions**
 4. Re-run workflow
 
 ### Error: "Unauthorized: CF_API_TOKEN invalid"

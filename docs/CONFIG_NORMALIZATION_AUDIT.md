@@ -84,7 +84,7 @@ Factory apps and packages have drifted in configuration standards. This audit id
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/adrper79-dot/factory.git",
+    "url": "https://github.com/Latimer-Woods-Tech/factory.git",
     "directory": "packages/package-name"
   },
   "keywords": ["keyword1", "keyword2"],
@@ -200,12 +200,12 @@ workers:
   - id: worker-name
     name: worker-name
     url: https://worker-name.adrper79.workers.dev
-    repo: adrper79-dot/factory
+    repo: Latimer-Woods-Tech/factory
     health_endpoint: /health
     critical_endpoints:
       - /api/critical-path
     consumers:
-      - repo: adrper79-dot/consumer
+      - repo: Latimer-Woods-Tech/consumer
         file: src/config.ts
         line: 42
         pattern: "https://worker-name.adrper79.workers.dev"
@@ -376,7 +376,7 @@ export default {
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/adrper79-dot/factory.git",
+    "url": "https://github.com/Latimer-Woods-Tech/factory.git",
     "directory": "packages/package-name"
   },
   "keywords": ["factory", "core", "utility"],

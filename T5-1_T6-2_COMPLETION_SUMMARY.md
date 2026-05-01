@@ -1,3 +1,5 @@
+> HISTORICAL DOCUMENT: superseded by WORLD_CLASS_360_TASK_DASHBOARD.md and WORLD_CLASS_IMPLEMENTATION_DASHBOARD.md
+
 # T5.1 & T6.2 Execution Summary
 
 **Date:** April 28, 2026  

@@ -18,7 +18,7 @@
  * 6. Commits scaffolding and pushes to app repo
  * 
  * Prerequisites (all set by Phase 6):
- * - GitHub repo created (adrper79-dot/{app-name})
+ * - GitHub repo created (Latimer-Woods-Tech/{app-name})
  * - Neon database created
  * - Hyperdrive instance created
  * - Sentry project created
@@ -129,10 +129,10 @@ function scaffoldApp(appName, hyperdriveid, rateLimiterId) {
  * Step 2: Clone the newly created repo
  */
 function cloneAppRepo(appName) {
-  console.log(`2️⃣  Cloning adrper79-dot/${appName}...\n`);
+  console.log(`2️⃣  Cloning Latimer-Woods-Tech/${appName}...\n`);
 
   try {
-    execSync(`gh repo clone adrper79-dot/${appName}`, {
+    execSync(`gh repo clone Latimer-Woods-Tech/${appName}`, {
       stdio: 'inherit'
     });
     console.log(`✅ Cloned\n`);
@@ -588,7 +588,7 @@ function commitAndPush(appName) {
     execSync(`git add -A`, { cwd });
     execSync(`git commit -m "chore(core): scaffold app packages and schema"`, { cwd });
     execSync(`git push --set-upstream origin main`, { cwd });
-    console.log(`✅ Pushed to adrper79-dot/${appName}/main\n`);
+    console.log(`✅ Pushed to Latimer-Woods-Tech/${appName}/main\n`);
   } catch (e) {
     console.warn(`⚠️  Could not commit (may already be committed): ${e.message}\n`);
   }

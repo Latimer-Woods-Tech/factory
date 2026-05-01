@@ -98,7 +98,7 @@ if (pkgJson.version !== newVersion) {
 console.log(`
 Next steps:
   1. Wait for publish.yml to complete:
-       gh run watch --repo adrper79-dot/factory --workflow publish.yml
+       gh run watch --repo Latimer-Woods-Tech/factory --workflow publish.yml
 
   2. Update internal consumers (apps/ in Factory repo):
        cd apps/<app> && npm install @adrper79-dot/${pkgShortName}@${newVersion}

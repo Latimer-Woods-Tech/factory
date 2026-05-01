@@ -19,7 +19,7 @@ export interface Env {
    */
   GITHUB_TOKEN: string;
   /**
-   * GitHub owner/repo in the form `adrper79-dot/Factory`.
+   * GitHub owner/repo in the form `Latimer-Woods-Tech/factory`.
    * Safe to put in vars (not secret).
    */
   GITHUB_REPO: string;

@@ -31,7 +31,7 @@ wrangler r2 object put factory-archives/{app}/events_$(date +%Y%m%d).csv \
 
 ```bash
 # Transfer repo to buyer's GitHub org
-gh repo transfer adrper79-dot/{app} {buyer-github-org}
+gh repo transfer Latimer-Woods-Tech/{app} {buyer-github-org}
 # Buyer receives and accepts the transfer invitation
 ```
 
@@ -129,6 +129,28 @@ Transfer DNS for the app's domain to the buyer's registrar or Cloudflare account
 psql $FACTORY_ADMIN_DATABASE_URL \
   -c "DELETE FROM factory_events WHERE app_id = '{app}'"
 ```
+
+---
+
+## Warm Handoff Package (Required Before Transfer)
+
+Before running transfer steps, prepare and share this package with the incoming team:
+
+- `docs/operations/WARM_HANDOFF_PORTFOLIO_MASTER_REPORT_2026-04-30.md`
+- `docs/ESSENTIAL_OWNERS_GUIDE.md`
+- `docs/runbooks/getting-started.md`
+- `docs/service-registry.yml`
+- `docs/APP_SCOPE_REGISTRY.md`
+- latest CI status snapshot (critical repos)
+- latest deploy/curl verification snapshot (critical endpoints)
+- owner map for repos, secrets, domains, and on-call responsibilities
+
+Recommended dry-run before production transfer:
+
+1. Clone and boot one app in a clean environment using only docs.
+2. Run tests and health checks.
+3. Simulate secret/bootstrap handoff.
+4. Verify new team can execute deploy and rollback runbooks without ad-hoc guidance.
 
 ---
 

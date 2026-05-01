@@ -9,7 +9,7 @@
  *   - GITHUB_TOKEN: PAT with `repo` + `workflow` scopes for the Factory repo
  */
 
-const FACTORY_OWNER = 'adrper79-dot';
+const FACTORY_OWNER = 'Latimer-Woods-Tech';
 const FACTORY_REPO = 'factory';
 const DISPATCH_WORKFLOW = 'studio-test-dispatch.yml';
 const DEFAULT_REF = 'main';

@@ -22,7 +22,7 @@ jobs:
       - name: Checkout ${{ matrix.repo }}
         uses: actions/checkout@v4
         with:
-          repository: adrper79-dot/${{ matrix.repo }}
+          repository: Latimer-Woods-Tech/${{ matrix.repo }}
           token: ${{ secrets.GH_PAT }}
           ref: main
 

@@ -15,13 +15,13 @@ describe('executeSmokeProbes', () => {
   });
 
   it('executes a single probe and passes on 200', async () => {
-    const mockFetch = vi.fn<typeof fetch>().mockResolvedValue(
+    const mockFetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       }),
     );
-    globalThis.fetch = mockFetch;
+    globalThis.fetch = mockFetch as typeof fetch;
 
     const probes: SmokeProbe[] = [
       {
@@ -45,10 +45,10 @@ describe('executeSmokeProbes', () => {
   });
 
   it('fails probe on status mismatch', async () => {
-    const mockFetch = vi.fn<typeof fetch>().mockResolvedValue(
+    const mockFetch = vi.fn().mockResolvedValue(
       new Response('Not Found', { status: 404 }),
     );
-    globalThis.fetch = mockFetch;
+    globalThis.fetch = mockFetch as typeof fetch;
 
     const probes: SmokeProbe[] = [
       {
@@ -72,12 +72,12 @@ describe('executeSmokeProbes', () => {
   });
 
   it('passes probe with POST body and content check', async () => {
-    const mockFetch = vi.fn<typeof fetch>().mockResolvedValue(
+    const mockFetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ uuid: 'abc123' }), {
         status: 200,
       }),
     );
-    globalThis.fetch = mockFetch;
+    globalThis.fetch = mockFetch as typeof fetch;
 
     const probes: SmokeProbe[] = [
       {
@@ -102,10 +102,10 @@ describe('executeSmokeProbes', () => {
   });
 
   it('fails probe when response body does not contain expected substring', async () => {
-    const mockFetch = vi.fn<typeof fetch>().mockResolvedValue(
+    const mockFetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ id: '999' }), { status: 200 }),
     );
-    globalThis.fetch = mockFetch;
+    globalThis.fetch = mockFetch as typeof fetch;
 
     const probes: SmokeProbe[] = [
       {
@@ -129,10 +129,10 @@ describe('executeSmokeProbes', () => {
   });
 
   it('handles DELETE with explicit expectedStatus override', async () => {
-    const mockFetch = vi.fn<typeof fetch>().mockResolvedValue(
+    const mockFetch = vi.fn().mockResolvedValue(
       new Response('', { status: 200 }),
     );
-    globalThis.fetch = mockFetch;
+    globalThis.fetch = mockFetch as typeof fetch;
 
     const probes: SmokeProbe[] = [
       {
@@ -177,10 +177,10 @@ describe('executeSmokeProbes', () => {
   });
 
   it('executes multiple probes sequentially', async () => {
-    const mockFetch = vi.fn<typeof fetch>().mockResolvedValue(
+    const mockFetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ id: 1 }), { status: 200 }),
     );
-    globalThis.fetch = mockFetch;
+    globalThis.fetch = mockFetch as typeof fetch;
 
     const probes: SmokeProbe[] = [
       { label: 'probe1' },
@@ -203,11 +203,11 @@ describe('executeSmokeProbes', () => {
 
   it('appends query string when probe.query is set', async () => {
     let capturedUrl = '';
-    const mockFetch = vi.fn<typeof fetch>().mockImplementation((url) => {
-      capturedUrl = url.toString();
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      capturedUrl = url;
       return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
     });
-    globalThis.fetch = mockFetch;
+    globalThis.fetch = mockFetch as typeof fetch;
 
     const probes: SmokeProbe[] = [
       {
@@ -232,8 +232,8 @@ describe('executeSmokeProbes', () => {
 
   it('handles fetch AbortError as timeout reason', async () => {
     const abortErr = new DOMException('signal timed out', 'AbortError');
-    const mockFetch = vi.fn<typeof fetch>().mockRejectedValue(abortErr);
-    globalThis.fetch = mockFetch;
+    const mockFetch = vi.fn().mockRejectedValue(abortErr);
+    globalThis.fetch = mockFetch as typeof fetch;
 
     const probes: SmokeProbe[] = [{ label: 'timeout probe' }];
 
@@ -253,8 +253,8 @@ describe('executeSmokeProbes', () => {
 
   it('handles generic fetch network error', async () => {
     const networkErr = new TypeError('Failed to fetch');
-    const mockFetch = vi.fn<typeof fetch>().mockRejectedValue(networkErr);
-    globalThis.fetch = mockFetch;
+    const mockFetch = vi.fn().mockRejectedValue(networkErr);
+    globalThis.fetch = mockFetch as typeof fetch;
 
     const probes: SmokeProbe[] = [{ label: 'network error probe' }];
 
@@ -272,10 +272,10 @@ describe('executeSmokeProbes', () => {
   });
 
   it('uses default DELETE status 204 when expectedStatus not set', async () => {
-    const mockFetch = vi.fn<typeof fetch>().mockResolvedValue(
+    const mockFetch = vi.fn().mockResolvedValue(
       new Response(null, { status: 204 }),
     );
-    globalThis.fetch = mockFetch;
+    globalThis.fetch = mockFetch as typeof fetch;
 
     const probes: SmokeProbe[] = [{ label: 'delete default 204' }];
 
@@ -293,3 +293,6 @@ describe('executeSmokeProbes', () => {
     expect(result.results[0]!.status).toBe(204);
   });
 });
+
+
+

@@ -22,6 +22,7 @@ import type {
   TestRun,
   TestRunStatus,
 } from '@adrper79-dot/studio-core';
+import { complete, type LLMMessage } from '@adrper79-dot/llm';
 import type { AppEnv } from '../types.js';
 import { requireConfirmation } from '../middleware/require-confirmation.js';
 import { dispatchTestWorkflow, DispatchError } from '../lib/github-dispatch.js';
@@ -242,12 +243,6 @@ tests.get('/runs/:id/events', async (c) => {
   });
 });
 
-/**
- * AI Failure Analyst — Phase C ships a heuristic stub.
- *
- * Returns a structured suggestion derived from the failure shape.
- * Phase E swaps this for a real LLM call via @adrper79-dot/llm.
- */
 tests.post('/runs/:id/analyze', async (c) => {
   const id = c.req.param('id');
   const body = await c.req
@@ -265,9 +260,132 @@ tests.post('/runs/:id/analyze', async (c) => {
   }
 
   const req: FailureAnalystRequest = { failure: target };
-  const suggestion = heuristicAnalyse(req);
-  return c.json({ suggestion, source: 'heuristic-stub' });
+  const llmSuggestion = await tryLlmAnalyse(req, c.env);
+  const suggestion = llmSuggestion?.suggestion ?? heuristicAnalyse(req);
+  const source = llmSuggestion?.source ?? 'heuristic-fallback';
+
+  c.set('auditAction', 'tests.analyze');
+  c.set('auditResource', id);
+  c.set('auditReversibility', 'reversible');
+  c.set('auditResultDetail', {
+    source,
+    suite: req.failure.suite,
+    testName: req.failure.name,
+  });
+
+  return c.json({ suggestion, source });
 });
+
+async function tryLlmAnalyse(
+  req: FailureAnalystRequest,
+  env: Pick<AppEnv['Bindings'], 'ANTHROPIC_API_KEY' | 'XAI_API_KEY' | 'GROQ_API_KEY'>,
+): Promise<{ suggestion: FailureAnalystSuggestion; source: string } | null> {
+  if (!env.ANTHROPIC_API_KEY) {
+    return null;
+  }
+
+  const failure = req.failure;
+  const system = [
+    'You are a senior test failure analyst for TypeScript services.',
+    'Return STRICT JSON only, no markdown, matching:',
+    '{"hypothesis": string, "steps": string[], "confidence": number}',
+    'Confidence must be between 0 and 1.',
+    'Keep steps concrete, short, and execution-oriented.',
+  ].join(' ');
+
+  const userPayload = {
+    suite: failure.suite,
+    testName: failure.name,
+    durationMs: failure.durationMs,
+    failure: failure.failure,
+  };
+
+  const messages: LLMMessage[] = [
+    {
+      role: 'user',
+      content: `Analyze this failing test and propose a likely root cause and next steps: ${JSON.stringify(userPayload)}`,
+    },
+  ];
+
+  const llm = await complete(
+    messages,
+    {
+      ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY,
+      GROK_API_KEY: env.XAI_API_KEY ?? '',
+      GROQ_API_KEY: env.GROQ_API_KEY ?? '',
+    },
+    {
+      system,
+      temperature: 0.2,
+      maxTokens: 500,
+    },
+  );
+
+  if (!llm.data || llm.error) {
+    return null;
+  }
+
+  const parsed = tryParseSuggestion(llm.data.content);
+  if (!parsed) {
+    return null;
+  }
+
+  return {
+    suggestion: parsed,
+    source: `llm-${llm.data.provider}`,
+  };
+}
+
+function tryParseSuggestion(content: string): FailureAnalystSuggestion | null {
+  const parsed = extractJsonObject(content);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return null;
+  }
+
+  const hypothesis = (parsed as { hypothesis?: unknown }).hypothesis;
+  const steps = (parsed as { steps?: unknown }).steps;
+  const confidence = (parsed as { confidence?: unknown }).confidence;
+
+  if (typeof hypothesis !== 'string' || !Array.isArray(steps)) {
+    return null;
+  }
+
+  const normalizedSteps = steps.filter((s): s is string => typeof s === 'string');
+  if (normalizedSteps.length === 0) {
+    return null;
+  }
+
+  const normalizedConfidence =
+    typeof confidence === 'number' && Number.isFinite(confidence)
+      ? Math.max(0, Math.min(1, confidence))
+      : 0.5;
+
+  return {
+    hypothesis,
+    steps: normalizedSteps,
+    confidence: normalizedConfidence,
+  };
+}
+
+function extractJsonObject(content: string): unknown {
+  const trimmed = content.trim();
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    // Some providers may wrap JSON with prose. Fallback to first object blob.
+    const start = trimmed.indexOf('{');
+    const end = trimmed.lastIndexOf('}');
+    if (start < 0 || end <= start) {
+      return null;
+    }
+    const candidate = trimmed.slice(start, end + 1);
+    try {
+      return JSON.parse(candidate) as unknown;
+    } catch {
+      return null;
+    }
+  }
+}
 
 function heuristicAnalyse(req: FailureAnalystRequest): FailureAnalystSuggestion {
   const msg = req.failure.failure?.message ?? '';

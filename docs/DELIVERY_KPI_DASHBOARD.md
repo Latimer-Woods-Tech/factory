@@ -335,7 +335,7 @@ export async function collectWeeklyKPIs() {
 
   // 1. GitHub data: deployments, PRs, reviews
   const deployments = await collectDeploymentStats(env.GITHUB_TOKEN, {
-    owner: 'adrper79-dot',
+    owner: 'Latimer-Woods-Tech',
     repo: 'factory',
     dateRange: [weekStart, weekEnd],
   });

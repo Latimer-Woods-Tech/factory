@@ -195,7 +195,7 @@ Package: @adrper79-dot/<name>
 Old version: <old>
 New version: <new>
 Tag: <name>/v<new>
-Publish run: https://github.com/adrper79-dot/factory/actions/runs/<id>
+Publish run: https://github.com/Latimer-Woods-Tech/factory/actions/runs/<id>
 
 Internal consumers updated:
 - apps/<app>: lockfile updated, CI run <id>, ✅ green

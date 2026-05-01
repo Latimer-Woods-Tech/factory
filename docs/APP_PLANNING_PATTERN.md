@@ -53,7 +53,7 @@ Before writing the plan, gather:
 
 ```bash
 # Clone the repo
-git clone https://github.com/adrper79-dot/{app-name}
+git clone https://github.com/Latimer-Woods-Tech/{app-name}
 cd {app-name}
 
 # Verify Factory scaffold (should already be present)

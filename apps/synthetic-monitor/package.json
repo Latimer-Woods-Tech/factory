@@ -22,5 +22,11 @@
     "typescript": "^5.4.0",
     "vitest": "^1.6.0",
     "wrangler": "^3.0.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Latimer-Woods-Tech/factory.git",
+    "directory": "apps/synthetic-monitor"
   }
 }

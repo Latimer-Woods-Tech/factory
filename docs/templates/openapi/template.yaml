@@ -1,0 +1,246 @@
+openapi: 3.1.0
+
+info:
+  title: "[Service Name] API"
+  description: |
+    One-paragraph description of what this service does and who consumes it.
+
+    **Environment**: `staging` | `production`
+    **Base URL**: `https://[worker-name].adrper79.workers.dev`
+    **Auth**: Bearer JWT (see `packages/auth`)
+  version: "0.1.0"
+  contact:
+    name: Factory Engineering
+    url: https://github.com/Latimer-Woods-Tech/factory
+
+servers:
+  - url: https://[worker-name].adrper79.workers.dev
+    description: Production
+  - url: https://[worker-name]-staging.adrper79.workers.dev
+    description: Staging
+
+tags:
+  - name: health
+    description: Liveness and manifest endpoints (unauthenticated)
+  - name: core
+    description: Core business operations
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Liveness check
+      operationId: getHealth
+      security: []
+      responses:
+        "200":
+          description: Worker is alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /manifest:
+    get:
+      tags: [health]
+      summary: Crawlable capability manifest
+      operationId: getManifest
+      security: []
+      responses:
+        "200":
+          description: Manifest listing all implemented routes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManifestResponse"
+
+  /[resource]:
+    get:
+      tags: [core]
+      summary: "[Short description]"
+      operationId: list[Resource]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/[Resource]ListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags: [core]
+      summary: "[Short description]"
+      operationId: create[Resource]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Create[Resource]Request"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/[Resource]"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, worker, environment, ts]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        worker:
+          type: string
+          example: schedule-worker
+        environment:
+          type: string
+          enum: [staging, production, unknown]
+        ts:
+          type: string
+          format: date-time
+
+    ManifestResponse:
+      type: object
+      required: [manifestVersion, app, env, entries]
+      properties:
+        manifestVersion:
+          type: integer
+          enum: [1]
+        app:
+          type: string
+        env:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ManifestEntry"
+
+    ManifestEntry:
+      type: object
+      required: [id, method, path, auth, reversible, slo, smokeTest]
+      properties:
+        id:
+          type: string
+        method:
+          type: string
+          enum: [GET, POST, PUT, PATCH, DELETE]
+        path:
+          type: string
+        auth:
+          type: boolean
+        reversible:
+          type: boolean
+        slo:
+          type: string
+        smokeTest:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required: [error, code]
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    # TODO: Replace with actual resource schemas
+    "[Resource]":
+      type: object
+      required: [id, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+
+    "[Resource]ListResponse":
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/[Resource]"
+        nextCursor:
+          type: string
+
+    "Create[Resource]Request":
+      type: object
+      required: []
+      properties: {}
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid JWT
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: Unauthorized
+            code: UNAUTHORIZED
+
+    ValidationError:
+      description: Request body failed validation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: Validation failed
+            code: VALIDATION_ERROR
+            details:
+              field: value must be a string
+
+    InternalError:
+      description: Unexpected server error (reported to Sentry)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: Internal server error
+            code: INTERNAL_ERROR

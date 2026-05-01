@@ -9,7 +9,7 @@
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
-const ORG = process.env.SCORECARD_REPO_OWNER || 'adrper79-dot';
+const ORG = process.env.SCORECARD_REPO_OWNER || 'Latimer-Woods-Tech';
 const REPO = process.env.SCORECARD_REPO_NAME || 'factory';
 
 if (!GITHUB_TOKEN || !SLACK_WEBHOOK_URL) {

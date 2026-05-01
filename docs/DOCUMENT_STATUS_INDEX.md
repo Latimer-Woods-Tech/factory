@@ -47,6 +47,7 @@
 | `docs/APP_PLANNING_PATTERN.md` | Active reference | Planning template for app repos |
 | `docs/admin-studio/00-MASTER-PLAN.md` | Active reference | Admin Studio product and safety model |
 | `docs/SELFPRIME_VIDEOKING_SYNERGY_DEVELOPMENT_PLAN.md` | Active reference | Video/SelfPrime synergy detail; verify dates against dashboard |
+| `docs/operations/WARM_HANDOFF_PORTFOLIO_MASTER_REPORT_2026-04-30.md` | Active reference | Cross-repo handoff status, readiness gaps, transition checklist, and diagrams |
 | `docs/runbooks/deployment.md` | Active reference | Deploy and smoke verification process |
 | `docs/runbooks/database.md` | Active reference | Neon and migration guidance |
 | `docs/runbooks/github-secrets-and-tokens.md` | Active reference | Secret inventory and token conventions |

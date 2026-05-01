@@ -36,7 +36,7 @@ npm run lint       # --max-warnings 0
 **Prevention**:
 1. Follow strict dependency order (see CLAUDE.md)
 2. Tag multiple packages in sequence, but wait for each publish to complete before tagging the next
-3. Check GitHub Packages UI before tagging next package: https://github.com/adrper79-dot?tab=packages
+3. Check GitHub Packages UI before tagging next package: https://github.com/Latimer-Woods-Tech?tab=packages
 
 **Fix**:
 ```bash
@@ -225,7 +225,7 @@ git -c credential.helper="" -c "http.extraheader=Authorization: Basic $encoded" 
 **Workaround** (standard Factory pattern):
 1. After running `create-hyperdrive.yml`, view the workflow logs and copy the UUID:
    ```bash
-   gh run view <RUN_ID> --repo adrper79-dot/factory --log | grep "{app}-db ->"
+   gh run view <RUN_ID> --repo Latimer-Woods-Tech/factory --log | grep "{app}-db ->"
    # Output: [created] xico-city-db -> 0c15bc97978841f88a78da8253ea3d32
    ```
 2. Hard-code the UUID in the scaffold workflow (`--hyperdrive-id "0c15..."`):
@@ -235,7 +235,7 @@ git -c credential.helper="" -c "http.extraheader=Authorization: Basic $encoded" 
    ```
 3. Store it manually as a GitHub secret:
    ```bash
-   echo "0c15bc97978841f88a78da8253ea3d32" | gh secret set HYPERDRIVE_{APP} --repo adrper79-dot/factory
+   echo "0c15bc97978841f88a78da8253ea3d32" | gh secret set HYPERDRIVE_{APP} --repo Latimer-Woods-Tech/factory
    ```
 
 **Why not fix the workflow?** Setting repo secrets requires a PAT with `secrets:write` scope, which should not be stored as a workflow secret (circular risk). The manual step is deliberate.
@@ -444,7 +444,7 @@ All 19 packages are at **v0.2.0** as of Stage 6.
    ```
 
 4. **Wait for GitHub Actions publish to complete**:
-   - Go to: https://github.com/adrper79-dot/factory/actions
+   - Go to: https://github.com/Latimer-Woods-Tech/factory/actions
    - Check: Publish workflow succeeded
 
 5. **Update dependent packages**:

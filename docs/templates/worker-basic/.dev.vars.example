@@ -1,0 +1,9 @@
+# Local development environment variables
+# Copy this file to .dev.vars and fill in real values (never commit .dev.vars)
+
+# Required: Runtime environment label
+ENVIRONMENT=development
+
+# Add secrets below — each corresponds to a `wrangler secret put SECRET_NAME` in staging/production
+# Example:
+# MY_API_KEY=your-dev-key-here
