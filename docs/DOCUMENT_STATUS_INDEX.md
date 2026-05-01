@@ -31,6 +31,8 @@
 | `prompts/ADMIN_STUDIO_COMMAND_PLANE_PROMPT.md` | Canonical | Admin Studio safe command-plane prompt |
 | `docs/revenue/PRACTITIONER_VIDEO_STUDIO_READY_STATE_PLAN.md` | Canonical | Practitioner Video Studio paid self-serve build plan |
 | `docs/revenue/XICO_CITY_TRANCHE_REVIEW.md` | Canonical | Xico City fit, risk, and World Class 360 completion framing |
+| `docs/operations/FACTORY_MODULAR_OPERATING_SYSTEM_ARCHITECTURE.md` | Canonical | Modular operating-system architecture tying real repos, shared engines, Admin Studio, registries, automation, tests, and sellability together |
+| `docs/operations/W360_TOMORROW_ACTION_PLAN_2026-05-02.md` | Canonical | Date-specific May 2 execution plan for highest-leverage W360 progress |
 | `docs/operations/WORLD_CLASS_360_SCOPE_GAP_REVIEW.md` | Canonical | Full-scope gap review covering apps, templates, standards, configs, and process maturity |
 | `docs/operations/WORLD_CLASS_360_DISCIPLINE_BREAKDOWN.md` | Canonical | Discipline taxonomy and routing layer for W360 ownership/review gates |
 

@@ -8,6 +8,8 @@
 **Discipline breakdown:** `WORLD_CLASS_360_DISCIPLINE_BREAKDOWN.md`
 **Scope gap review:** `WORLD_CLASS_360_SCOPE_GAP_REVIEW.md`
 **Repo hardening execution plan:** `W360_FACTORY_REPO_HARDENING_PLAN.md`
+**Modular operating architecture:** `FACTORY_MODULAR_OPERATING_SYSTEM_ARCHITECTURE.md`
+**Next-day execution plan:** `W360_TOMORROW_ACTION_PLAN_2026-05-02.md`
 
 ---
 

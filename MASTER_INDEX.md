@@ -93,6 +93,8 @@ npm run dev
 
 ### World Class 360 Execution
 - **[docs/operations/WORLD_CLASS_360_TASK_DASHBOARD.md](./docs/operations/WORLD_CLASS_360_TASK_DASHBOARD.md)** — Active W360 work queue
+- **[docs/operations/FACTORY_MODULAR_OPERATING_SYSTEM_ARCHITECTURE.md](./docs/operations/FACTORY_MODULAR_OPERATING_SYSTEM_ARCHITECTURE.md)** — Modular Factory OS architecture based on the real repo surfaces, shared engines, Admin Studio, registries, tests, and sellability model
+- **[docs/operations/W360_TOMORROW_ACTION_PLAN_2026-05-02.md](./docs/operations/W360_TOMORROW_ACTION_PLAN_2026-05-02.md)** — May 2 execution plan for closing the highest-value W360 blockers with evidence
 - **[docs/operations/W360_FACTORY_REPO_HARDENING_PLAN.md](./docs/operations/W360_FACTORY_REPO_HARDENING_PLAN.md)** — Detailed hardening program for control-plane, workflows, docs, and quality gates
 - **[docs/operations/W360_FACTORY_REPO_HARDENING_SPRINT_PLAN.md](./docs/operations/W360_FACTORY_REPO_HARDENING_SPRINT_PLAN.md)** — 2-week sprint mapping, board columns, risk register, and evidence cadence for FRH-01..FRH-10
 - **[docs/operations/W360_FACTORY_REPO_HARDENING_ISSUE_PACK.md](./docs/operations/W360_FACTORY_REPO_HARDENING_ISSUE_PACK.md)** — Ready-to-open FRH-01..FRH-10 issue titles and scope anchors (+ deferred FRH-11 append item)
