@@ -1,0 +1,27 @@
+name: Delete Orphan Repos (one-shot)
+on: workflow_dispatch
+permissions: { contents: write }
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: Latimer-Woods-Tech
+      - name: Delete adrper79-dot/* orphans
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          for repo in thecalling-web CallMonitor prime-self prime-self-ui; do
+            echo "Deleting adrper79-dot/$repo..."
+            curl -fsSL -X DELETE -H "Authorization: Bearer $GH_PAT" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/adrper79-dot/$repo" -w "  HTTP: %{http_code}\n" || echo "  failed (may need delete_repo scope)"
+          done
+      - name: Self-delete this workflow
+        env:
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          SHA=$(curl -s -H "Authorization: Bearer $APP_TOKEN" "https://api.github.com/repos/Latimer-Woods-Tech/factory/contents/.github/workflows/delete-orphans.yml" | python3 -c "import sys,json; print(json.load(sys.stdin)['sha'])")
+          curl -X DELETE -H "Authorization: Bearer $APP_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/Latimer-Woods-Tech/factory/contents/.github/workflows/delete-orphans.yml" -d "{\"message\":\"chore(ci): remove one-shot orphan deletion\",\"sha\":\"$SHA\"}"
