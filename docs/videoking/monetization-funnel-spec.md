@@ -11,7 +11,7 @@ This specification defines the event schema, critical events, and instrumentatio
 
 ## 1. Event Schema & Contract
 
-All monetization events **must** conform to the [`@adrper79-dot/analytics`](../../packages/analytics/src/index.ts) event schema.
+All monetization events **must** conform to the [`@latimer-woods-tech/analytics`](../../packages/analytics/src/index.ts) event schema.
 
 ### Base Event Structure
 
@@ -351,7 +351,7 @@ payout_completed (correlation_id: abc-123-def linked in batch)
 
 ## 6. Implementation Checklist
 
-- [ ] Event schema validated in @adrper79-dot/analytics
+- [ ] Event schema validated in @latimer-woods-tech/analytics
 - [ ] Frontend instrumentation (apps/web/src/instrumentation/monetization-events.ts)
 - [ ] Stripe webhook handlers emit events for payment_succeeded / payment_failed / charge events
 - [ ] Subscription renewal handler emits subscription_renewed

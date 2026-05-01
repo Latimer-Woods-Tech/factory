@@ -1,5 +1,5 @@
 {
-  "name": "@adrper79-dot/prime-self-smoke",
+  "name": "@latimer-woods-tech/prime-self-smoke",
   "version": "0.1.0",
   "private": true,
   "description": "Production Playwright smoke tests for selfprime.net",
@@ -10,7 +10,7 @@
     "test:workspace-contract": "playwright test tests/workspace-contract.spec.ts"
   },
   "dependencies": {
-    "@adrper79-dot/testing": "file:../../packages/testing"
+    "@latimer-woods-tech/testing": "file:../../packages/testing"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.2",

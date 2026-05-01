@@ -108,6 +108,6 @@ All code and docs in Factory follow:
 ## Quick Links
 
 - [Service Registry](service-registry.yml) — All Workers and Pages projects
-- [Package Inventory](packages/) — Each @adrper79-dot/* package
+- [Package Inventory](packages/) — Each @latimer-woods-tech/* package
 - [GitHub Secrets & Tokens](runbooks/github-secrets-and-tokens.md) — Complete reference
 - [Lessons Learned](runbooks/lessons-learned.md) — Common errors and fixes

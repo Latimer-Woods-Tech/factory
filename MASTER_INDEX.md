@@ -60,7 +60,7 @@
 
 **Once Phase 6 complete, for each app:**
 ```bash
-git clone https://github.com/adrper79-dot/{app-name}
+git clone https://github.com/Latimer-Woods-Tech/{app-name}
 npm ci
 npm run verify:env
 npm run dev
@@ -257,7 +257,7 @@ Phase 8+ (AFTER PHASE 6-7 COMPLETE)
 
 ### Resources
 
-- **GitHub Issues:** github.com/adrper79-dot/factory_core/issues (label: `phase-6`)
+- **GitHub Issues:** github.com/Latimer-Woods-Tech/factory_core/issues (label: `phase-6`)
 - **Slack:** #factory-eng
 - **Emergency contacts:** See STAGE_6_ONWARDS_PLAN.md
 

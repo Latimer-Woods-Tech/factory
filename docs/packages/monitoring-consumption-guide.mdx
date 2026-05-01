@@ -3,7 +3,7 @@ export const metadata = {
   description: "Sentry integration, error tracking, APM",
 };
 
-# @adrper79-dot/monitoring — Monitoring Consumption Guide
+# @latimer-woods-tech/monitoring — Monitoring Consumption Guide
 
 **Last Updated:** April 28, 2026  
 **Target Audience:** Backend engineers setting up error tracking  
@@ -13,7 +13,7 @@ export const metadata = {
 
 ## Overview
 
-The `@adrper79-dot/monitoring` package provides:
+The `@latimer-woods-tech/monitoring` package provides:
 - **Sentry integration** — Automatic error capture (unhandled exceptions)
 - **APM (Application Performance Monitoring)** — Trace slow requests
 - **Error context** — Attach userId, tenantId, requestId to errors
@@ -31,7 +31,7 @@ The `@adrper79-dot/monitoring` package provides:
 
 ### 1. Install the package
 ```bash
-npm install @adrper79-dot/monitoring
+npm install @latimer-woods-tech/monitoring
 ```
 
 ### 2. Create Sentry project
@@ -62,7 +62,7 @@ SENTRY_DSN=https://key@sentry.io/projectid
 
 ```typescript
 import { Hono } from 'hono';
-import { initSentry } from '@adrper79-dot/monitoring';
+import { initSentry } from '@latimer-woods-tech/monitoring';
 
 const app = new Hono();
 
@@ -109,7 +109,7 @@ app.get('/api/users/:id', async (c) => {
 Enrich errors with user/request metadata:
 
 ```typescript
-import { captureException, captureMessage } from '@adrper79-dot/monitoring';
+import { captureException, captureMessage } from '@latimer-woods-tech/monitoring';
 
 app.post('/api/checkout', authMiddleware(...), async (c) => {
   const user = c.get('user');
@@ -139,7 +139,7 @@ app.post('/api/checkout', authMiddleware(...), async (c) => {
 Track slow requests:
 
 ```typescript
-import { captureMessage } from '@adrper79-dot/monitoring';
+import { captureMessage } from '@latimer-woods-tech/monitoring';
 
 app.get('/api/analytics/report', async (c) => {
   const start = Date.now();
@@ -171,7 +171,7 @@ app.get('/api/analytics/report', async (c) => {
 ### Comprehensive Error Monitoring
 
 ```typescript
-import { initSentry, captureException } from '@adrper79-dot/monitoring';
+import { initSentry, captureException } from '@latimer-woods-tech/monitoring';
 
 const app = new Hono();
 
@@ -257,7 +257,7 @@ Alert 3: New Errors
 ### Trace Slow Database Queries
 
 ```typescript
-import { captureMessage } from '@adrper79-dot/monitoring';
+import { captureMessage } from '@latimer-woods-tech/monitoring';
 
 app.get('/api/creator/:creatorId/earnings', async (c) => {
   const creatorId = c.req.param('creatorId');

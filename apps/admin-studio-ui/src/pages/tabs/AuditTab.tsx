@@ -7,7 +7,7 @@
  */
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../../lib/api.js';
-import type { AuditEntry, AuditPage, Environment } from '@adrper79-dot/studio-core';
+import type { AuditEntry, AuditPage, Environment } from '@latimer-woods-tech/studio-core';
 
 interface Filters {
   env: Environment | '';

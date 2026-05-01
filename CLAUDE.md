@@ -14,7 +14,7 @@ Stage 0 produces scaffolding only; later stages implement package behavior witho
 - LLM chain: Anthropic → Grok → Groq
 - Telephony: Telnyx + Deepgram + ElevenLabs
 - Email: Resend
-- Errors: Sentry via `@adrper79-dot/monitoring`
+- Errors: Sentry via `@latimer-woods-tech/monitoring`
 - Analytics: PostHog plus the first-party `factory_events` table
 - Docs: Mintlify
 - Build: tsup (ESM only)
@@ -51,28 +51,28 @@ A fix is done when you have run `curl` and observed the expected HTTP status cod
 CI green = code compiled. `curl` 200 = it actually works. These are not the same thing.
 
 ## Package Dependency Order
-1. `@adrper79-dot/errors` (no deps)
-2. `@adrper79-dot/monitoring` (deps: errors)
-3. `@adrper79-dot/logger` (deps: errors, monitoring)
-4. `@adrper79-dot/auth` (deps: errors, logger)
-5. `@adrper79-dot/neon` (deps: errors, logger)
-6. `@adrper79-dot/stripe` (deps: errors, logger, neon)
-7. `@adrper79-dot/llm` (deps: errors, logger)
-8. `@adrper79-dot/telephony` (deps: errors, logger, llm)
-9. `@adrper79-dot/analytics` (deps: errors, neon)
-10. `@adrper79-dot/deploy` (no deps; scripts only)
-11. `@adrper79-dot/testing` (no deps; mock factories)
-12. `@adrper79-dot/email` (deps: errors, logger)
-13. `@adrper79-dot/copy` (deps: llm)
-14. `@adrper79-dot/content` (deps: neon, copy)
-15. `@adrper79-dot/social` (deps: content)
-16. `@adrper79-dot/seo` (no deps)
-17. `@adrper79-dot/crm` (deps: neon, analytics)
-18. `@adrper79-dot/compliance` (deps: neon)
-19. `@adrper79-dot/admin` (deps: auth, analytics)
-20. `@adrper79-dot/video` (deps: errors) — Cloudflare Stream + R2 wrappers
-21. `@adrper79-dot/schedule` (deps: errors, neon, video) — video production calendar + priority scoring
-22. `@adrper79-dot/validation` (no deps; deterministic output quality gates)
+1. `@latimer-woods-tech/errors` (no deps)
+2. `@latimer-woods-tech/monitoring` (deps: errors)
+3. `@latimer-woods-tech/logger` (deps: errors, monitoring)
+4. `@latimer-woods-tech/auth` (deps: errors, logger)
+5. `@latimer-woods-tech/neon` (deps: errors, logger)
+6. `@latimer-woods-tech/stripe` (deps: errors, logger, neon)
+7. `@latimer-woods-tech/llm` (deps: errors, logger)
+8. `@latimer-woods-tech/telephony` (deps: errors, logger, llm)
+9. `@latimer-woods-tech/analytics` (deps: errors, neon)
+10. `@latimer-woods-tech/deploy` (no deps; scripts only)
+11. `@latimer-woods-tech/testing` (no deps; mock factories)
+12. `@latimer-woods-tech/email` (deps: errors, logger)
+13. `@latimer-woods-tech/copy` (deps: llm)
+14. `@latimer-woods-tech/content` (deps: neon, copy)
+15. `@latimer-woods-tech/social` (deps: content)
+16. `@latimer-woods-tech/seo` (no deps)
+17. `@latimer-woods-tech/crm` (deps: neon, analytics)
+18. `@latimer-woods-tech/compliance` (deps: neon)
+19. `@latimer-woods-tech/admin` (deps: auth, analytics)
+20. `@latimer-woods-tech/video` (deps: errors) — Cloudflare Stream + R2 wrappers
+21. `@latimer-woods-tech/schedule` (deps: errors, neon, video) — video production calendar + priority scoring
+22. `@latimer-woods-tech/validation` (no deps; deterministic output quality gates)
 
 ## Video Production Pipeline
 The automated video engine runs **outside Workers** (needs real Chromium + ffmpeg):
@@ -116,7 +116,7 @@ PostHog engagement signals
 ## Commit Format
 Use `<type>(<scope>): <description>`.
 Allowed types: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `perf`.
-Scope must be the package name without the `@adrper79-dot/` prefix.
+Scope must be the package name without the `@latimer-woods-tech/` prefix.
 Example: `feat(errors): add ValidationError with field-level context`
 
 ## Error Recovery Protocol

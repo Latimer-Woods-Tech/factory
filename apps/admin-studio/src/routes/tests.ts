@@ -21,7 +21,7 @@ import type {
   TestResult,
   TestRun,
   TestRunStatus,
-} from '@adrper79-dot/studio-core';
+} from '@latimer-woods-tech/studio-core';
 import type { AppEnv } from '../types.js';
 import { requireConfirmation } from '../middleware/require-confirmation.js';
 import { dispatchTestWorkflow, DispatchError } from '../lib/github-dispatch.js';
@@ -36,12 +36,12 @@ import {
 const tests = new Hono<AppEnv>();
 
 const KNOWN_SUITES = [
-  { id: 'studio-core', name: '@adrper79-dot/studio-core', path: 'packages/studio-core' },
-  { id: 'auth',        name: '@adrper79-dot/auth',        path: 'packages/auth' },
-  { id: 'errors',      name: '@adrper79-dot/errors',      path: 'packages/errors' },
-  { id: 'llm',         name: '@adrper79-dot/llm',         path: 'packages/llm' },
-  { id: 'neon',        name: '@adrper79-dot/neon',        path: 'packages/neon' },
-  { id: 'monitoring',  name: '@adrper79-dot/monitoring',  path: 'packages/monitoring' },
+  { id: 'studio-core', name: '@latimer-woods-tech/studio-core', path: 'packages/studio-core' },
+  { id: 'auth',        name: '@latimer-woods-tech/auth',        path: 'packages/auth' },
+  { id: 'errors',      name: '@latimer-woods-tech/errors',      path: 'packages/errors' },
+  { id: 'llm',         name: '@latimer-woods-tech/llm',         path: 'packages/llm' },
+  { id: 'neon',        name: '@latimer-woods-tech/neon',        path: 'packages/neon' },
+  { id: 'monitoring',  name: '@latimer-woods-tech/monitoring',  path: 'packages/monitoring' },
 ] as const;
 
 tests.get('/', (c) => c.json({ suites: KNOWN_SUITES }));
@@ -246,7 +246,7 @@ tests.get('/runs/:id/events', async (c) => {
  * AI Failure Analyst — Phase C ships a heuristic stub.
  *
  * Returns a structured suggestion derived from the failure shape.
- * Phase E swaps this for a real LLM call via @adrper79-dot/llm.
+ * Phase E swaps this for a real LLM call via @latimer-woods-tech/llm.
  */
 tests.post('/runs/:id/analyze', async (c) => {
   const id = c.req.param('id');

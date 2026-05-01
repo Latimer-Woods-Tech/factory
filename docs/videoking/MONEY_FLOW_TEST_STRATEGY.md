@@ -241,7 +241,7 @@ it('Edge case: Bank rejects transfer → Stripe retries auto', async () => {
 
 ---
 
-## Test Fixtures (from @adrper79-dot/testing)
+## Test Fixtures (from @latimer-woods-tech/testing)
 
 All tests use realistic mock data:
 
@@ -253,7 +253,7 @@ import {
   seedDatabase,
   cleanupAfterTest,
   assertDatabaseState,
-} from '@adrper79-dot/testing';
+} from '@latimer-woods-tech/testing';
 
 // Creates realistic Stripe webhook:
 const webhook = createMockStripeWebhook('invoice.paid', {
@@ -415,7 +415,7 @@ npm run test:money-flow:full -- --coverage
 - Review untested edge cases (comment: "TODO: test when..." in code)
 - Add new edge cases discovered in production bugs
 - Update fixtures if API signatures change
-- Sync with @adrper79-dot/testing package updates
+- Sync with @latimer-woods-tech/testing package updates
 
 ### Every production incident:
 
@@ -427,7 +427,7 @@ npm run test:money-flow:full -- --coverage
 
 ## Links
 
-- **Fixtures:** [@adrper79-dot/testing](../packages/testing/)
+- **Fixtures:** [@latimer-woods-tech/testing](../packages/testing/)
 - **E2E Tracing:** [Full-Stack Tracing](../observability/full-stack-tracing.md)
 - **Incident Debugging:** [Debugging with Correlation IDs](../observability/debugging-with-correlation-ids.md)
 

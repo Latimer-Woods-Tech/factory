@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { AppEnv } from '../types.js';
-import { isEnvironment, isRole, type EnvJWTPayload } from '@adrper79-dot/studio-core';
+import { isEnvironment, isRole, type EnvJWTPayload } from '@latimer-woods-tech/studio-core';
 
 const auth = new Hono<AppEnv>();
 

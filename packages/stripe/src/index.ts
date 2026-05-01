@@ -6,7 +6,7 @@ import {
   InternalError,
   ValidationError,
   toErrorResponse,
-} from '@adrper79-dot/errors';
+} from '@latimer-woods-tech/errors';
 
 /**
  * Normalized subscription state used across Factory apps.

@@ -120,7 +120,7 @@
 | ESLint | ✅ Pass | `--max-warnings 0` enforced, zero warnings observed |
 | Test execution | ✅ Pass | 18 tests passing in admin-studio; 12+ suites in design-tokens |
 | Build | ✅ Pass | ESM via tsup; no build errors |
-| Packages consumed | ✅ Pass | @adrper79-dot/design-tokens + @adrper79-dot/ui integrated into ui package |
+| Packages consumed | ✅ Pass | @latimer-woods-tech/design-tokens + @latimer-woods-tech/ui integrated into ui package |
 
 ### Git Commits Generated
 ```

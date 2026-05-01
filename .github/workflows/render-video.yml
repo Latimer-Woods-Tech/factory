@@ -84,23 +84,23 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@adrper79-dot'
 
-      # Build @adrper79-dot/llm and its dep chain from source so the
+      # Build @latimer-woods-tech/llm and its dep chain from source so the
       # video-studio can import it via the file: reference in package.json.
       # Order matches the dependency graph: errors → monitoring → logger → llm.
-      - name: Build @adrper79-dot/llm from source
+      - name: Build @latimer-woods-tech/llm from source
         run: |
           for pkg in errors monitoring logger llm; do
             echo "--- Building $pkg ---"
             (cd packages/$pkg && npm ci && npm run build)
           done
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GH_PAT }}
+          NODE_AUTH_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Install video-studio dependencies
         working-directory: apps/video-studio
         run: npm ci
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GH_PAT }}
+          NODE_AUTH_TOKEN: ${{ steps.app-token.outputs.token }}
 
       # -----------------------------------------------------------------------
       # 3. Register job in database (idempotent — cron pre-creates; manual dispatch creates here)
@@ -198,7 +198,7 @@ jobs:
 
       # -----------------------------------------------------------------------
       # 6. Generate narration script
-      #    Uses @adrper79-dot/llm: Anthropic → Grok → Groq failover chain.
+      #    Uses @latimer-woods-tech/llm: Anthropic → Grok → Groq failover chain.
       #    System context, brief data, and block helpers are passed as env vars
       #    to apps/video-studio/scripts/generate-script.mjs which writes
       #    `script` and `steps` to GITHUB_OUTPUT.
@@ -590,7 +590,7 @@ jobs:
 
       # -----------------------------------------------------------------------
       # 13. Track video_published event in PostHog for priority scoring
-      # Feeds scorePriority() in @adrper79-dot/schedule so the engine avoids
+      # Feeds scorePriority() in @latimer-woods-tech/schedule so the engine avoids
       # re-generating topics that are already live.
       # continue-on-error: PostHog is observability, not a hard dependency.
       # -----------------------------------------------------------------------
@@ -661,6 +661,13 @@ jobs:
     runs-on: ubuntu-latest
     if: failure()
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: Latimer-Woods-Tech
       - name: Update job status to failed
         run: |
           # Guard: if register_job failed, real_job_id is empty — skip the PATCH

@@ -12,7 +12,7 @@
  *
  * Env vars required:
  *   GH_TOKEN or GITHUB_TOKEN
- *   NODE_AUTH_TOKEN  (for npm install @adrper79-dot/* from GitHub Packages)
+ *   NODE_AUTH_TOKEN  (for npm install @latimer-woods-tech/* from GitHub Packages)
  */
 
 import { execSync } from 'node:child_process';
@@ -21,7 +21,7 @@ import { writeFileSync, rmSync, existsSync } from 'node:fs';
 const TOKEN = process.env['GH_TOKEN'] ?? process.env['GITHUB_TOKEN'] ?? '';
 if (!TOKEN) throw new Error('GH_TOKEN or GITHUB_TOKEN must be set');
 
-const REPO = 'adrper79-dot/factory-admin';
+const REPO = 'Latimer-Woods-Tech/factory-admin';
 const TMP  = 'factory-admin-fixup-tmp';
 
 // ---------- helpers ----------

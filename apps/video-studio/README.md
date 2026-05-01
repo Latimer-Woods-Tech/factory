@@ -49,7 +49,7 @@ The full automated pipeline:
 
 ```
 PostHog signals
-  → @adrper79-dot/schedule: scheduleVideo()
+  → @latimer-woods-tech/schedule: scheduleVideo()
   → cron Worker: getPendingJobs() → dispatch to GitHub Actions
   → render-video.yml workflow:
       1. Generate narration (ElevenLabs)

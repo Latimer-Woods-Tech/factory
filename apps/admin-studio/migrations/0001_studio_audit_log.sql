@@ -29,4 +29,4 @@ CREATE INDEX IF NOT EXISTS idx_studio_audit_env         ON studio_audit_log (env
 CREATE INDEX IF NOT EXISTS idx_studio_audit_request     ON studio_audit_log (request_id);
 
 -- Append-only by policy. Restrict UPDATE/DELETE except for the migrator role.
--- (RLS lands with the @adrper79-dot/neon integration in Phase B.)
+-- (RLS lands with the @latimer-woods-tech/neon integration in Phase B.)

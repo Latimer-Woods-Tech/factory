@@ -1,16 +1,16 @@
 ---
-title: "@adrper79-dot/errors"
+title: "@latimer-woods-tech/errors"
 description: Typed error hierarchy and HTTP error response serialization.
 ---
 
-# @adrper79-dot/errors
+# @latimer-woods-tech/errors
 
 Typed error classes and utilities used across all Factory packages. No dependencies.
 
 ## Installation
 
 ```bash
-npm install @adrper79-dot/errors
+npm install @latimer-woods-tech/errors
 ```
 
 ## API
@@ -60,14 +60,14 @@ type ErrorResponse = {
 Constant map of all well-known error code strings:
 
 ```typescript
-import { ErrorCodes } from '@adrper79-dot/errors';
+import { ErrorCodes } from '@latimer-woods-tech/errors';
 // ErrorCodes.AUTH_TOKEN_INVALID, ErrorCodes.AUTH_TOKEN_EXPIRED, etc.
 ```
 
 ## Example
 
 ```typescript
-import { ValidationError, toErrorResponse } from '@adrper79-dot/errors';
+import { ValidationError, toErrorResponse } from '@latimer-woods-tech/errors';
 
 throw new ValidationError('Email is required', {
   code: 'VALIDATION_EMAIL_REQUIRED',

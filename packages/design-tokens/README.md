@@ -1,4 +1,4 @@
-# @adrper79-dot/design-tokens
+# @latimer-woods-tech/design-tokens
 
 **Design system tokens for all Factory applications.**
 
@@ -7,13 +7,13 @@ Semantic colors, typography, spacing, motion, and focus styles with WCAG 2.2 AA 
 ## Installation
 
 ```bash
-npm install @adrper79-dot/design-tokens
+npm install @latimer-woods-tech/design-tokens
 ```
 
 ## Quick Start
 
 ```typescript
-import { colors, spacing, typography, motion } from '@adrper79-dot/design-tokens';
+import { colors, spacing, typography, motion } from '@latimer-woods-tech/design-tokens';
 
 // Use in component styles
 const buttonStyle = {
@@ -41,7 +41,7 @@ const className = `
 All colors meet **WCAG 2.2 AA standards** (minimum 4.5:1 contrast for text).
 
 ```typescript
-import { colors } from '@adrper79-dot/design-tokens';
+import { colors } from '@latimer-woods-tech/design-tokens';
 
 // Semantic colors
 colors.primary       // #0052CC – primary actions, links
@@ -75,7 +75,7 @@ colors.gray[50-900]    // Full grayscale scale
 **4px grid system** ensures consistent alignment and rhythm.
 
 ```typescript
-import { spacing } from '@adrper79-dot/design-tokens';
+import { spacing } from '@latimer-woods-tech/design-tokens';
 
 // Named shortcuts
 spacing.xs   // 4px
@@ -101,7 +101,7 @@ spacing.containerPadding.desktop  // 32px
 ### Typography
 
 ```typescript
-import { typography } from '@adrper79-dot/design-tokens';
+import { typography } from '@latimer-woods-tech/design-tokens';
 
 // Font families
 typography.fontFamily.sans   // System sans-serif stack
@@ -136,7 +136,7 @@ typography.preset.label   // { fontSize: '14px', fontWeight: 500, lineHeight: 1.
 Animations respect **`prefers-reduced-motion`** for accessibility.
 
 ```typescript
-import { motion } from '@adrper79-dot/design-tokens';
+import { motion } from '@latimer-woods-tech/design-tokens';
 
 // Durations
 motion.duration.fastest   // 75ms
@@ -162,7 +162,7 @@ motion.transition.shadow    // 'box-shadow 300ms ...'
 All interactive elements must have visible focus indicators.
 
 ```typescript
-import { focus } from '@adrper79-dot/design-tokens';
+import { focus } from '@latimer-woods-tech/design-tokens';
 
 // Focus ring dimensions
 focus.ring.width   // '3px' (meets WCAG minimum)
@@ -195,7 +195,7 @@ const StyledButton = styled.button`
 Mobile-first responsive design.
 
 ```typescript
-import { breakpoints } from '@adrper79-dot/design-tokens';
+import { breakpoints } from '@latimer-woods-tech/design-tokens';
 
 // Named breakpoints
 breakpoints.mobile      // 375px
@@ -212,7 +212,7 @@ breakpoints.media.tablet   // '@media (min-width: 768px)'
 Adapt UI to different contexts (compact dashboards vs. spacious forms).
 
 ```typescript
-import { density } from '@adrper79-dot/design-tokens';
+import { density } from '@latimer-woods-tech/design-tokens';
 
 // Padding presets
 density.compact    // { padding: '8px 12px', minHeight: '32px' }
@@ -230,7 +230,7 @@ density.gap.spacious    // '24px'
 Create depth and visual hierarchy.
 
 ```typescript
-import { shadows } from '@adrper79-dot/design-tokens';
+import { shadows } from '@latimer-woods-tech/design-tokens';
 
 shadows.none  // 'none'
 shadows.xs    // subtle
@@ -244,7 +244,7 @@ shadows.focus // for focus states
 ### Border Radius
 
 ```typescript
-import { radii } from '@adrper79-dot/design-tokens';
+import { radii } from '@latimer-woods-tech/design-tokens';
 
 radii.none   // 0px
 radii.sm     // 4px (buttons, inputs)
@@ -259,7 +259,7 @@ radii.full   // 9999px (circles, pills)
 
 ```typescript
 import React from 'react';
-import { colors, spacing, typography, motion, focus } from '@adrper79-dot/design-tokens';
+import { colors, spacing, typography, motion, focus } from '@latimer-woods-tech/design-tokens';
 
 interface ButtonProps {
   children: React.ReactNode;
@@ -297,7 +297,7 @@ export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary' })
 
 ```typescript
 // tailwind.config.js
-import { tokens } from '@adrper79-dot/design-tokens';
+import { tokens } from '@latimer-woods-tech/design-tokens';
 
 module.exports = {
   theme: {
@@ -372,10 +372,10 @@ When adding new tokens:
 
 ```bash
 # In any app that needs design tokens
-npm install @adrper79-dot/design-tokens
+npm install @latimer-woods-tech/design-tokens
 
 # Then in your code
-import { colors, spacing, typography } from '@adrper79-dot/design-tokens';
+import { colors, spacing, typography } from '@latimer-woods-tech/design-tokens';
 ```
 
 ## License

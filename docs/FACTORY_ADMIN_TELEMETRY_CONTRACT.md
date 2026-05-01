@@ -216,7 +216,7 @@ Token must include `admin:read` permission (Factory Auth scope).
 
 ```typescript
 // In middleware
-import { verifyAuth } from '@adrper79-dot/auth';
+import { verifyAuth } from '@latimer-woods-tech/auth';
 
 export const adminAuthMiddleware = async (c, next) => {
   const token = c.req.header('Authorization')?.replace('Bearer ', '');

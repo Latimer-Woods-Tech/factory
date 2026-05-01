@@ -25,12 +25,12 @@ npm run lint       # --max-warnings 0
 
 ## Common Errors & Resolutions
 
-### Error: "Cannot find module '@adrper79-dot/auth' is not in the npm registry"
+### Error: "Cannot find module '@latimer-woods-tech/auth' is not in the npm registry"
 
 **Root Cause**: Packages published out of dependency order. Package A tries to import Package B, but B wasn't published yet.
 
 **Example**:
-- `@adrper79-dot/neon` (which depends on `@adrper79-dot/logger`) is tagged and pushed
+- `@latimer-woods-tech/neon` (which depends on `@latimer-woods-tech/logger`) is tagged and pushed
 - CI publishes Neon before Logger is published → 404 on npm registry
 
 **Prevention**:
@@ -41,13 +41,13 @@ npm run lint       # --max-warnings 0
 **Fix**:
 ```bash
 # Delete the failed tag locally and remotely
-git tag -d @adrper79-dot/neon/v0.2.0
-git push origin :refs/tags/@adrper79-dot/neon/v0.2.0
+git tag -d @latimer-woods-tech/neon/v0.2.0
+git push origin :refs/tags/@latimer-woods-tech/neon/v0.2.0
 
 # Wait for Logger to publish
 # Then re-tag and re-push
-git tag @adrper79-dot/neon/v0.2.0
-git push origin @adrper79-dot/neon/v0.2.0
+git tag @latimer-woods-tech/neon/v0.2.0
+git push origin @latimer-woods-tech/neon/v0.2.0
 ```
 
 ### Error: "TypeScript strict mode: 'user' implicitly has type 'any'"
@@ -95,7 +95,7 @@ declare module 'hono' {
 **Fix**:
 ```json
 {
-  "name": "@adrper79-dot/errors",
+  "name": "@latimer-woods-tech/errors",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   }
@@ -225,7 +225,7 @@ git -c credential.helper="" -c "http.extraheader=Authorization: Basic $encoded" 
 **Workaround** (standard Factory pattern):
 1. After running `create-hyperdrive.yml`, view the workflow logs and copy the UUID:
    ```bash
-   gh run view <RUN_ID> --repo adrper79-dot/factory --log | grep "{app}-db ->"
+   gh run view <RUN_ID> --repo Latimer-Woods-Tech/factory --log | grep "{app}-db ->"
    # Output: [created] xico-city-db -> 0c15bc97978841f88a78da8253ea3d32
    ```
 2. Hard-code the UUID in the scaffold workflow (`--hyperdrive-id "0c15..."`):
@@ -235,7 +235,7 @@ git -c credential.helper="" -c "http.extraheader=Authorization: Basic $encoded" 
    ```
 3. Store it manually as a GitHub secret:
    ```bash
-   echo "0c15bc97978841f88a78da8253ea3d32" | gh secret set HYPERDRIVE_{APP} --repo adrper79-dot/factory
+   echo "0c15bc97978841f88a78da8253ea3d32" | gh secret set HYPERDRIVE_{APP} --repo Latimer-Woods-Tech/factory
    ```
 
 **Why not fix the workflow?** Setting repo secrets requires a PAT with `secrets:write` scope, which should not be stored as a workflow secret (circular risk). The manual step is deliberate.
@@ -244,11 +244,11 @@ git -c credential.helper="" -c "http.extraheader=Authorization: Basic $encoded" 
 
 **Root Cause**: Workers console output goes to `stderr`, not `stdout`, due to the streaming model.
 
-**Prevention**: Use the `@adrper79-dot/logger` package instead of `console.log` for structured logging.
+**Prevention**: Use the `@latimer-woods-tech/logger` package instead of `console.log` for structured logging.
 
 ```typescript
 // ✅ Correct
-import { createLogger } from '@adrper79-dot/logger';
+import { createLogger } from '@latimer-woods-tech/logger';
 const logger = createLogger('myapp');
 logger.info('User logged in', { userId: user.id });
 ```
@@ -278,8 +278,8 @@ All 6 apps follow this identical pattern in `src/index.ts`:
 
 ```typescript
 import Hono from 'hono';
-import { sentryMiddleware } from '@adrper79-dot/monitoring';
-import { initAnalytics } from '@adrper79-dot/analytics';
+import { sentryMiddleware } from '@latimer-woods-tech/monitoring';
+import { initAnalytics } from '@latimer-woods-tech/analytics';
 
 declare module 'hono' {
   interface ContextVariableMap {
@@ -372,10 +372,10 @@ Then in `wrangler.jsonc`:
 
 ### 3. Error Handling Pattern
 
-All errors inherit from `@adrper79-dot/errors`:
+All errors inherit from `@latimer-woods-tech/errors`:
 
 ```typescript
-import { ValidationError, NotFoundError, AuthenticationError } from '@adrper79-dot/errors';
+import { ValidationError, NotFoundError, AuthenticationError } from '@latimer-woods-tech/errors';
 
 // ✅ Custom errors with context
 throw new ValidationError('Email is required', {
@@ -396,9 +396,9 @@ throw new NotFoundError(`User ${id} not found`, {
 All queries use Drizzle ORM with explicit error handling:
 
 ```typescript
-import { db } from '@adrper79-dot/neon';
+import { db } from '@latimer-woods-tech/neon';
 import { eq } from 'drizzle-orm';
-import { users } from '@adrper79-dot/content';
+import { users } from '@latimer-woods-tech/content';
 
 // ✅ Always check for undefined
 const user = await db.query.users.findFirst({
@@ -423,7 +423,7 @@ All 19 packages are at **v0.2.0** as of Stage 6.
 1. **Edit one package's `package.json`**:
    ```json
    {
-     "name": "@adrper79-dot/errors",
+     "name": "@latimer-woods-tech/errors",
      "version": "0.2.1"
    }
    ```
@@ -444,11 +444,11 @@ All 19 packages are at **v0.2.0** as of Stage 6.
    ```
 
 4. **Wait for GitHub Actions publish to complete**:
-   - Go to: https://github.com/adrper79-dot/factory/actions
+   - Go to: https://github.com/Latimer-Woods-Tech/factory/actions
    - Check: Publish workflow succeeded
 
 5. **Update dependent packages**:
-   - If another package depends on `@adrper79-dot/errors`, update its `package.json`
+   - If another package depends on `@latimer-woods-tech/errors`, update its `package.json`
    - Follow dependency order (see CLAUDE.md)
 
 **Common Mistake**: Publishing packages out of order → peer dependency hell. Check GitHub Packages before tagging the next one.

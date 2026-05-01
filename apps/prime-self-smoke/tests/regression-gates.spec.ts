@@ -6,7 +6,7 @@ import {
   assertLighthouseBudget,
   DEFAULT_PERFORMANCE_BUDGETS,
   type ScreenshotDiffResult,
-} from '@adrper79-dot/testing';
+} from '@latimer-woods-tech/testing';
 import * as path from 'path';
 
 // ---------------------------------------------------------------------------

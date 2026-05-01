@@ -1,5 +1,5 @@
-import { InternalError } from '@adrper79-dot/errors';
-import type { RenderJob } from '@adrper79-dot/schedule';
+import { InternalError } from '@latimer-woods-tech/errors';
+import type { RenderJob } from '@latimer-woods-tech/schedule';
 import type { Env } from './env.js';
 
 const MAX_CONCURRENT_JOBS = 3;

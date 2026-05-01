@@ -7,7 +7,7 @@
  */
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../lib/api.js';
-import type { DeployVersion } from '@adrper79-dot/studio-core';
+import type { DeployVersion } from '@latimer-woods-tech/studio-core';
 
 interface Props {
   env: string;

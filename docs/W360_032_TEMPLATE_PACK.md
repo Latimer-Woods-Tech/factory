@@ -37,7 +37,7 @@
 #### 1.2 — Worker with Database Access
 **Template:** `docs/templates/worker-database.wrangler.jsonc`
 
-**Scope:** Hono Worker + Neon Hyperdrive binding + @adrper79-dot/neon package
+**Scope:** Hono Worker + Neon Hyperdrive binding + @latimer-woods-tech/neon package
 
 **Files:**
 - `wrangler.jsonc` (with Hyperdrive, env-based DB switching)
@@ -331,7 +331,7 @@ describe('Admin Studio Login', () => {
 **Scope:** Automated package versioning, tagging, and npm publish
 
 **Triggers:**
-- Git tag matching `@adrper79-dot/*/v*` (via bump-and-tag.mjs)
+- Git tag matching `@latimer-woods-tech/*/v*` (via bump-and-tag.mjs)
 - Automatic npm publish on tag
 - Reference: scripts/bump-and-tag.mjs (W360-025)
 
@@ -421,7 +421,7 @@ describe('Admin Studio Login', () => {
 #### 10.2 — Package Documentation Template
 **Template:** `docs/PACKAGE_DOCS_TEMPLATE.md`
 
-**Scope:** Standardized docs for @adrper79-dot/* packages
+**Scope:** Standardized docs for @latimer-woods-tech/* packages
 
 **Sections:**
 - API reference
@@ -455,12 +455,12 @@ describe('Admin Studio Login', () => {
 | **Deployment** | GH Actions Deploy | 📋 PENDING | W360-032 | All apps |
 | **Database** | Drizzle Schema | 🔵 READY | neon package | neon package |
 | **Database** | Zero-downtime Migration | 🔵 READY | DB migrations | DB migrations |
-| **CI/CD** | Package Release | 🔵 READY | bump-and-tag.mjs | @adrper79-dot/* packages |
+| **CI/CD** | Package Release | 🔵 READY | bump-and-tag.mjs | @latimer-woods-tech/* packages |
 | **CI/CD** | Health Check / Smoke | 🔵 READY | synthetic-monitor | All prod services |
 | **Support** | Operator Runbook | 📋 PENDING | W360-036 | Ops team |
 | **Support** | GDPR Delete Script | 📋 PENDING | W360-036 | Compliance |
 | **Docs** | App README | 🔵 READY | docs/APP_README_TEMPLATE.md | All apps |
-| **Docs** | Package Docs | 📋 PENDING | W360-032 | @adrper79-dot/* |
+| **Docs** | Package Docs | 📋 PENDING | W360-032 | @latimer-woods-tech/* |
 
 ---
 

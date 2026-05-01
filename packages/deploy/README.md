@@ -1,4 +1,4 @@
-# @adrper79-dot/deploy
+# @latimer-woods-tech/deploy
 
 Deployment scripts and configuration templates for Factory Cloudflare Workers applications.
 
@@ -15,17 +15,17 @@ creates the Hyperdrive binding, and optionally creates the GitHub repo.
 
 - Node.js 20+, git, wrangler, (optionally) gh CLI
 - `NODE_AUTH_TOKEN` — GitHub PAT with `read:packages` scope so `npm install` can
-  pull `@adrper79-dot/*` from GitHub Packages
+  pull `@latimer-woods-tech/*` from GitHub Packages
 
 ```bash
 # Run from the directory where you want the new app created:
-node node_modules/@adrper79-dot/deploy/scripts/scaffold.mjs <app-name>
+node node_modules/@latimer-woods-tech/deploy/scripts/scaffold.mjs <app-name>
 
 # With GitHub repo creation:
-node node_modules/@adrper79-dot/deploy/scripts/scaffold.mjs <app-name> --github
+node node_modules/@latimer-woods-tech/deploy/scripts/scaffold.mjs <app-name> --github
 
 # Skip the first-deploy prompt:
-node node_modules/@adrper79-dot/deploy/scripts/scaffold.mjs <app-name> --no-deploy
+node node_modules/@latimer-woods-tech/deploy/scripts/scaffold.mjs <app-name> --no-deploy
 ```
 
 The script will:
@@ -41,7 +41,7 @@ The script will:
 
 | File | Purpose |
 |------|---------|
-| `package.json` | All core `@adrper79-dot/*` deps pre-wired |
+| `package.json` | All core `@latimer-woods-tech/*` deps pre-wired |
 | `wrangler.jsonc` | Hyperdrive + vars + staging env |
 | `.npmrc` | GitHub Packages auth for `@adrper79-dot` scope |
 | `tsconfig.json` | Strict TS for Cloudflare Workers |
@@ -57,7 +57,7 @@ The script will:
 
 | Secret | What it is |
 |--------|-----------|
-| `PACKAGES_READ_TOKEN` | GitHub PAT with `read:packages` (to install `@adrper79-dot/*`) |
+| `PACKAGES_READ_TOKEN` | GitHub PAT with `read:packages` (to install `@latimer-woods-tech/*`) |
 | `CF_API_TOKEN` | Cloudflare API token — "Edit Cloudflare Workers" template |
 | `CF_ACCOUNT_ID` | Your Cloudflare account ID (from Workers dashboard URL) |
 

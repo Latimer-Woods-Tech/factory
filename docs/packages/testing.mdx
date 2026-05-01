@@ -1,16 +1,16 @@
 ---
-title: "@adrper79-dot/testing"
+title: "@latimer-woods-tech/testing"
 description: Zero-dependency mock factories for all Factory Core packages.
 ---
 
-# @adrper79-dot/testing
+# @latimer-woods-tech/testing
 
 Mock factories and test fixtures for every Factory Core package. Zero runtime dependencies — install only in `devDependencies`.
 
 ## Installation
 
 ```bash
-npm install --save-dev @adrper79-dot/testing
+npm install --save-dev @latimer-woods-tech/testing
 ```
 
 ## Mock factories
@@ -71,9 +71,9 @@ function makeMockVoiceSession(): MockVoiceSession;
 ## Example
 
 ```typescript
-import { makeMockDb, makeMockLogger } from '@adrper79-dot/testing';
+import { makeMockDb, makeMockLogger } from '@latimer-woods-tech/testing';
 import { describe, it, expect } from 'vitest';
-import { getCustomerView } from '@adrper79-dot/crm';
+import { getCustomerView } from '@latimer-woods-tech/crm';
 
 describe('getCustomerView', () => {
   it('returns customer data', async () => {

@@ -302,4 +302,4 @@ A: Unplanned events (bugs, data corruption, provider outages). Planned maintenan
 1. Apply this framework to videoking-specific tiers: [slo-targets.md](../videoking/slo-targets.md)
 2. Set error budget policy: [error-budget-policy.md](error-budget-policy.md)
 3. Configure dashboards: [slo-dashboard-template.yaml](../dashboards/slo-dashboard-template.yaml)
-4. Link from monitoring package: Review `@adrper79-dot/monitoring` guidance
+4. Link from monitoring package: Review `@latimer-woods-tech/monitoring` guidance

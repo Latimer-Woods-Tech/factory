@@ -1,6 +1,6 @@
-import { InternalError } from '@adrper79-dot/errors';
-import { sql } from '@adrper79-dot/neon';
-import type { FactoryDb } from '@adrper79-dot/neon';
+import { InternalError } from '@latimer-woods-tech/errors';
+import { sql } from '@latimer-woods-tech/neon';
+import type { FactoryDb } from '@latimer-woods-tech/neon';
 
 // Event schema contract (W360-021) — re-exported for consumer tests
 export {

@@ -11,7 +11,7 @@ import {
   deleteR2Object,
 } from './index.js';
 import type { R2BucketLike, FetchFn } from './index.js';
-import { InternalError } from '@adrper79-dot/errors';
+import { InternalError } from '@latimer-woods-tech/errors';
 
 // ---------------------------------------------------------------------------
 // Shared fixtures

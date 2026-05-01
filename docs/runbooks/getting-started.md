@@ -6,13 +6,13 @@ This runbook covers local development setup for a Factory app Worker.
 
 - Node.js 20+
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) (`npm install -g wrangler`)
-- Access to the GitHub Packages registry (`@adrper79-dot/*`)
+- Access to the GitHub Packages registry (`@latimer-woods-tech/*`)
 - Neon Postgres connection string (or access to factory-admin to retrieve it)
 
 ## 1. Clone the repo
 
 ```bash
-git clone https://github.com/adrper79-dot/{app}.git
+git clone https://github.com/Latimer-Woods-Tech/{app}.git
 cd {app}
 ```
 
@@ -23,7 +23,7 @@ Create (or reuse) a GitHub Personal Access Token with `read:packages` scope.
 ```bash
 # ~/.npmrc or .npmrc in project root
 //npm.pkg.github.com/:_authToken=YOUR_GITHUB_PAT
-@adrper79-dot:registry=https://npm.pkg.github.com
+@latimer-woods-tech:registry=https://npm.pkg.github.com
 ```
 
 ## 3. Install dependencies
@@ -95,7 +95,7 @@ npm run typecheck
 | Problem | Fix |
 |---|---|
 | `401 Unauthorized` on npm install | Re-check GitHub PAT scope and `.npmrc` |
-| `ETARGET No matching version` | Run `npm install @adrper79-dot/{pkg}@latest` |
+| `ETARGET No matching version` | Run `npm install @latimer-woods-tech/{pkg}@latest` |
 | Wrangler `InvalidSymbol` in wrangler.jsonc | Ensure all JSON keys are quoted |
 | `process.env` not available | Use `c.env.VAR` / `env.VAR` (Cloudflare bindings only) |
 | `Buffer is not defined` | Replace with `TextEncoder` / `Uint8Array` |
