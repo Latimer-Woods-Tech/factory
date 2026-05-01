@@ -15,13 +15,9 @@ on:
       wrangler_command:
         type: string
         default: 'deploy'
-    secrets:
-      PACKAGES_READ_TOKEN:
-        required: true
-      CLOUDFLARE_API_TOKEN:
-        required: true
-      CLOUDFLARE_ACCOUNT_ID:
-        required: true
+      health_url:
+        type: string
+        default: ''
 
 jobs:
   deploy:
@@ -32,22 +28,38 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: Latimer-Woods-Tech
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.node_version }}
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@adrper79-dot'
+          scope: '@latimer-woods-tech'
       - name: Configure npm auth
-        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.PACKAGES_READ_TOKEN }}" >> .npmrc
+        run: echo "//npm.pkg.github.com/:_authToken=${{ steps.app-token.outputs.token }}" >> .npmrc
       - run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ steps.app-token.outputs.token }}
       - name: Deploy to Cloudflare
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: ${{ inputs.wrangler_command }}
-          workingDirectory: ${{ inputs.working_directory }}
       - name: Post-deploy health check
+        if: ${{ inputs.health_url != '' }}
         run: |
-          echo "Add curl gate here per app, e.g.:"
-          echo "curl -fsSL https://${{ inputs.environment }}.example.com/health"
+          for i in 1 2 3 4 5; do
+            if curl -fsSL --max-time 10 "${{ inputs.health_url }}" > /dev/null; then
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "Health check failed after 5 attempts"
+          exit 1
