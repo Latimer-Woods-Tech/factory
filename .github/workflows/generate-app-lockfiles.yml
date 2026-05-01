@@ -12,10 +12,17 @@ jobs:
       matrix:
         app: [wordis-bond, cypher-healing, prime-self, ijustus, the-calling, neighbor-aid]
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: Latimer-Woods-Tech
       - uses: actions/checkout@v4
         with:
           repository: Latimer-Woods-Tech/${{ matrix.app }}
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ steps.app-token.outputs.token }}
           path: app
 
       - uses: actions/setup-node@v4
@@ -23,7 +30,7 @@ jobs:
           node-version: '24'
 
       - name: Configure npm auth for GitHub Packages
-        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PAT }}" >> app/.npmrc
+        run: echo "//npm.pkg.github.com/:_authToken=${{ steps.app-token.outputs.token }}" >> app/.npmrc
 
       - name: Update vitest to v2 (required by @cloudflare/vitest-pool-workers ^0.8)
         working-directory: app

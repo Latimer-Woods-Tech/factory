@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 # Scaffolds the Latimer-Woods-Tech/xpelevator repo with a complete Cloudflare Worker
-# that consumes @adrper79-dot/* packages.
+# that consumes @latimer-woods-tech/* packages.
 #
 # Prerequisites before running:
 #   1. Run the "Create Cloudflare Hyperdrive" workflow — it sets HYPERDRIVE_XPELEVATOR secret
@@ -16,6 +16,13 @@ jobs:
   scaffold:
     runs-on: ubuntu-latest
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: Latimer-Woods-Tech
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -34,7 +41,7 @@ jobs:
       - name: Check if already scaffolded
         id: check
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           if gh api repos/Latimer-Woods-Tech/xpelevator/contents/src/index.ts > /dev/null 2>&1; then
             echo "⏭  xpelevator already has src/index.ts — skipping scaffold."
@@ -64,7 +71,7 @@ jobs:
       - name: Push to xpelevator repo
         if: steps.check.outputs.skip == 'false'
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           cd xpelevator
           git add -A

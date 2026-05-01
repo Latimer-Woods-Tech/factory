@@ -13,10 +13,17 @@ jobs:
       matrix:
         app: [wordis-bond, cypher-healing, prime-self, ijustus, the-calling, neighbor-aid]
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: Latimer-Woods-Tech
       - uses: actions/checkout@v4
         with:
           repository: Latimer-Woods-Tech/${{ matrix.app }}
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ steps.app-token.outputs.token }}
           path: app
 
       - name: Apply source fixes

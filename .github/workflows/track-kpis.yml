@@ -19,7 +19,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_DELIVERY_KPIS }}
           INCIDENT_TRACKER_API: ${{ secrets.INCIDENT_TRACKER_API }}
           INCIDENT_TRACKER_TOKEN: ${{ secrets.INCIDENT_TRACKER_TOKEN }}
-          KPI_REPO_OWNER: Latimer-Woods-Tech
+          KPI_REPO_OWNER: adrper79-dot
           KPI_REPO_NAME: factory
       - name: Persist KPI history if changed
         run: |

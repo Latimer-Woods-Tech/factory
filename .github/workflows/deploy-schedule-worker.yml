@@ -24,11 +24,20 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Build local package dependencies
+        run: |
+          set -euo pipefail
+          for package in errors monitoring logger neon video schedule; do
+            echo "=== ${package} ==="
+            cd "packages/${package}"
+            npm ci --ignore-scripts
+            npm run build
+            cd ../..
+          done
+
       - name: Install dependencies
         run: |
           cd apps/schedule-worker
-          echo "@adrper79-dot:registry=https://npm.pkg.github.com" > .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
           npm install
 
       - name: Update wrangler.jsonc with Hyperdrive ID
@@ -56,13 +65,9 @@ jobs:
           echo "🚀 Deployment complete"
           echo "📍 Health check: https://schedule-worker.adrper79.workers.dev/health"
           node scripts/verify-http-endpoint.mjs \
-            --service schedule-worker \
-            --environment production \
             --url https://schedule-worker.adrper79.workers.dev/health \
             --status 200 \
             --json-field status \
             --json-equals ok \
-            --run-id "${{ github.run_id }}" \
-            --rollback-ref ".github/workflows/deploy-schedule-worker.yml" \
             --retries 8 \
             --delay-ms 5000

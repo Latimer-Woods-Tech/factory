@@ -19,11 +19,18 @@ jobs:
           - ijustus
       fail-fast: false
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: Latimer-Woods-Tech
       - name: Checkout ${{ matrix.repo }}
         uses: actions/checkout@v4
         with:
           repository: Latimer-Woods-Tech/${{ matrix.repo }}
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ steps.app-token.outputs.token }}
           ref: main
 
       - uses: actions/setup-node@v4
@@ -33,9 +40,9 @@ jobs:
           scope: '@adrper79-dot'
 
       - name: Update neon to latest
-        run: npm install @adrper79-dot/neon@0.2.1
+        run: npm install @latimer-woods-tech/neon@0.2.1
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GH_PAT }}
+          NODE_AUTH_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Commit and push lockfile if changed
         run: |
