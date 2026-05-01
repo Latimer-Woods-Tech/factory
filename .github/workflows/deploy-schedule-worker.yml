@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd apps/schedule-worker
-          echo "@adrper79-dot:registry=https://npm.pkg.github.com" > .npmrc
+          echo "@latimer-woods-tech:registry=https://npm.pkg.github.com" > .npmrc
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
           npm install
 

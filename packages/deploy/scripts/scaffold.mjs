@@ -129,7 +129,7 @@ coverage/
 `);
 
   // .npmrc — GitHub Packages auth for @adrper79-dot scope
-  write('.npmrc', `@adrper79-dot:registry=https://npm.pkg.github.com
+  write('.npmrc', `@latimer-woods-tech:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=\${NODE_AUTH_TOKEN}
 `);
 

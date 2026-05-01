@@ -626,7 +626,7 @@ async function main() {
     // Post to Slack (if webhook configured)
     if (config.slackWebhookUrl) {
       console.log('💬 Posting to Slack...');
-      const reportUrl = `https://github.com/Latimer-Woods-Tech/Factory/blob/main/docs/reports/${reportFilename}`;
+      const reportUrl = `https://github.com/Latimer-Woods-Tech/factory/blob/main/docs/reports/${reportFilename}`;
       const slackPayload = generateSlackMessage(weekId, data, exceptions, reportUrl);
 
       try {

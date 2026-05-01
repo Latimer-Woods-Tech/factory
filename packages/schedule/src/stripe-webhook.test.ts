@@ -39,7 +39,7 @@ let mockDb: ReturnType<typeof makeDb>;
 function makeDb(rowGroups: unknown[][] = [[]]) {
   let callIndex = 0;
   return {
-    execute: vi.fn((_: unknown) => {
+    execute: vi.fn(() => {
       const result = rowGroups[callIndex % rowGroups.length] ?? [];
       callIndex++;
       return Promise.resolve({ rows: result });

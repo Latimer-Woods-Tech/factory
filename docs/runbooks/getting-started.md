@@ -23,7 +23,7 @@ Create (or reuse) a GitHub Personal Access Token with `read:packages` scope.
 ```bash
 # ~/.npmrc or .npmrc in project root
 //npm.pkg.github.com/:_authToken=YOUR_GITHUB_PAT
-@adrper79-dot:registry=https://npm.pkg.github.com
+@latimer-woods-tech:registry=https://npm.pkg.github.com
 ```
 
 ## 3. Install dependencies
