@@ -1,3 +1,57 @@
+# =============================================================================
+# Reusable post-deploy verification workflow with auto-rollback.
+#
+# WHAT IT DOES
+#   Probes a health endpoint with configurable retry/backoff. On failure,
+#   optionally rolls the Worker back to a known-good prior version using
+#   `wrangler versions rollback`.
+#
+# WHO CALLS IT
+#   Chain after `_app-deploy.yml` when you want stronger verification than
+#   the inline `health_url` check. Use this when you have a known previous
+#   version ID to roll back to (production-grade deployments).
+#
+# HOW TO CALL
+#   jobs:
+#     deploy:
+#       uses: Latimer-Woods-Tech/factory/.github/workflows/_app-deploy.yml@main
+#       secrets: inherit
+#     verify:
+#       needs: deploy
+#       uses: Latimer-Woods-Tech/factory/.github/workflows/_post-deploy-verify.yml@main
+#       with:
+#         health_url: https://app.example.com/healthz
+#         rollback_on_failure: true
+#         worker_name: my-app-production
+#         previous_version_id: ${{ needs.deploy.outputs.previous_version_id }}
+#       secrets: inherit
+#
+# REQUIRED SECRETS (only when rollback_on_failure: true)
+#   CLOUDFLARE_API_TOKEN   - Workers Scripts:Edit on the target account
+#   CLOUDFLARE_ACCOUNT_ID  - Cloudflare account ID
+#
+# REQUIRED INPUTS
+#   health_url             - URL to probe (must return 2xx)
+#
+# OPTIONAL INPUTS
+#   max_attempts           - Probe attempts before failing (default 5)
+#   sleep_seconds          - Delay between probes (default 10)
+#   rollback_on_failure    - Auto-rollback if probe fails (default false)
+#   worker_name            - Required when rollback enabled
+#   previous_version_id    - Required when rollback enabled. Capture from
+#                            wrangler before deploy: `wrangler versions list`.
+#
+# CONVENTIONS
+#   App must expose `/healthz` (or equivalent) returning 2xx + a small body.
+#   Don't gate on a slow endpoint — keep probe under 10s.
+#   Roll-forward beats roll-back when possible. Use rollback as the safety net
+#   for prod, not as a substitute for tested code.
+#
+# RELATED
+#   _app-deploy.yml          - The deploy step that runs before this
+#   docs/CI_CD.md            - Full architecture reference
+# =============================================================================
+
 name: _post-deploy-verify
 
 on:
