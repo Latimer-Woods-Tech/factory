@@ -61,7 +61,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/adrper79-dot/${{ matrix.app }}.git" app
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/Latimer-Woods-Tech/${{ matrix.app }}.git" app
           cd app
           git config user.email "ci@factory.dev"
           git config user.name "Factory CI"

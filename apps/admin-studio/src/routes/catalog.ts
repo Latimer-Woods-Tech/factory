@@ -17,7 +17,7 @@ import {
   validateManifest,
   type Environment,
   type FunctionManifest,
-} from '@adrper79-dot/studio-core';
+} from '@latimer-woods-tech/studio-core';
 import type { AppEnv } from '../types.js';
 import { FACTORY_APPS, manifestUrlFor } from '../lib/app-registry.js';
 import { listCatalog, summariseCatalog, upsertManifest } from '../lib/catalog-store.js';

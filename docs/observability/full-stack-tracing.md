@@ -115,10 +115,10 @@ window.addEventListener('error', (event) => {
 
 ### 2. Worker: Extract/Inject via Middleware
 
-**apps/worker/src/middleware/correlation.ts (using @adrper79-dot/logger):**
+**apps/worker/src/middleware/correlation.ts (using @latimer-woods-tech/logger):**
 
 ```typescript
-import { correlationIdMiddleware } from '@adrper79-dot/logger';
+import { correlationIdMiddleware } from '@latimer-woods-tech/logger';
 
 app.use(correlationIdMiddleware('x-correlation-id'));
 
@@ -148,7 +148,7 @@ app.post('/api/payment/checkout', async (c) => {
 **Drizzle Integration:**
 
 ```typescript
-import { createQueryContext } from '@adrper79-dot/logger';
+import { createQueryContext } from '@latimer-woods-tech/logger';
 
 app.post('/api/payment/checkout', async (c) => {
   const correlationId = c.get('correlationId');
@@ -183,10 +183,10 @@ app.post('/api/payment/checkout', async (c) => {
 
 ### 4. Error Handling: Preserve Correlation ID in Sentry
 
-**Monitoring (@adrper79-dot/monitoring):**
+**Monitoring (@latimer-woods-tech/monitoring):**
 
 ```typescript
-import { captureError } from '@adrper79-dot/monitoring';
+import { captureError } from '@latimer-woods-tech/monitoring';
 
 app.use(async (c, next) => {
   try {

@@ -4,9 +4,9 @@ import {
   InternalError,
   ValidationError,
   type FactoryResponse,
-} from '@adrper79-dot/errors';
-import { complete as llmComplete, type LLMEnv, type LLMMessage } from '@adrper79-dot/llm';
-import type { Logger } from '@adrper79-dot/logger';
+} from '@latimer-woods-tech/errors';
+import { complete as llmComplete, type LLMEnv, type LLMMessage } from '@latimer-woods-tech/llm';
+import type { Logger } from '@latimer-woods-tech/logger';
 
 /**
  * Configuration for a {@link VoiceSession}.

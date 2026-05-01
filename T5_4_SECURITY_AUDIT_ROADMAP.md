@@ -232,7 +232,7 @@ app.get('/api/admin/payouts', async (c) => {
 
 **Fixed Code:**
 ```typescript
-import { requireRole } from '@adrper79-dot/auth';
+import { requireRole } from '@latimer-woods-tech/auth';
 
 app.get('/api/admin/payouts', 
   requireRole(['operator:*', 'admin:*']),  // ✅ Added

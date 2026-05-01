@@ -1,4 +1,4 @@
-# @adrper79-dot/studio-core
+# @latimer-woods-tech/studio-core
 
 Shared types & helpers for Factory Admin Studio (API + UI).
 

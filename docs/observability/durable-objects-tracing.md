@@ -119,7 +119,7 @@ export class VideoRoomConnection {
 import {
   correlationIdMiddleware,
   getCorrelationId,
-} from '@adrper79-dot/logger';
+} from '@latimer-woods-tech/logger';
 
 app.post('/api/video/room/join', async (c) => {
   const correlationId = c.get('correlationId');
@@ -155,7 +155,7 @@ app.post('/api/video/room/join', async (c) => {
 **apps/worker/src/durable-objects/VideoRoom.ts:**
 
 ```typescript
-import { createLogger } from '@adrper79-dot/logger';
+import { createLogger } from '@latimer-woods-tech/logger';
 
 export class VideoRoom {
   private state: DurableObjectState;
@@ -298,7 +298,7 @@ export { VideoRoom };
 **Extend correlation context in monitoring:**
 
 ```typescript
-import { captureError } from '@adrper79-dot/monitoring';
+import { captureError } from '@latimer-woods-tech/monitoring';
 
 export class VideoRoom {
   private async handleMessage(message: Record<string, any>) {

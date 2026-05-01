@@ -147,7 +147,7 @@ These are domain-specific to videoking; don't belong in Factory.
 
 **✅ DO:** Use Factory `<FormField>` pattern
 ```tsx
-import { FormField, Button } from '@adrper79-dot/design-system';
+import { FormField, Button } from '@latimer-woods-tech/design-system';
 
 export function SubscribeForm() {
   const [email, setEmail] = useState('');
@@ -197,7 +197,7 @@ import {
   Heading, 
   Body,
   spacing 
-} from '@adrper79-dot/design-system';
+} from '@latimer-woods-tech/design-system';
 import { 
   EarningsChart,      // App-specific (chartinglogic)
   TimeRangeSelector,  // App-specific (date picker)
@@ -240,7 +240,7 @@ export function CreatorEarningsDashboard() {
 ```tsx
 // apps/admin-studio/src/components/video/VideoPlayer.tsx
 import React, { useRef } from 'react';
-import { Button } from '@adrper79-dot/design-system'; // Factory button for controls
+import { Button } from '@latimer-woods-tech/design-system'; // Factory button for controls
 
 export function VideoPlayer({ 
   streamUid, 
@@ -292,7 +292,7 @@ function MyButton({ label, onClick }) {
 }
 
 // ✅ DO: Use Factory
-import { Button } from '@adrper79-dot/design-system';
+import { Button } from '@latimer-woods-tech/design-system';
 <Button onClick={onClick}>{label}</Button>
 ```
 
@@ -310,7 +310,7 @@ function MyInput({ value, onChange, ...props }) {
 }
 
 // ✅ DO: Use Factory, extend if needed
-import { Input } from '@adrper79-dot/design-system';
+import { Input } from '@latimer-woods-tech/design-system';
 
 function MyInput({ icon, ...props }) {
   return (
@@ -341,7 +341,7 @@ function MyFormField({ label, value, error }) {
 }
 
 // ✅ DO: Use Factory FormField pattern
-import { FormField } from '@adrper79-dot/design-system';
+import { FormField } from '@latimer-woods-tech/design-system';
 
 function MyFormField({ label, value, error }) {
   return (
@@ -362,7 +362,7 @@ function MyFormField({ label, value, error }) {
 
 ```tsx
 // DON'T: Put videoking-specific logic in Factory Button
-import { Button } from '@adrper79-dot/design-system';
+import { Button } from '@latimer-woods-tech/design-system';
 
 function PaymentButton({ amount, onComplete }) {
   return (
@@ -379,7 +379,7 @@ function PaymentButton({ amount, onComplete }) {
 }
 
 // ✅ DO: Create app-specific wrapper
-import { Button } from '@adrper79-dot/design-system';
+import { Button } from '@latimer-woods-tech/design-system';
 
 function PaymentButton({ amount, onComplete }) {
   const handlePay = async () => {

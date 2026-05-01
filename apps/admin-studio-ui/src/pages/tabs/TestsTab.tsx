@@ -4,7 +4,7 @@ import type {
   TestResult,
   TestRun,
   TestRunStatus,
-} from '@adrper79-dot/studio-core';
+} from '@latimer-woods-tech/studio-core';
 import { apiFetch } from '../../lib/api.js';
 import { ConfirmDialog } from '../../components/ConfirmDialog.js';
 import { useSession } from '../../stores/session.js';

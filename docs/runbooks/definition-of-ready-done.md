@@ -33,7 +33,7 @@ A work item is **Ready** when it satisfies ALL of the following criteria:
 ### 3. **Dependencies Are Named**
 - [ ] List any work that must land first (in `WORLD_CLASS_IMPLEMENTATION_DASHBOARD.md` or backlog)
 - [ ] Include external dependencies (e.g., Neon schema migration, Cloudflare config change, GitHub secret)
-- [ ] Include inter-package dependencies (e.g., must wait for `@adrper79-dot/neon` release)
+- [ ] Include inter-package dependencies (e.g., must wait for `@latimer-woods-tech/neon` release)
 - [ ] NOTE: See `CLAUDE.md` "Package Dependency Order" for canonical sequencing
 
 ### 4. **Success Metrics Are Defined**
@@ -46,7 +46,7 @@ A work item is **Ready** when it satisfies ALL of the following criteria:
 ### 5. **Design Implications Are Understood**
 - [ ] If customer-facing: UI changes documented (wireframe, screenshot, or link to design doc)
 - [ ] If package: public API surface defined (JSDoc stubs or interface doc)
-- [ ] If shared: interaction with other packages named (e.g., "calls @adrper79-dot/logger in hot path")
+- [ ] If shared: interaction with other packages named (e.g., "calls @latimer-woods-tech/logger in hot path")
 - [ ] Accessibility impact assessed (required if any UI; form if none)
 
 ### 6. **Data Implications Are Understood**
@@ -88,10 +88,10 @@ A work item is **Done** when it satisfies ALL of the following criteria:
 
 ### 3. **Test Coverage Meets Baseline**
 - [ ] Unit test coverage:
-  - `@adrper79-dot/errors`: 100% lines and functions
-  - `@adrper79-dot/monitoring`: 100% lines and functions
-  - `@adrper79-dot/logger`: 95% lines, 90% functions
-  - `@adrper79-dot/auth`: 95% lines, 90% functions, 85% branches
+  - `@latimer-woods-tech/errors`: 100% lines and functions
+  - `@latimer-woods-tech/monitoring`: 100% lines and functions
+  - `@latimer-woods-tech/logger`: 95% lines, 90% functions
+  - `@latimer-woods-tech/auth`: 95% lines, 90% functions, 85% branches
   - Worker apps: 85% lines, 80% functions, 75% branches
   - UI/dashboard: 70% lines, 70% functions, 60% branches
 - [ ] Branch coverage ≥ configured threshold (see package `package.json` `coverage` field)
@@ -99,7 +99,7 @@ A work item is **Done** when it satisfies ALL of the following criteria:
 
 ### 4. **Integration Tests Added if Multi-Package**
 - [ ] If this work touches >1 package: at least one test exercising the boundary
-- [ ] Cross-package contract is asserted (e.g., "@adrper79-dot/auth calls @adrper79-dot/logger correctly")
+- [ ] Cross-package contract is asserted (e.g., "@latimer-woods-tech/auth calls @latimer-woods-tech/logger correctly")
 - [ ] Async workflows tested end-to-end in isolation (e.g., queue → handler → observer)
 
 ### 5. **Deployment Verified on Staging**

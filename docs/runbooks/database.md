@@ -71,7 +71,7 @@ psql $DATABASE_URL -c '\d+ factory_events'
 
 ## Factory events table
 
-Each app maintains its own `factory_events` table inside its **own isolated Neon database**. The schema is identical across all apps (shared DDL from the scaffold), but there is no central database — each app writes and queries its own events independently via `@adrper79-dot/analytics`.
+Each app maintains its own `factory_events` table inside its **own isolated Neon database**. The schema is identical across all apps (shared DDL from the scaffold), but there is no central database — each app writes and queries its own events independently via `@latimer-woods-tech/analytics`.
 
 A future `factory_core` Neon project will aggregate events across all apps when `factory-admin` is built. Until then, cross-app analytics require querying each app's database separately.
 
@@ -106,7 +106,7 @@ CREATE POLICY tenant_isolation ON users
 ### Setting the tenant context per request
 
 ```typescript
-import { createDb, sql } from '@adrper79-dot/neon';
+import { createDb, sql } from '@latimer-woods-tech/neon';
 
 const db = createDb(env.DB);
 

@@ -30,7 +30,7 @@ jobs:
 
           for pkg in "${PACKAGES[@]}"; do
             echo ""
-            echo "=== Publishing @adrper79-dot/${pkg} ==="
+            echo "=== Publishing @latimer-woods-tech/${pkg} ==="
             pushd "packages/${pkg}"
 
             # Replace file: internal deps with real npm version refs and pin version
@@ -41,7 +41,7 @@ jobs:
               const fix = (deps) => {
                 if (!deps) return;
                 for (const [k, v] of Object.entries(deps)) {
-                  if (k.startsWith('@adrper79-dot/') && v.startsWith('file:')) {
+                  if (k.startsWith('@latimer-woods-tech/') && v.startsWith('file:')) {
                     deps[k] = '^' + ver;
                   }
                 }

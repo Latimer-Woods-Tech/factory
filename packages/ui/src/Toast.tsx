@@ -5,7 +5,7 @@
  */
 
 import React, { forwardRef, useEffect, type HTMLAttributes, type ReactNode } from 'react';
-import { colors, spacing, typography, motion, radii, shadows } from '@adrper79-dot/design-tokens';
+import { colors, spacing, typography, motion, radii, shadows } from '@latimer-woods-tech/design-tokens';
 
 export interface ToastProps extends HTMLAttributes<HTMLDivElement> {
   /** Toast variant */

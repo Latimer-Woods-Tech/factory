@@ -64,7 +64,7 @@ if (status.length > 0) {
 
 // ── Bump the version ────────────────────────────────────────────────────────
 
-console.log(`\nBumping @adrper79-dot/${pkgShortName} (${bumpType})…`);
+console.log(`\nBumping @latimer-woods-tech/${pkgShortName} (${bumpType})…`);
 
 // --no-git-tag-version because we create the tag with a custom prefix
 const rawOut = run(`npm version ${bumpType} --no-git-tag-version`, pkgDir);
@@ -86,7 +86,7 @@ console.log(`\nTag created: ${tag}`);
 run(`git push origin main`);
 run(`git push origin "${tag}"`);
 
-console.log(`\nTag pushed. GitHub Actions publish.yml will now build and publish @adrper79-dot/${pkgShortName}@${newVersion}.`);
+console.log(`\nTag pushed. GitHub Actions publish.yml will now build and publish @latimer-woods-tech/${pkgShortName}@${newVersion}.`);
 
 // ── Read the new version from package.json for confirmation ─────────────────
 
@@ -98,13 +98,13 @@ if (pkgJson.version !== newVersion) {
 console.log(`
 Next steps:
   1. Wait for publish.yml to complete:
-       gh run watch --repo adrper79-dot/factory --workflow publish.yml
+       gh run watch --repo Latimer-Woods-Tech/factory --workflow publish.yml
 
   2. Update internal consumers (apps/ in Factory repo):
-       cd apps/<app> && npm install @adrper79-dot/${pkgShortName}@${newVersion}
+       cd apps/<app> && npm install @latimer-woods-tech/${pkgShortName}@${newVersion}
 
   3. Update external consumers (prime-self, xico-city, etc.):
-       cd <repo> && npm install @adrper79-dot/${pkgShortName}@${newVersion}
+       cd <repo> && npm install @latimer-woods-tech/${pkgShortName}@${newVersion}
 
   4. Deploy consumers to staging, run smoke, then deploy to production.
 

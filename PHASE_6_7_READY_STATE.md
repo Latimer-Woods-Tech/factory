@@ -69,7 +69,7 @@
 
 | Milestone | Status | Evidence |
 |---|---|---|
-| All 19 core packages published | ✅ v0.2.0 | `npm view @adrper79-dot/errors@0.2.0` |
+| All 19 core packages published | ✅ v0.2.0 | `npm view @latimer-woods-tech/errors@0.2.0` |
 | Package dependency order documented | ✅ | CLAUDE.md |
 | All quality gates enforced | ✅ | TypeScript strict, ESLint clean, >80% coverage |
 | 6 app repositories created | ✅ | `gh repo list adrper79-dot` |

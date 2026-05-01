@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import { Hono } from 'hono';
 import type { AppEnv } from '../types.js';
-import type { EnvContext } from '@adrper79-dot/studio-core';
+import type { EnvContext } from '@latimer-woods-tech/studio-core';
 import { requireConfirmation } from './require-confirmation.js';
 
 // ── helpers ──────────────────────────────────────────────────────────────────

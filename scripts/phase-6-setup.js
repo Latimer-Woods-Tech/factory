@@ -113,7 +113,7 @@ class Phase6Setup {
       
       for (const [key, value] of Object.entries(secrets)) {
         try {
-          execSync(`gh secret set ${key} --repo adrper79-dot/${app} --body "${value}"`, {
+          execSync(`gh secret set ${key} --repo Latimer-Woods-Tech/${app} --body "${value}"`, {
             env: { ...process.env, GITHUB_TOKEN: this.githubToken },
             stdio: 'pipe'
           });
@@ -185,13 +185,13 @@ class Phase6Setup {
 
     for (const app of APPS) {
       try {
-        execSync(`gh repo view adrper79-dot/${app} --json name`, {
+        execSync(`gh repo view Latimer-Woods-Tech/${app} --json name`, {
           env: { ...process.env, GITHUB_TOKEN: this.githubToken },
           stdio: 'pipe'
         });
-        console.log(`  ✅ adrper79-dot/${app}`);
+        console.log(`  ✅ Latimer-Woods-Tech/${app}`);
       } catch (e) {
-        console.log(`  ⚠️  adrper79-dot/${app} does not exist yet`);
+        console.log(`  ⚠️  Latimer-Woods-Tech/${app} does not exist yet`);
       }
     }
   }

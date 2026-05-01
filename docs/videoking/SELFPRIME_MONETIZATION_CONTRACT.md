@@ -11,7 +11,7 @@
 
 This document adapts the VideoKing monetization funnel contract for SelfPrime's revenue model. VideoKing monetizes content consumption (video unlocks + creator subscriptions). SelfPrime monetizes practitioner-client relationships (coaching, readings, chart analyses) augmented by gated multimedia content and referral-based practitioner acquisition.
 
-All events conform to the [`@adrper79-dot/analytics`](../../packages/analytics/src/index.ts) event schema. The base event structure and validation rules are **identical** to the VideoKing contract — this document specifies the SelfPrime-specific `event_name` values, actors, and revenue flows.
+All events conform to the [`@latimer-woods-tech/analytics`](../../packages/analytics/src/index.ts) event schema. The base event structure and validation rules are **identical** to the VideoKing contract — this document specifies the SelfPrime-specific `event_name` values, actors, and revenue flows.
 
 ---
 

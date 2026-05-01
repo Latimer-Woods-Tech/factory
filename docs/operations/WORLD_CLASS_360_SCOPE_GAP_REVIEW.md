@@ -39,14 +39,14 @@ Process maturity verdict: **not fully world-class yet, but close enough to becom
 
 | Surface | Current role | World Class 360 required work |
 |---|---|---|
-| `adrper79-dot/prime-self` | Live reference Worker/API | Keep health/auth/practitioner routes verified; add Practitioner Studio entitlement/render hooks if productized here |
-| `adrper79-dot/prime-self-ui` | Live SelfPrime Pages site | Keep smoke/a11y/auth green; add pricing, legal, Studio onboarding, dashboard entry points if it remains launch frontend |
+| `Latimer-Woods-Tech/prime-self` | Live reference Worker/API | Keep health/auth/practitioner routes verified; add Practitioner Studio entitlement/render hooks if productized here |
+| `Latimer-Woods-Tech/prime-self-ui` | Live SelfPrime Pages site | Keep smoke/a11y/auth green; add pricing, legal, Studio onboarding, dashboard entry points if it remains launch frontend |
 | `C:/Users/Ultimate Warrior/Documents/GitHub/xico-city` | Full marketplace app for this iteration | Complete S-00 through S-11: stabilization, identity, host onboarding, catalog, discovery, bookings, reviews, subscriptions, payouts, curator tooling, compliance, PWA |
-| `adrper79-dot/wordis-bond` | Created app repo | Validate scaffold, lockfile, env, CI, app README, service registry readiness; defer feature work unless W360 expands scope |
-| `adrper79-dot/cypher-healing` | Created app repo | Validate scaffold, lockfile, env, CI, app README, service registry readiness; defer feature work unless W360 expands scope |
-| `adrper79-dot/ijustus` | Created app repo | Validate scaffold, lockfile, env, CI, app README, service registry readiness; defer feature work unless W360 expands scope |
-| `adrper79-dot/the-calling` | Created app repo | Validate scaffold, lockfile, env, CI, app README, service registry readiness; defer feature work unless W360 expands scope |
-| `adrper79-dot/neighbor-aid` | Created app repo | Validate scaffold, lockfile, env, CI, app README, service registry readiness; defer feature work unless W360 expands scope |
+| `Latimer-Woods-Tech/wordis-bond` | Created app repo | Validate scaffold, lockfile, env, CI, app README, service registry readiness; defer feature work unless W360 expands scope |
+| `Latimer-Woods-Tech/cypher-healing` | Created app repo | Validate scaffold, lockfile, env, CI, app README, service registry readiness; defer feature work unless W360 expands scope |
+| `Latimer-Woods-Tech/ijustus` | Created app repo | Validate scaffold, lockfile, env, CI, app README, service registry readiness; defer feature work unless W360 expands scope |
+| `Latimer-Woods-Tech/the-calling` | Created app repo | Validate scaffold, lockfile, env, CI, app README, service registry readiness; defer feature work unless W360 expands scope |
+| `Latimer-Woods-Tech/neighbor-aid` | Created app repo | Validate scaffold, lockfile, env, CI, app README, service registry readiness; defer feature work unless W360 expands scope |
 
 ### C. Shared package surfaces
 

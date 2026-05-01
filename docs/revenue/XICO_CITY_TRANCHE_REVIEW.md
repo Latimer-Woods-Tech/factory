@@ -1,7 +1,7 @@
 # Xico City — Tranche Opportunity Review
 
 **Date:** 2026-04-29  
-**Reviewed repo:** `adrper79-dot/xico-city`  
+**Reviewed repo:** `Latimer-Woods-Tech/xico-city`  
 **Verdict:** promising tranche asset and now committed to the full World Class 360 build, but not ready until the foundation is repaired first.
 
 > **April 29 decision:** Build Xico City all the way through the World Class 360 plan. The earlier tranche-MVP framing is superseded for this iteration. The transaction-ready MVP remains the first proof gate, not the final target.
@@ -31,14 +31,14 @@ Recommended tranche role:
 
 | Factory asset | Xico City use |
 |---|---|
-| `@adrper79-dot/auth` | traveler, host, curator, admin roles |
-| `@adrper79-dot/stripe` | booking checkout, subscriptions, Connect payouts |
-| `@adrper79-dot/neon` | marketplace data, audit ledger, bookings, hosts |
-| `@adrper79-dot/analytics` | discovery → booking funnel, host activation, LTV |
-| `@adrper79-dot/email` | booking confirmation, reminders, cancellation notices |
-| `@adrper79-dot/content` / `copy` / `seo` | experience pages, neighborhood pages, programmatic SEO |
-| `@adrper79-dot/video` / `schedule` | AI-generated listing videos and neighborhood guides |
-| `@adrper79-dot/compliance` | consent, deletion, DMCA, dispute/audit trail |
+| `@latimer-woods-tech/auth` | traveler, host, curator, admin roles |
+| `@latimer-woods-tech/stripe` | booking checkout, subscriptions, Connect payouts |
+| `@latimer-woods-tech/neon` | marketplace data, audit ledger, bookings, hosts |
+| `@latimer-woods-tech/analytics` | discovery → booking funnel, host activation, LTV |
+| `@latimer-woods-tech/email` | booking confirmation, reminders, cancellation notices |
+| `@latimer-woods-tech/content` / `copy` / `seo` | experience pages, neighborhood pages, programmatic SEO |
+| `@latimer-woods-tech/video` / `schedule` | AI-generated listing videos and neighborhood guides |
+| `@latimer-woods-tech/compliance` | consent, deletion, DMCA, dispute/audit trail |
 | Admin Studio | operator workflows for moderation, bookings, refunds, hosts, payouts |
 
 ### Unique portfolio value
@@ -190,7 +190,7 @@ Tasks:
 - Generate and commit `package-lock.json`.
 - Fix GitHub Packages auth and `npm ci`.
 - Add missing `lint` and `build` scripts or remove CI references until implemented.
-- Pin `@adrper79-dot/*` versions exactly.
+- Pin `@latimer-woods-tech/*` versions exactly.
 - Remove `nodejs_compat` unless a documented waiver exists.
 - Fix `/ready` route mounting.
 - Remove `global as any` and production console calls.

@@ -6,7 +6,7 @@
  */
 
 import React, { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
-import { colors, spacing, typography, motion, radii } from '@adrper79-dot/design-tokens';
+import { colors, spacing, typography, motion, radii } from '@latimer-woods-tech/design-tokens';
 
 /**
  * Props for the Input component

@@ -111,8 +111,8 @@ GitHub Actions secrets (used during CI/CD) are separate from Worker runtime secr
 
 ```bash
 # Update via GitHub CLI
-gh secret set CLOUDFLARE_API_TOKEN --repo adrper79-dot/{app} --body "..."
-gh secret set GH_PAT --repo adrper79-dot/{app} --body "..."
+gh secret set CLOUDFLARE_API_TOKEN --repo Latimer-Woods-Tech/{app} --body "..."
+gh secret set GH_PAT --repo Latimer-Woods-Tech/{app} --body "..."
 ```
 
 Or via GitHub web: **Repo → Settings → Secrets and variables → Actions**.

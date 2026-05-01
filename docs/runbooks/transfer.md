@@ -31,7 +31,7 @@ wrangler r2 object put factory-archives/{app}/events_$(date +%Y%m%d).csv \
 
 ```bash
 # Transfer repo to buyer's GitHub org
-gh repo transfer adrper79-dot/{app} {buyer-github-org}
+gh repo transfer Latimer-Woods-Tech/{app} {buyer-github-org}
 # Buyer receives and accepts the transfer invitation
 ```
 
@@ -98,7 +98,7 @@ gh secret set CLOUDFLARE_API_TOKEN --repo {buyer-github-org}/{app}
 gh secret set CLOUDFLARE_ACCOUNT_ID --repo {buyer-github-org}/{app}
 ```
 
-If buyer wants to continue using `@adrper79-dot/*` packages, they also need:
+If buyer wants to continue using `@latimer-woods-tech/*` packages, they also need:
 
 ```bash
 gh secret set GH_PAT --repo {buyer-github-org}/{app}

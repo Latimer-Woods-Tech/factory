@@ -343,7 +343,7 @@ All three endpoints **MUST** require authentication. Use Factory Auth + RBAC:
 ```tsx
 // Middleware: All /api/admin/* routes require admin:read permission
 app.use("/api/admin/*", async (c, next) => {
-  const user = c.get("user"); // From @adrper79-dot/auth middleware
+  const user = c.get("user"); // From @latimer-woods-tech/auth middleware
   if (!user || !hasPermission(user, "admin:read")) {
     return c.json({ error: "Unauthorized" }, 401);
   }

@@ -97,7 +97,7 @@ interface OperatorColumn<T> {
 **Code Example:**
 
 ```typescript
-import { OperatorTable } from '@adrper79-dot/admin-ui';
+import { OperatorTable } from '@latimer-woods-tech/admin-ui';
 
 interface Creator {
   id: string;
@@ -215,7 +215,7 @@ const statusConfig = {
 **Code Example:**
 
 ```typescript
-import { StatusChip } from '@adrper79-dot/admin-ui';
+import { StatusChip } from '@latimer-woods-tech/admin-ui';
 
 // In CreatorsList render
 render: (status) => (
@@ -271,7 +271,7 @@ interface ConfirmationModal {
 **Code Example:**
 
 ```typescript
-import { ConfirmationModal } from '@adrper79-dot/admin-ui';
+import { ConfirmationModal } from '@latimer-woods-tech/admin-ui';
 
 const [confirmSuspend, setConfirmSuspend] = useState(false);
 const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
@@ -416,7 +416,7 @@ type FilterDefinition =
 **Code Example:**
 
 ```typescript
-import { FilterPanel } from '@adrper79-dot/admin-ui';
+import { FilterPanel } from '@latimer-woods-tech/admin-ui';
 
 const [filters, setFilters] = useState({
   status: [],
@@ -496,7 +496,7 @@ interface AuditTrail {
 **Code Example:**
 
 ```typescript
-import { AuditTrail } from '@adrper79-dot/admin-ui';
+import { AuditTrail } from '@latimer-woods-tech/admin-ui';
 
 const creatorAuditLog = await auditApi.listByTarget({
   targetId: creator.id,
@@ -639,7 +639,7 @@ Audit ID: audit_77c4d9f1 [clipboard copy]
 
 ### New Operator UI App Checklist
 
-- [ ] Install base components from `@adrper79-dot/admin-ui`
+- [ ] Install base components from `@latimer-woods-tech/admin-ui`
 - [ ] Copy filter panel + table patterns
 - [ ] Use StatusChip for all statuses
 - [ ] Wrap risky actions in ConfirmationModal
@@ -670,7 +670,7 @@ Audit ID: audit_77c4d9f1 [clipboard copy]
 
 ### Phase D (June+)
 
-- [ ] Package as `@adrper79-dot/admin-ui` (factory package)
+- [ ] Package as `@latimer-woods-tech/admin-ui` (factory package)
 - [ ] Enable other apps to use the same operator patterns
 - [ ] Share learnings / best practices with platform team
 

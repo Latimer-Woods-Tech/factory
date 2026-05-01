@@ -21,7 +21,7 @@ jobs:
           owner: adrper79-dot
       - uses: actions/checkout@v4
         with:
-          repository: adrper79-dot/${{ matrix.app }}
+          repository: Latimer-Woods-Tech/${{ matrix.app }}
           token: ${{ steps.app-token.outputs.token }}
           path: app
 

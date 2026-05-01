@@ -221,7 +221,7 @@ Each Friday 9am UTC:
 
 **On upload:**
 1. Creator submits video + metadata (title, description, category)
-2. Worker extracts metadata + calls Anthropic Claude (via `@adrper79-dot/llm`)
+2. Worker extracts metadata + calls Anthropic Claude (via `@latimer-woods-tech/llm`)
 3. LLM scores: `{ hate_speech: 0.02, sexual_content: 0.15, violence: 0.05, harmful_misinformation: 0.01, spam: 0.0 }`
 4. If any score > 0.5: Flag for manual review, set `moderation_score` = max score
 5. If all scores ≤ 0.3: Auto-approve, set `status='published'`
@@ -298,7 +298,7 @@ export async function recordVideoWatch(viewerId, videoId, watchDurationSec) {
 ### Logging & Error Tracking (Sentry)
 
 ```typescript
-import * as Sentry from '@adrper79-dot/monitoring';
+import * as Sentry from '@latimer-woods-tech/monitoring';
 
 // Configure on Worker startup
 Sentry.init({
@@ -503,7 +503,7 @@ Response: 200 OK
 ```typescript
 // fixtures/moderation.test.ts
 import { classifyContent } from '../src/services/moderation';
-import { mockLLM } from '@adrper79-dot/testing';
+import { mockLLM } from '@latimer-woods-tech/testing';
 
 describe('Content Moderation', () => {
   it('should classify safe content as publishable', async () => {

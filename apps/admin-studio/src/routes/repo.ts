@@ -18,7 +18,7 @@ import type {
   RepoCommitRequest,
   RepoCreateBranchRequest,
   RepoOpenPRRequest,
-} from '@adrper79-dot/studio-core';
+} from '@latimer-woods-tech/studio-core';
 import type { AppEnv } from '../types.js';
 import {
   GitHubApiError,

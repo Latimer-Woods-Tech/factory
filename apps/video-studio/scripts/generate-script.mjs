@@ -4,7 +4,7 @@
  * Standalone Node.js ESM script that generates a video narration script
  * (and optional step list) for a given Remotion composition.
  *
- * Uses @adrper79-dot/llm for the Anthropic → Grok → Groq failover chain.
+ * Uses @latimer-woods-tech/llm for the Anthropic → Grok → Groq failover chain.
  * Called by render-video.yml as:
  *   node apps/video-studio/scripts/generate-script.mjs
  *
@@ -28,7 +28,7 @@
  */
 
 import { appendFileSync } from 'node:fs';
-import { complete, withSystem } from '@adrper79-dot/llm';
+import { complete, withSystem } from '@latimer-woods-tech/llm';
 
 // ---------------------------------------------------------------------------
 // Env
