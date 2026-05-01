@@ -12,7 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../lib/api.js';
-import type { Environment, FunctionCatalogRow, SmokeSuiteResult } from '@adrper79-dot/studio-core';
+import type { Environment, FunctionCatalogRow, SmokeSuiteResult } from '@latimer-woods-tech/studio-core';
 
 interface SummaryRow {
   app: string;

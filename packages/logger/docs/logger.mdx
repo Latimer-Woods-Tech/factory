@@ -1,16 +1,16 @@
 ---
-title: "@adrper79-dot/logger"
+title: "@latimer-woods-tech/logger"
 description: Structured JSON logger for Cloudflare Workers.
 ---
 
-# @adrper79-dot/logger
+# @latimer-woods-tech/logger
 
-Structured JSON logger with levels, context binding, and child loggers. Depends on `@adrper79-dot/errors` and `@adrper79-dot/monitoring`.
+Structured JSON logger with levels, context binding, and child loggers. Depends on `@latimer-woods-tech/errors` and `@latimer-woods-tech/monitoring`.
 
 ## Installation
 
 ```bash
-npm install @adrper79-dot/logger
+npm install @latimer-woods-tech/logger
 ```
 
 ## API
@@ -51,7 +51,7 @@ requestLogger.info('Request received', { path: c.req.path });
 ## Example
 
 ```typescript
-import { createLogger } from '@adrper79-dot/logger';
+import { createLogger } from '@latimer-woods-tech/logger';
 
 const logger = createLogger({ service: 'my-app', level: 'info' });
 

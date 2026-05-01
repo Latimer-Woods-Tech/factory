@@ -1,16 +1,16 @@
 ---
-title: "@adrper79-dot/auth"
+title: "@latimer-woods-tech/auth"
 description: JWT issue, verify, refresh, and Hono middleware for role-based access control.
 ---
 
-# @adrper79-dot/auth
+# @latimer-woods-tech/auth
 
-Self-managed JWTs using the Web Crypto API (HMAC SHA-256). No external JWT library. Depends on `@adrper79-dot/errors` and `@adrper79-dot/logger`.
+Self-managed JWTs using the Web Crypto API (HMAC SHA-256). No external JWT library. Depends on `@latimer-woods-tech/errors` and `@latimer-woods-tech/logger`.
 
 ## Installation
 
 ```bash
-npm install @adrper79-dot/auth
+npm install @latimer-woods-tech/auth
 ```
 
 ## API
@@ -83,7 +83,7 @@ interface TokenPayload {
 ## Example
 
 ```typescript
-import { issueToken, jwtMiddleware, requireRole } from '@adrper79-dot/auth';
+import { issueToken, jwtMiddleware, requireRole } from '@latimer-woods-tech/auth';
 
 // Issue a token at login
 const token = await issueToken(

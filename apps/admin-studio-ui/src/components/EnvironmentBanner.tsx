@@ -5,7 +5,7 @@
  * Click → opens an env switcher (forces re-auth).
  */
 import { useSession } from '../stores/session.js';
-import type { Environment } from '@adrper79-dot/studio-core';
+import type { Environment } from '@latimer-woods-tech/studio-core';
 
 const STYLES: Record<Environment, { bg: string; ring: string; label: string }> = {
   local:      { bg: 'bg-slate-700',   ring: 'ring-slate-500',   label: '⚙️ LOCAL DEV'    },

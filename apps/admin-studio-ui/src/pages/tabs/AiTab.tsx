@@ -16,7 +16,7 @@ import type {
   AIChatMode,
   AIChatTurn,
   AIProposal,
-} from '@adrper79-dot/studio-core';
+} from '@latimer-woods-tech/studio-core';
 import { useSession } from '../../stores/session.js';
 import { useActiveFile } from '../../stores/activeFile.js';
 import { apiFetch } from '../../lib/api.js';
