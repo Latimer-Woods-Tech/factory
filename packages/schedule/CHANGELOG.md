@@ -1,4 +1,4 @@
-# Changelog — `@adrper79-dot/schedule`
+# Changelog — `@latimer-woods-tech/schedule`
 
 All notable changes to this package will be documented in this file.
 
@@ -27,4 +27,4 @@ All notable changes to this package will be documented in this file.
 - `setPerformanceScore` — Persist a computed score to the database
 - `toRenderJob` — Convert a `VideoCalendarRow` to a `RenderJob` for workflow dispatch
 - `ProductionBrief`, `VideoCalendarRow`, `TriggerSource`, `EngagementMetrics` types
-- Full re-export of `RenderJob`, `RenderJobType`, `RenderJobStatus` from `@adrper79-dot/video`
+- Full re-export of `RenderJob`, `RenderJobType`, `RenderJobStatus` from `@latimer-woods-tech/video`

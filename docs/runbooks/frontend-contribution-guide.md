@@ -16,7 +16,7 @@ export const metadata = {
 ### 1. Clone the repo and install dependencies
 
 ```bash
-git clone https://github.com/adrper79-dot/videoking.git
+git clone https://github.com/Latimer-Woods-Tech/videoking.git
 cd apps/web
 
 # Install pnpm if needed

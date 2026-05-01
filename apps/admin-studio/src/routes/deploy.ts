@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { AppEnv } from '../types.js';
 import { requireConfirmation } from '../middleware/require-confirmation.js';
-import { requireEnv } from '@adrper79-dot/studio-core';
+import { requireEnv } from '@latimer-woods-tech/studio-core';
 import { GitHubApiError, dispatchWorkflow } from '../lib/github-api.js';
 
 const deploy = new Hono<AppEnv>();

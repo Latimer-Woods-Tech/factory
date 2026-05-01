@@ -19,7 +19,7 @@
  *
  * To add edge cases:
  * 1. Create test("Flow N: Edge case X", async () => { ... })
- * 2. Use fixtures from @adrper79-dot/testing
+ * 2. Use fixtures from @latimer-woods-tech/testing
  * 3. Verify assertions use assertDatabaseState() for consistency
  * 4. Re-run coverage check: npm test -- --coverage
  */
@@ -34,7 +34,7 @@ import {
   cleanupAfterTest,
   assertDatabaseState,
   type SeedResult,
-} from '@adrper79-dot/testing';
+} from '@latimer-woods-tech/testing';
 
 describe('Money Flow Regression Tests', { timeout: 30000 }, () => {
   let db: any;

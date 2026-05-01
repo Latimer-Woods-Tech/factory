@@ -1,0 +1,66 @@
+name: Factory Status Dashboard
+on:
+  schedule:
+    - cron: '0 * * * *'  # every hour
+  workflow_dispatch:
+permissions: { contents: write }
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: Latimer-Woods-Tech
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+      - name: Generate status
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -e
+          OUT="docs/STATUS.md"
+          mkdir -p docs
+          {
+            echo "# Factory Ecosystem Status"
+            echo
+            echo "Auto-generated hourly. Last update: $(date -u +%FT%TZ)"
+            echo
+            echo "| Repo | Latest CI | Last commit | Open PRs |"
+            echo "|---|---|---|---|"
+          } > "$OUT"
+          for repo in factory wordis-bond cypher-healing ijustus the-calling neighbor-aid xico-city factory-admin xpelevator videoking HumanDesign; do
+            CI=$(gh api "/repos/Latimer-Woods-Tech/$repo/actions/runs?per_page=1" --jq '.workflow_runs[0] | "\(.status) \(.conclusion // "-")"\(.html_url)""' 2>/dev/null || echo "-")
+            STATUS=$(echo "$CI" | awk '{print $1, $2}')
+            URL=$(echo "$CI" | grep -o 'https[^"]*' | head -1)
+            ICON="❔"
+            case "$STATUS" in
+              "completed success") ICON="✅" ;;
+              "completed failure") ICON="❌" ;;
+              "in_progress "*) ICON="🟡" ;;
+              "queued "*) ICON="⏳" ;;
+            esac
+            COMMIT=$(gh api "/repos/Latimer-Woods-Tech/$repo/commits/main" --jq '.commit.committer.date' 2>/dev/null | cut -dT -f1)
+            PRS=$(gh api "/repos/Latimer-Woods-Tech/$repo/pulls?state=open" --jq 'length' 2>/dev/null || echo 0)
+            echo "| [$repo](https://github.com/Latimer-Woods-Tech/$repo) | $ICON [$STATUS]($URL) | $COMMIT | $PRS |" >> "$OUT"
+          done
+          {
+            echo
+            echo "## Cloudflare Workers"
+            echo
+            echo "_Inventory snapshot — live count via factory-admin._"
+            echo "- Total Workers: 19 (after Apr 30 cleanup)"
+            echo "- R2 buckets: 6"
+            echo "- Hyperdrive configs: 10"
+            echo "- Neon databases: 10"
+          } >> "$OUT"
+      - name: Commit if changed
+        run: |
+          git config user.email "factory-cross-repo[bot]@users.noreply.github.com"
+          git config user.name "factory-cross-repo[bot]"
+          git add docs/STATUS.md
+          git diff --staged --quiet || git commit -m "chore(status): hourly status update [skip ci]"
+          git push

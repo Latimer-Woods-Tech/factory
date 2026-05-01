@@ -153,14 +153,14 @@ If endpoints don't respond:
 
 All three endpoints require:
 
-- **Permission:** `admin:read` from Factory Auth ([@adrper79-dot/auth](../packages/auth/))
+- **Permission:** `admin:read` from Factory Auth ([@latimer-woods-tech/auth](../packages/auth/))
 - **Rate limit:** 60 requests/min per app (Factory Admin gets dedicated quota)
 - **Headers:** `Authorization: Bearer {token}`, standard Factory Hono middleware
 
 Example Hono middleware:
 
 ```typescript
-import { auth } from '@adrper79-dot/auth';
+import { auth } from '@latimer-woods-tech/auth';
 
 app.use('/api/admin/*', auth(), async (c, next) => {
   if (!c.get('user')?.permissions?.includes('admin:read')) {
@@ -213,5 +213,5 @@ health_endpoint: http://localhost:8787/api/admin/health
 
 - [Factory Admin Telemetry Contract](../packages/factory-admin-telemetry-contract.mdx) — Detailed schema specs
 - [SLO Framework](../runbooks/slo-framework.md) — How to calculate error_budget_remaining_percent and latency_p99
-- [@adrper79-dot/auth](../packages/auth/) — JWT token generation and validation
+- [@latimer-woods-tech/auth](../packages/auth/) — JWT token generation and validation
 - [Factory Admin README](../../apps/admin-studio/README.md) — Deployment and configuration

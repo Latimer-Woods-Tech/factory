@@ -5,7 +5,7 @@
  */
 
 import React, { forwardRef, useState, type HTMLAttributes, type ReactNode } from 'react';
-import { colors, spacing, typography, motion, focus } from '@adrper79-dot/design-tokens';
+import { colors, spacing, typography, motion, focus } from '@latimer-woods-tech/design-tokens';
 
 export interface TabItem {
   id: string;

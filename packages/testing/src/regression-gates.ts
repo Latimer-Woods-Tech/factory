@@ -10,7 +10,7 @@
  *
  * @example
  * ```typescript
- * import { captureScreenshots, compareScreenshots } from '@adrper79-dot/testing';
+ * import { captureScreenshots, compareScreenshots } from '@latimer-woods-tech/testing';
  *
  * test('homepage visual regression', async ({ page }) => {
  *   await page.goto('/');

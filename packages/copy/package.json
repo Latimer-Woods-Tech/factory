@@ -1,5 +1,5 @@
 {
-  "name": "@adrper79-dot/copy",
+  "name": "@latimer-woods-tech/copy",
   "version": "0.2.0",
   "private": false,
   "publishConfig": {
@@ -27,8 +27,8 @@
     "prepublish": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
-    "@adrper79-dot/errors": "file:../errors",
-    "@adrper79-dot/llm": "file:../llm"
+    "@latimer-woods-tech/errors": "file:../errors",
+    "@latimer-woods-tech/llm": "file:../llm"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

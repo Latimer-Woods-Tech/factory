@@ -23,7 +23,7 @@ import {
   type ReversibilityTier,
   type Role,
   requireRole,
-} from '@adrper79-dot/studio-core';
+} from '@latimer-woods-tech/studio-core';
 
 export interface ConfirmOptions {
   action: string;

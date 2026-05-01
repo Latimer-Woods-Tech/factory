@@ -42,7 +42,7 @@ VideoKing is a Cloudflare Workers + Edge-first video streaming platform built on
 
 ```bash
 # Clone + setup
-git clone https://github.com/adrper79/factory.git
+git clone https://github.com/Latimer-Woods-Tech/factory.git
 cd Factory/apps/videoking
 npm install
 

@@ -3,7 +3,7 @@ export const metadata = {
   description: "JWT, RBAC, and middleware patterns for Factory apps",
 };
 
-# @adrper79-dot/auth — JWT & RBAC Consumption Guide
+# @latimer-woods-tech/auth — JWT & RBAC Consumption Guide
 
 **Last Updated:** April 28, 2026  
 **Target Audience:** Backend engineers building protected endpoints  
@@ -13,7 +13,7 @@ export const metadata = {
 
 ## Overview
 
-The `@adrper79-dot/auth` package provides:
+The `@latimer-woods-tech/auth` package provides:
 - **JWT token creation & validation** — Self-managed with Web Crypto API (no `jsonwebtoken` dependency)
 - **Role-Based Access Control (RBAC)** — Four built-in roles: `owner`, `admin`, `member`, `viewer`
 - **Middleware** — Hono-native auth + RBAC middleware
@@ -31,7 +31,7 @@ The `@adrper79-dot/auth` package provides:
 
 ### 1. Install the package
 ```bash
-npm install @adrper79-dot/auth
+npm install @latimer-woods-tech/auth
 ```
 
 ### 2. Set JWT_SECRET in your environment
@@ -64,7 +64,7 @@ openssl rand -base64 32
 
 ```typescript
 import { Hono } from 'hono';
-import { authMiddleware, rbacMiddleware } from '@adrper79-dot/auth';
+import { authMiddleware, rbacMiddleware } from '@latimer-woods-tech/auth';
 
 const app = new Hono();
 
@@ -111,7 +111,7 @@ interface TokenPayload {
 On a `/auth/login` endpoint:
 
 ```typescript
-import { createToken } from '@adrper79-dot/auth';
+import { createToken } from '@latimer-woods-tech/auth';
 
 app.post('/auth/login', async (c) => {
   const { email, password } = await c.req.json();
@@ -217,7 +217,7 @@ app.post('/auth/refresh', async (c) => {
 Restrict an endpoint to a single role:
 
 ```typescript
-import { rbacMiddleware } from '@adrper79-dot/auth';
+import { rbacMiddleware } from '@latimer-woods-tech/auth';
 
 app.post('/api/admin/create-user', 
   authMiddleware(c => c.env.JWT_SECRET),
@@ -299,7 +299,7 @@ app.post('/api/creator/:creatorId/monetize',
 ```typescript
 // workers/index.ts (Videoking API Worker)
 import { Hono } from 'hono';
-import { authMiddleware, rbacMiddleware } from '@adrper79-dot/auth';
+import { authMiddleware, rbacMiddleware } from '@latimer-woods-tech/auth';
 
 const app = new Hono();
 
@@ -386,7 +386,7 @@ export default app;
 Thrown when token is invalid, expired, or missing:
 
 ```typescript
-import { AuthError } from '@adrper79-dot/errors';
+import { AuthError } from '@latimer-woods-tech/errors';
 
 try {
   const payload = await verifyToken(token, secret);
@@ -404,7 +404,7 @@ try {
 Thrown when auth passes but RBAC fails:
 
 ```typescript
-import { ForbiddenError } from '@adrper79-dot/errors';
+import { ForbiddenError } from '@latimer-woods-tech/errors';
 
 if (user.role !== 'owner') {
   throw new ForbiddenError('Only workspace owner can delete', {
@@ -419,10 +419,10 @@ if (user.role !== 'owner') {
 
 ### Mock Auth for Tests
 
-Use `@adrper79-dot/testing`:
+Use `@latimer-woods-tech/testing`:
 
 ```typescript
-import { mockAuthMiddleware } from '@adrper79-dot/testing';
+import { mockAuthMiddleware } from '@latimer-woods-tech/testing';
 
 describe('Creator API', () => {
   it('allows member to upload', async () => {

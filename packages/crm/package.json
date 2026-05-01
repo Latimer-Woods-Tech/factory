@@ -1,5 +1,5 @@
 {
-  "name": "@adrper79-dot/crm",
+  "name": "@latimer-woods-tech/crm",
   "version": "0.2.0",
   "private": false,
   "publishConfig": {
@@ -27,9 +27,9 @@
     "prepublish": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
-    "@adrper79-dot/errors": "file:../errors",
-    "@adrper79-dot/neon": "file:../neon",
-    "@adrper79-dot/analytics": "file:../analytics"
+    "@latimer-woods-tech/errors": "file:../errors",
+    "@latimer-woods-tech/neon": "file:../neon",
+    "@latimer-woods-tech/analytics": "file:../analytics"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

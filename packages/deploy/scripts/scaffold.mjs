@@ -14,7 +14,7 @@
  *   --rate-limiter-id <id> Use this rate limiter namespace ID instead of placeholder
  *
  * Creates ./<app-name>/ in the current working directory with a fully wired
- * Cloudflare Worker that consumes @adrper79-dot/* packages.
+ * Cloudflare Worker that consumes @latimer-woods-tech/* packages.
  */
 
 import { execSync } from 'node:child_process';
@@ -129,7 +129,7 @@ coverage/
 `);
 
   // .npmrc — GitHub Packages auth for @adrper79-dot scope
-  write('.npmrc', `@adrper79-dot:registry=https://npm.pkg.github.com
+  write('.npmrc', `@latimer-woods-tech:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=\${NODE_AUTH_TOKEN}
 `);
 
@@ -148,18 +148,18 @@ coverage/
       'test:watch': 'vitest',
     },
     dependencies: {
-      '@adrper79-dot/errors': '^0.2.0',
-      '@adrper79-dot/logger': '^0.2.0',
-      '@adrper79-dot/monitoring': '^0.2.0',
-      '@adrper79-dot/auth': '^0.2.0',
-      '@adrper79-dot/neon': '^0.2.0',
-      '@adrper79-dot/analytics': '^0.2.0',
-      '@adrper79-dot/deploy': '^0.2.0',
+      '@latimer-woods-tech/errors': '^0.2.0',
+      '@latimer-woods-tech/logger': '^0.2.0',
+      '@latimer-woods-tech/monitoring': '^0.2.0',
+      '@latimer-woods-tech/auth': '^0.2.0',
+      '@latimer-woods-tech/neon': '^0.2.0',
+      '@latimer-woods-tech/analytics': '^0.2.0',
+      '@latimer-woods-tech/deploy': '^0.2.0',
       'drizzle-orm': '^0.43.0',
       hono: '^4.12.15',
     },
     devDependencies: {
-      '@adrper79-dot/testing': '^0.2.0',
+      '@latimer-woods-tech/testing': '^0.2.0',
       '@cloudflare/workers-types': '^4.20260426.1',
       '@cloudflare/vitest-pool-workers': '^0.8.0',
       'drizzle-kit': '^0.31.0',
@@ -193,7 +193,7 @@ coverage/
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/index.ts",
 
-  // ── Hyperdrive (Neon Postgres via @adrper79-dot/neon) ──────────────────────
+  // ── Hyperdrive (Neon Postgres via @latimer-woods-tech/neon) ──────────────────────
   "hyperdrive": [
     {
       "binding": "DB",
@@ -261,9 +261,9 @@ import {
   ErrorCodes,
   withErrorBoundary,
   toErrorResponse,
-} from '@adrper79-dot/errors';
-import { createDb } from '@adrper79-dot/neon';
-import { jwtMiddleware } from '@adrper79-dot/auth';
+} from '@latimer-woods-tech/errors';
+import { createDb } from '@latimer-woods-tech/neon';
+import { jwtMiddleware } from '@latimer-woods-tech/auth';
 import type { Env } from './env.js';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -287,7 +287,7 @@ app.get('/api/me', (c) => {
 // ── Add your routes here ─────────────────────────────────────────────────────
 //
 // Example: mount the admin panel
-// import { createAdminRouter } from '@adrper79-dot/admin';
+// import { createAdminRouter } from '@latimer-woods-tech/admin';
 // app.route('/admin', createAdminRouter({
 //   db: createDb(c.env.DB),
 //   appId: '${APP_NAME}',
@@ -350,7 +350,7 @@ export const example = pgTable('example', {
     extends: ['config:base'],
     registryUrls: ['https://npm.pkg.github.com'],
     packageRules: [{
-      matchPackagePrefixes: ['@adrper79-dot/'],
+      matchPackagePrefixes: ['@latimer-woods-tech/'],
       pinVersions: true,
       automerge: false,
       labels: ['factory-core-update'],
@@ -617,7 +617,7 @@ async function main() {
     await configureSecrets();
   } else {
     console.log('  ⏭  Skipped. Run later:');
-    console.log(`     node node_modules/@adrper79-dot/deploy/scripts/setup-secrets.sh ${APP_NAME}`);
+    console.log(`     node node_modules/@latimer-woods-tech/deploy/scripts/setup-secrets.sh ${APP_NAME}`);
   }
 
   // First deploy
@@ -645,13 +645,13 @@ Next steps:
   4. Push to main to trigger CI/CD
 
 Optional extras (install as needed):
-  @adrper79-dot/stripe     — Stripe billing + webhooks
-  @adrper79-dot/llm        — Anthropic → Grok → Groq failover
-  @adrper79-dot/telephony  — Telnyx + Deepgram + ElevenLabs
-  @adrper79-dot/email      — Resend transactional + drip
-  @adrper79-dot/crm        — cross-app lead + conversion tracking
-  @adrper79-dot/compliance — TCPA / FDCPA consent logging
-  @adrper79-dot/admin      — Hono admin router (dashboard, users, events)
+  @latimer-woods-tech/stripe     — Stripe billing + webhooks
+  @latimer-woods-tech/llm        — Anthropic → Grok → Groq failover
+  @latimer-woods-tech/telephony  — Telnyx + Deepgram + ElevenLabs
+  @latimer-woods-tech/email      — Resend transactional + drip
+  @latimer-woods-tech/crm        — cross-app lead + conversion tracking
+  @latimer-woods-tech/compliance — TCPA / FDCPA consent logging
+  @latimer-woods-tech/admin      — Hono admin router (dashboard, users, events)
 `);
 }
 

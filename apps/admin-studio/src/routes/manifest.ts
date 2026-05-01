@@ -14,7 +14,7 @@ import {
   MANIFEST_VERSION,
   type FunctionManifest,
   type ManifestEntry,
-} from '@adrper79-dot/studio-core';
+} from '@latimer-woods-tech/studio-core';
 import type { AppEnv } from '../types.js';
 
 const manifest = new Hono<AppEnv>();

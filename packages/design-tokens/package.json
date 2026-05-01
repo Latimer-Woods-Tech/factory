@@ -1,5 +1,5 @@
 {
-  "name": "@adrper79-dot/design-tokens",
+  "name": "@latimer-woods-tech/design-tokens",
   "version": "0.2.0",
   "private": false,
   "description": "Design system tokens (colors, spacing, typography, motion) for Factory apps",

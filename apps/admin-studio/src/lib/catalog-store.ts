@@ -9,7 +9,7 @@
  * Best-effort like audit-store — DB outage must not 5xx the crawl
  * response; the route surfaces a soft warning instead.
  */
-import { createDb, sql, type FactoryDb, type HyperdriveBinding } from '@adrper79-dot/neon';
+import { createDb, sql, type FactoryDb, type HyperdriveBinding } from '@latimer-woods-tech/neon';
 import type {
   FunctionCatalogRow,
   FunctionManifest,
@@ -17,7 +17,7 @@ import type {
   SmokeProbe,
   AuthRequirement,
   Reversibility,
-} from '@adrper79-dot/studio-core';
+} from '@latimer-woods-tech/studio-core';
 
 const dbCache = new WeakMap<HyperdriveBinding, FactoryDb>();
 

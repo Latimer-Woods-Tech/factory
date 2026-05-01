@@ -67,7 +67,7 @@ This script:
 
 ### 2b. Renovate (automated dependency PRs in consumers)
 
-Renovate watches the GitHub Package Registry for new `@adrper79-dot/*` versions.
+Renovate watches the GitHub Package Registry for new `@latimer-woods-tech/*` versions.
 Consumer repos receive a Renovate PR with a lockfile update automatically.
 No further action is required in most cases — merge the PR after CI passes.
 
@@ -111,10 +111,10 @@ Internal apps in `apps/` that depend on the package:
 ```sh
 # From the Factory repo root
 cd apps/<app>
-npm install @adrper79-dot/<name>@<new-version>
+npm install @latimer-woods-tech/<name>@<new-version>
 # Commits package-lock.json
 git add package-lock.json package.json
-git commit -m "chore(<app>): bump @adrper79-dot/<name> to <new-version>"
+git commit -m "chore(<app>): bump @latimer-woods-tech/<name> to <new-version>"
 ```
 
 Then push and let CI run (`validate` workflow) before continuing.
@@ -125,9 +125,9 @@ For external repos (prime-self, xico-city, etc.):
 
 ```sh
 # In external repo root
-npm install @adrper79-dot/<name>@<new-version>
+npm install @latimer-woods-tech/<name>@<new-version>
 git add package-lock.json package.json
-git commit -m "chore: bump @adrper79-dot/<name> to <new-version>"
+git commit -m "chore: bump @latimer-woods-tech/<name> to <new-version>"
 git push origin main
 ```
 
@@ -191,11 +191,11 @@ Relevant workflow: `.github/workflows/package-integration.yml`
 Copy into PR description or runbook entry after each release:
 
 ```
-Package: @adrper79-dot/<name>
+Package: @latimer-woods-tech/<name>
 Old version: <old>
 New version: <new>
 Tag: <name>/v<new>
-Publish run: https://github.com/adrper79-dot/factory/actions/runs/<id>
+Publish run: https://github.com/Latimer-Woods-Tech/factory/actions/runs/<id>
 
 Internal consumers updated:
 - apps/<app>: lockfile updated, CI run <id>, ✅ green

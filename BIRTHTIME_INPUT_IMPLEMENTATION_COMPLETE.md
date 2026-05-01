@@ -2,7 +2,7 @@
 
 **Date**: April 28, 2026  
 **Status**: ✅ FULLY IMPLEMENTED, TESTED, COMMITTED, AND DEPLOYED  
-**Repository**: https://github.com/adrper79-dot/factory  
+**Repository**: https://github.com/Latimer-Woods-Tech/factory  
 **Commits**: 
 - `4eb279a` — Specification: docs/BIRTHTIME_FORMATTING_TODO.md
 - `5e44e43` — Implementation: 8 files, 1,296 lines of code

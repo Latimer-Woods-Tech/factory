@@ -8,7 +8,7 @@ import type { AppEnv } from '../types.js';
 import {
   ValidationError,
   ErrorCodes,
-} from '@adrper79-dot/errors';
+} from '@latimer-woods-tech/errors';
 import Stripe from 'stripe';
 import { eq } from 'drizzle-orm';
 import {

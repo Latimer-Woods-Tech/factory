@@ -22,7 +22,7 @@
 ### creator-onboarding.ts
 
 ```typescript
-// From @adrper79-dot/neon or local schema
+// From @latimer-woods-tech/neon or local schema
 import { creatorConnections, creators } from '../schema/drizzle.ts';
 
 // HTTP utilities
@@ -33,15 +33,15 @@ import { jwt } from 'hono/jwt';
 import { 
   createDb, 
   type HyperdriveDatabaseConfig 
-} from '@adrper79-dot/neon';
-import { createStripeClient } from '@adrper79-dot/stripe';
+} from '@latimer-woods-tech/neon';
+import { createStripeClient } from '@latimer-woods-tech/stripe';
 import { 
   ValidationError, 
   StripeError, 
   type ErrorResponse 
-} from '@adrper79-dot/errors';
-import { track } from '@adrper79-dot/analytics';
-import { logger } from '@adrper79-dot/logger';
+} from '@latimer-woods-tech/errors';
+import { track } from '@latimer-woods-tech/analytics';
+import { logger } from '@latimer-woods-tech/logger';
 
 // Database query utilities
 import { eq, and, desc, like, gte } from 'drizzle-orm';
@@ -52,11 +52,11 @@ import { eq, and, desc, like, gte } from 'drizzle-orm';
 ```typescript
 import { creatorConnections, creators, payoutBatches } from '../schema/drizzle.ts';
 import { Hono } from 'hono';
-import { createDb, type HyperdriveDatabaseConfig } from '@adrper79-dot/neon';
-import { createStripeClient } from '@adrper79-dot/stripe';
-import { ValidationError, type ErrorResponse } from '@adrper79-dot/errors';
-import { track } from '@adrper79-dot/analytics';
-import { logger } from '@adrper79-dot/logger';
+import { createDb, type HyperdriveDatabaseConfig } from '@latimer-woods-tech/neon';
+import { createStripeClient } from '@latimer-woods-tech/stripe';
+import { ValidationError, type ErrorResponse } from '@latimer-woods-tech/errors';
+import { track } from '@latimer-woods-tech/analytics';
+import { logger } from '@latimer-woods-tech/logger';
 import { eq, desc, and, like, gt, gte, lte } from 'drizzle-orm';
 import { asc, sql } from 'drizzle-orm';
 ```
@@ -73,11 +73,11 @@ import {
   creators 
 } from '../schema/drizzle.ts';
 import { Hono } from 'hono';
-import { createDb, type HyperdriveDatabaseConfig } from '@adrper79-dot/neon';
-import { createStripeClient } from '@adrper79-dot/stripe';
-import { ValidationError, type ErrorResponse, DatabaseError } from '@adrper79-dot/errors';
-import { track } from '@adrper79-dot/analytics';
-import { logger } from '@adrper79-dot/logger';
+import { createDb, type HyperdriveDatabaseConfig } from '@latimer-woods-tech/neon';
+import { createStripeClient } from '@latimer-woods-tech/stripe';
+import { ValidationError, type ErrorResponse, DatabaseError } from '@latimer-woods-tech/errors';
+import { track } from '@latimer-woods-tech/analytics';
+import { logger } from '@latimer-woods-tech/logger';
 import { eq, desc, and, or, like, gt, gte, lt, lte, isNull } from 'drizzle-orm';
 import { sql, count, sum } from 'drizzle-orm';
 ```
@@ -87,11 +87,11 @@ import { sql, count, sum } from 'drizzle-orm';
 ```typescript
 import { creatorConnections } from '../schema/drizzle.ts';
 import { Hono } from 'hono';
-import { createDb, type HyperdriveDatabaseConfig } from '@adrper79-dot/neon';
-import { createStripeClient } from '@adrper79-dot/stripe';
-import { ValidationError, type ErrorResponse } from '@adrper79-dot/errors';
-import { track } from '@adrper79-dot/analytics';
-import { logger } from '@adrper79-dot/logger';
+import { createDb, type HyperdriveDatabaseConfig } from '@latimer-woods-tech/neon';
+import { createStripeClient } from '@latimer-woods-tech/stripe';
+import { ValidationError, type ErrorResponse } from '@latimer-woods-tech/errors';
+import { track } from '@latimer-woods-tech/analytics';
+import { logger } from '@latimer-woods-tech/logger';
 import { eq } from 'drizzle-orm';
 ```
 
@@ -296,11 +296,11 @@ interface BatchExecutionEvent {
 Before marking routes as "ready":
 
 - [ ] All Drizzle table imports resolve without errors
-- [ ] All Factory package imports resolve (`@adrper79-dot/...`)
+- [ ] All Factory package imports resolve (`@latimer-woods-tech/...`)
 - [ ] TypeScript strict mode: `tsc --strict` passes
 - [ ] ESLint: `eslint . --max-warnings 0` passes
 - [ ] All middleware (auth, admin check, audit) properly typed
-- [ ] All error responses follow `@adrper79-dot/errors` format
+- [ ] All error responses follow `@latimer-woods-tech/errors` format
 - [ ] All analytics events have correct event names and params
 - [ ] All database queries have proper parameterization (no SQL injection)
 
@@ -334,7 +334,7 @@ npm run lint
 ```
 
 **Expected errors if not fixed:**
-- `Cannot find module '@adrper79-dot/...'`
+- `Cannot find module '@latimer-woods-tech/...'`
 - `Type 'any' is implicitly 'any'`
 - `Object is of type 'unknown'` (auth context not typed)
 - `Property 'xyz' does not exist on type 'xyz'` (table schema mismatch)

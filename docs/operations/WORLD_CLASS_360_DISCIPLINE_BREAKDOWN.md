@@ -69,8 +69,8 @@ This document turns the W360 queue into a discipline-based operating model.
 | `apps/video-cron` | D08, D09, D10 | Retry/recovery evidence, dispatch metrics, health proof |
 | `apps/video-studio` | D08, D03, D14 | Practitioner/Xico media templates, brand packs, validation gates |
 | `apps/videoking` / `_external_reviews/videoking` | D02, D07, D08, D13 | Reference-only status preserved; patterns extracted where reusable |
-| `adrper79-dot/prime-self` | D05, D10, D11 | Live health/auth/practitioner route verification |
-| `adrper79-dot/prime-self-ui` | D03, D04, D12, D14 | Live smoke/a11y/auth, pricing/legal/studio entry if used for launch |
+| `Latimer-Woods-Tech/prime-self` | D05, D10, D11 | Live health/auth/practitioner route verification |
+| `Latimer-Woods-Tech/prime-self-ui` | D03, D04, D12, D14 | Live smoke/a11y/auth, pricing/legal/studio entry if used for launch |
 | `xico-city` | D01-D14 as needed | S-00 through S-11 proof gates and launch package |
 | `wordis-bond` | D09, D12, D13 | Scaffold/CI/env/docs readiness, defer product scope unless approved |
 | `cypher-healing` | D09, D12, D13 | Scaffold/CI/env/docs readiness, defer product scope unless approved |
