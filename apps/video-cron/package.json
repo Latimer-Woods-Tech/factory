@@ -10,9 +10,9 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@latimer-woods-tech/errors": "0.2.0",
-    "@latimer-woods-tech/schedule": "0.2.1",
-    "@latimer-woods-tech/video": "0.2.0",
+    "@latimer-woods-tech/errors": "file:../../packages/errors",
+    "@latimer-woods-tech/schedule": "file:../../packages/schedule",
+    "@latimer-woods-tech/video": "file:../../packages/video",
     "hono": "^4.12.14"
   },
   "devDependencies": {

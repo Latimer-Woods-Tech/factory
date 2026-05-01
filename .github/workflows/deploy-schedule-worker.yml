@@ -24,11 +24,20 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Build local package dependencies
+        run: |
+          set -euo pipefail
+          for package in errors monitoring logger neon video schedule; do
+            echo "=== ${package} ==="
+            cd "packages/${package}"
+            npm ci --ignore-scripts
+            npm run build
+            cd ../..
+          done
+
       - name: Install dependencies
         run: |
           cd apps/schedule-worker
-          echo "@latimer-woods-tech:registry=https://npm.pkg.github.com" > .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
           npm install
 
       - name: Update wrangler.jsonc with Hyperdrive ID
