@@ -409,7 +409,10 @@ export function createCapabilityMiddleware(opts: CapabilityMiddlewareOpts): Midd
       const body: Record<string, unknown> = {};
       try {
         const ct = c.req.header('content-type') ?? '';
-        if (ct.includes('application/json')) Object.assign(body, (await c.req.json()) as Record<string, unknown>);
+        if (ct.includes('application/json')) {
+          const json = (await c.req.json()) as unknown;
+          if (json && typeof json === 'object') Object.assign(body, json);
+        }
       } catch { /* empty body */ }
       for (const name of Object.keys(capability.slots)) {
         slotInput[name] =

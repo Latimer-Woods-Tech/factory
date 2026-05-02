@@ -108,7 +108,7 @@ describe('validateSlots', () => {
     await expect(validateSlots({ b: { type: 'boolean' } }, { b: 'yes' })).rejects.toThrow(/boolean/);
   });
   it('referential_check via async callback', async () => {
-    const check = vi.fn(async (v: string) => v === 'known');
+    const check = vi.fn((v: string) => Promise.resolve(v === 'known'));
     await expect(validateSlots({ r: { type: 'referential', check, kind: 'user' } }, { r: 'known' })).resolves.toBeUndefined();
     await expect(validateSlots({ r: { type: 'referential', check, kind: 'user' } }, { r: 'unknown' })).rejects.toThrow(/not found/);
   });
@@ -144,7 +144,7 @@ describe('createCapabilityMiddleware', () => {
     const app = new Hono();
     app.post('/admin/users/:id/suspend', createCapabilityMiddleware({
       capability: cap, jwt: { secret: SECRET }, audit: audit.sink,
-      checkCodeownerApproval: async () => ({ approved: true }),
+      checkCodeownerApproval: () => Promise.resolve({ approved: true }),
     }), (c) => c.json({ ok: true }));
     const r = await request(app, '/admin/users/u_123/suspend', {
       method: 'POST',
@@ -162,9 +162,9 @@ describe('createCapabilityMiddleware', () => {
     const app = new Hono();
     app.post('/admin/users/:id/suspend', createCapabilityMiddleware({
       capability: cap, jwt: { secret: SECRET }, audit: audit.sink,
-      checkCodeownerApproval: async () => ({ approved: true }),
+      checkCodeownerApproval: () => Promise.resolve({ approved: true }),
     }), (c) => c.json({ ok: true }));
-    app.onError((err, c) => c.json({ error: err.message }, err instanceof Error && 'status' in err ? (err as { status: number }).status as 403 : 500));
+    app.onError((err, c) => c.json({ error: err.message }, 'status' in err ? ((err as { status: number }).status as 403) : 500));
     const r = await request(app, '/admin/users/u_1/suspend', {
       method: 'POST', headers: { authorization: `Bearer ${tok}`, 'content-type': 'application/json' },
       body: JSON.stringify({ reason: 'spam' }),
@@ -179,7 +179,7 @@ describe('createCapabilityMiddleware', () => {
     const app = new Hono();
     app.post('/admin/users/:id/suspend', createCapabilityMiddleware({
       capability: cap, jwt: { secret: SECRET }, audit: audit.sink,
-      checkCodeownerApproval: async () => ({ approved: false, reason: 'agent, not codeowner' }),
+      checkCodeownerApproval: () => Promise.resolve({ approved: false, reason: 'agent, not codeowner' }),
     }), (c) => c.json({ ok: true }));
     app.onError((err, c) => c.json({ error: err.message }, 403));
     const r = await request(app, '/admin/users/u_1/suspend', {
@@ -196,7 +196,7 @@ describe('createCapabilityMiddleware', () => {
     const app = new Hono();
     app.post('/admin/users/:id/suspend', createCapabilityMiddleware({
       capability: cap, jwt: { secret: SECRET }, audit: audit.sink,
-      checkCodeownerApproval: async () => ({ approved: true }),
+      checkCodeownerApproval: () => Promise.resolve({ approved: true }),
     }), (c) => c.json({ ok: true }));
     app.onError((err, c) => c.json({ error: err.message }, 422));
     const r = await request(app, '/admin/users/bad-id/suspend', {
