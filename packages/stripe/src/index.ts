@@ -49,6 +49,32 @@ export interface CreateCheckoutSessionOptions {
   successUrl: string;
   cancelUrl: string;
   stripeClient: Stripe;
+  /** Checkout mode. Defaults to `'subscription'`. Use `'payment'` for one-time purchases. */
+  mode?: 'subscription' | 'payment';
+  /**
+   * Idempotency key to prevent duplicate session creation on retry.
+   * Recommended when creating sessions inside retry loops.
+   */
+  idempotencyKey?: string;
+  /**
+   * Explicitly list accepted payment method types (e.g. `['card']`).
+   * When omitted, Stripe determines the list automatically.
+   */
+  paymentMethodTypes?: string[];
+  /** Metadata to attach to the Checkout session. */
+  metadata?: Record<string, string>;
+}
+
+/**
+ * Options for {@link createPortalSession}.
+ */
+export interface CreatePortalSessionOptions {
+  /** Stripe customer ID. */
+  customerId: string;
+  /** URL the customer is sent to after they leave the portal. */
+  returnUrl: string;
+  /** Configured Stripe client. */
+  stripeClient: Stripe;
 }
 
 const FACTORY_API_VERSION: Stripe.LatestApiVersion = '2025-02-24.acacia';
@@ -185,7 +211,7 @@ export async function getSubscription(
 }
 
 /**
- * Creates a Stripe Checkout session for a subscription.
+ * Creates a Stripe Checkout session for a subscription or one-time payment.
  *
  * @param options - Checkout session inputs.
  * @returns The hosted Checkout URL.
@@ -194,16 +220,55 @@ export async function getSubscription(
 export async function createCheckoutSession(
   options: CreateCheckoutSessionOptions,
 ): Promise<string> {
-  const session = await options.stripeClient.checkout.sessions.create({
-    mode: 'subscription',
+  const params: Stripe.Checkout.SessionCreateParams = {
+    mode: options.mode ?? 'subscription',
     customer: options.customerId,
     success_url: options.successUrl,
     cancel_url: options.cancelUrl,
     line_items: [{ price: options.priceId, quantity: 1 }],
-  });
+  };
+
+  if (options.paymentMethodTypes) {
+    params.payment_method_types = options.paymentMethodTypes as Stripe.Checkout.SessionCreateParams['payment_method_types'];
+  }
+
+  if (options.metadata) {
+    params.metadata = options.metadata;
+  }
+
+  const requestOptions: Stripe.RequestOptions = {};
+  if (options.idempotencyKey) {
+    requestOptions.idempotencyKey = options.idempotencyKey;
+  }
+
+  const session = await options.stripeClient.checkout.sessions.create(params, requestOptions);
 
   if (!session.url) {
     throw new InternalError('Stripe did not return a checkout URL', {
+      code: ErrorCodes.INTERNAL_ERROR,
+    });
+  }
+
+  return session.url;
+}
+
+/**
+ * Creates a Stripe Customer Portal session for self-service subscription management.
+ *
+ * @param options - Portal session inputs.
+ * @returns The hosted Customer Portal URL.
+ * @throws {InternalError} If Stripe does not return a URL.
+ */
+export async function createPortalSession(
+  options: CreatePortalSessionOptions,
+): Promise<string> {
+  const session = await options.stripeClient.billingPortal.sessions.create({
+    customer: options.customerId,
+    return_url: options.returnUrl,
+  });
+
+  if (!session.url) {
+    throw new InternalError('Stripe did not return a portal URL', {
       code: ErrorCodes.INTERNAL_ERROR,
     });
   }
