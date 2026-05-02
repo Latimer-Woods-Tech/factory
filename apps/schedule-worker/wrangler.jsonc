@@ -2,7 +2,9 @@
   "name": "schedule-worker",
   "main": "src/index.ts",
   "compatibility_date": "2024-09-23",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "hyperdrive": [
     {
       "binding": "DB",
@@ -24,7 +26,19 @@
       ],
       "vars": {
         "ENVIRONMENT": "production"
-      }
+      },
+      "kv_namespaces": [
+        {
+          "binding": "MONITOR_KV",
+          "id": "6579dabe32f0444ba29bfb722c1e02b1"
+        }
+      ]
     }
-  }
+  },
+  "kv_namespaces": [
+    {
+      "binding": "MONITOR_KV",
+      "id": "6579dabe32f0444ba29bfb722c1e02b1"
+    }
+  ]
 }

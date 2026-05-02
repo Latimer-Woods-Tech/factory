@@ -51,6 +51,12 @@ export interface Env {
   /** Build SHA stamped at deploy time, surfaced in /manifest. */
   BUILD_SHA?: string;
 
+  // ── Self-improvement loop ───────────────────────────────────────────────
+  /** Shared KV for monitor snapshots. */
+  MONITOR_KV?: KVNamespace;
+  /** Service binding to schedule-worker for /diagnostics calls. */
+  SCHEDULE_WORKER?: Fetcher;
+
   // ── T3: Creator onboarding + payout operations ──────────────────────────
   /** Stripe secret key for Connect OAuth and transfer operations. */
   STRIPE_SECRET_KEY?: string;
