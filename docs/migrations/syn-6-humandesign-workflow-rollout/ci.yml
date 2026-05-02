@@ -7,6 +7,8 @@
 #
 # Reusable source: Latimer-Woods-Tech/factory/.github/workflows/_app-ci.yml@main
 
+name: CI
+
 concurrency:
   group: ci-${{ github.head_ref || github.ref }}
   cancel-in-progress: true

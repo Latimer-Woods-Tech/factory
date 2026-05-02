@@ -9,6 +9,8 @@
 #   _app-deploy-pages.yml    — Cloudflare Pages deploy
 #   _post-deploy-verify.yml  — health probe + auto-rollback
 
+name: Deploy
+
 concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: false

@@ -6,6 +6,8 @@
 #
 # Reusable source: Latimer-Woods-Tech/factory/.github/workflows/_app-prod-canary.yml@main
 
+name: Production Canary
+
 concurrency:
   group: canary-${{ github.ref }}
   cancel-in-progress: true
