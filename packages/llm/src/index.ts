@@ -1,9 +1,8 @@
 import {
-  ErrorCodes,
-  FactoryBaseError,
   InternalError,
   RateLimitError,
   ValidationError,
+  toErrorResponse,
   type FactoryResponse,
 } from '@latimer-woods-tech/errors';
 import type { Logger } from '@latimer-woods-tech/logger';
@@ -516,7 +515,6 @@ export async function complete(
         actor: opts.actor,
       });
       return {
-        ok: true,
         data: {
           content: result.parsed.content,
           provider: leg.provider,
@@ -532,25 +530,20 @@ export async function complete(
           attempts: result.attempts,
           gatewayRequestId: result.gatewayRequestId,
         },
+        error: null,
       };
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') {
-        return {
-          ok: false,
-          error: new FactoryBaseError(
-            ErrorCodes.INTERNAL_ERROR,
-            'llm call aborted',
-            { provider: leg.provider, model: leg.model },
-          ),
-        };
+        return toErrorResponse(
+          new InternalError('llm call aborted', { provider: leg.provider, model: leg.model }),
+        );
       }
       if (isProviderError(e)) {
         attempts.push({ provider: e.provider, status: e.status, message: e.message });
         if (e.status === 429 && !route.fallback) {
-          return {
-            ok: false,
-            error: new RateLimitError(`llm rate limited on ${e.provider}`, { attempts }),
-          };
+          return toErrorResponse(
+            new RateLimitError(`llm rate limited on ${e.provider}`, { attempts }),
+          );
         }
         logger?.warn?.('llm.leg.failed', { provider: leg.provider, status: e.status });
         continue;
@@ -559,10 +552,9 @@ export async function complete(
     }
   }
 
-  return {
-    ok: false,
-    error: new InternalError('LLM_ALL_PROVIDERS_FAILED', { attempts, tier, tokenEstimate }),
-  };
+  return toErrorResponse(
+    new InternalError('LLM_ALL_PROVIDERS_FAILED', { attempts, tier, tokenEstimate }),
+  );
 }
 
 export { MODELS };

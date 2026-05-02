@@ -40,15 +40,15 @@ describe('complete', () => {
       { tier: 'balanced' },
       { fetch: fetchImpl as unknown as typeof fetch, now: () => 1000 },
     );
-    expect(res.ok).toBe(true);
-    if (!res.ok) return;
-    expect(res.data.provider).toBe('anthropic');
-    expect(res.data.tier).toBe('balanced');
-    expect(res.data.tokens.input).toBe(12);
-    expect(res.data.gatewayRequestId).toBe('aig-xyz');
+    expect(res.error).toBeNull();
+    expect(res.data).not.toBeNull();
+    expect(res.data!.provider).toBe('anthropic');
+    expect(res.data!.tier).toBe('balanced');
+    expect(res.data!.tokens.input).toBe(12);
+    expect(res.data!.gatewayRequestId).toBe('aig-xyz');
     expect(fetchImpl).toHaveBeenCalledOnce();
-    const [url] = fetchImpl.mock.calls[0];
-    expect(String(url)).toContain('anthropic/v1/messages');
+    const call = fetchImpl.mock.calls[0]!;
+    expect(String(call[0])).toContain('anthropic/v1/messages');
   });
 
   it('routes long-context balanced to Gemini primary', async () => {
@@ -56,16 +56,15 @@ describe('complete', () => {
       if (String(url).includes('google-vertex-ai')) return Promise.resolve(geminiResponse('long'));
       return Promise.resolve(new Response('', { status: 500 }));
     });
-    const longText = 'x'.repeat(700_000); // ~175k tokens estimated
+    const longText = 'x'.repeat(700_000);
     const res = await complete(
       [{ role: 'user', content: longText }],
       ENV,
       { tier: 'balanced' },
       { fetch: fetchImpl as unknown as typeof fetch },
     );
-    expect(res.ok).toBe(true);
-    if (!res.ok) return;
-    expect(res.data.provider).toBe('gemini');
+    expect(res.error).toBeNull();
+    expect(res.data!.provider).toBe('gemini');
   });
 
   it('falls back to Gemini when Anthropic returns 503', async () => {
@@ -80,9 +79,8 @@ describe('complete', () => {
       { tier: 'balanced' },
       { fetch: fetchImpl as unknown as typeof fetch },
     );
-    expect(res.ok).toBe(true);
-    if (!res.ok) return;
-    expect(res.data.provider).toBe('gemini');
+    expect(res.error).toBeNull();
+    expect(res.data!.provider).toBe('gemini');
   });
 
   it('verifier tier hits Groq only', async () => {
@@ -103,11 +101,10 @@ describe('complete', () => {
       { tier: 'verifier' },
       { fetch: fetchImpl as unknown as typeof fetch },
     );
-    expect(res.ok).toBe(true);
-    if (!res.ok) return;
-    expect(res.data.provider).toBe('groq');
-    const [url] = fetchImpl.mock.calls[0];
-    expect(String(url)).toContain('groq/openai/v1/chat/completions');
+    expect(res.error).toBeNull();
+    expect(res.data!.provider).toBe('groq');
+    const call = fetchImpl.mock.calls[0]!;
+    expect(String(call[0])).toContain('groq/openai/v1/chat/completions');
   });
 
   it('returns LLM_ALL_PROVIDERS_FAILED when both legs fail non-retryably', async () => {
@@ -118,9 +115,10 @@ describe('complete', () => {
       { tier: 'balanced' },
       { fetch: fetchImpl as unknown as typeof fetch },
     );
-    expect(res.ok).toBe(false);
-    if (res.ok) return;
-    expect(res.error.code).toBe('LLM_ALL_PROVIDERS_FAILED');
+    expect(res.data).toBeNull();
+    expect(res.error).not.toBeNull();
+    expect(res.error!.code).toBe('INTERNAL_ERROR');
+    expect(res.error!.message).toContain('LLM_ALL_PROVIDERS_FAILED');
   });
 
   it('throws on missing AI_GATEWAY_BASE_URL', async () => {
@@ -147,8 +145,7 @@ describe('complete', () => {
     );
     ctl.abort();
     const res = await p;
-    expect(res.ok).toBe(false);
-    if (res.ok) return;
-    expect(res.error.message).toMatch(/aborted/);
+    expect(res.data).toBeNull();
+    expect(res.error?.message).toMatch(/aborted/);
   });
 });
