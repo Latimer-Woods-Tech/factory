@@ -244,7 +244,10 @@ ai.post('/proposals', async (c) => {
     [{ role: 'user', content: userPrompt }],
     {
       ANTHROPIC_API_KEY: c.env.ANTHROPIC_API_KEY,
-      GROK_API_KEY: c.env.XAI_API_KEY ?? '',
+      AI_GATEWAY_BASE_URL: c.env.AI_GATEWAY_BASE_URL ?? '',
+      VERTEX_ACCESS_TOKEN: c.env.VERTEX_ACCESS_TOKEN ?? '',
+      VERTEX_PROJECT: c.env.VERTEX_PROJECT ?? '',
+      VERTEX_LOCATION: c.env.VERTEX_LOCATION ?? 'us-central1',
       GROQ_API_KEY: c.env.GROQ_API_KEY ?? '',
     },
     { system, maxTokens: 4096, temperature: 0.2 },
