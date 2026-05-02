@@ -1,3 +1,5 @@
+> 🔴 **NEW (2026-05-02): Rules on the Fridge** — before doing anything in this repo, read [`docs/supervisor/FRIDGE.md`](./supervisor/FRIDGE.md). That is your step 0. The rest of this file still applies.
+
 # AGENTS.md
 
 You are an AI agent landing in this repository. **Read this file first.** It tells you the rules of engagement so you don't break things or duplicate work.
