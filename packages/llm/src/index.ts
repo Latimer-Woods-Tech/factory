@@ -17,19 +17,43 @@ export interface LLMMessage {
 }
 
 /**
+ * Quality tier selected by the caller. Routing is workload-split:
+ *  - `fast`      → Anthropic Haiku (short, latency-sensitive)
+ *  - `balanced`  → Anthropic Sonnet (default)
+ *  - `smart`     → Anthropic Opus OR Gemini 2.5 Pro if input is long-context (>150k tokens estimated)
+ *  - `verifier`  → Groq Llama (cheap second opinion; only used from verifier code path)
+ */
+export type LLMTier = 'fast' | 'balanced' | 'smart' | 'verifier';
+
+/**
  * Options that influence LLM completion behaviour.
  */
 export interface LLMOptions {
+  /** Quality tier; see {@link LLMTier}. Defaults to `balanced`. */
+  tier?: LLMTier;
+  /** Explicit model override. Takes precedence over tier. */
   model?: string;
   maxTokens?: number;
   temperature?: number;
   system?: string;
+  /** Token budget above which we force long-context routing (Gemini). */
+  longContextThreshold?: number;
+  /** Per-call cancellation signal. Aborts the in-flight provider request. */
+  signal?: AbortSignal;
+  /** Optional run identifier stamped on ledger rows + logs. */
+  runId?: string;
+  /** Optional project identifier stamped on ledger rows + logs. */
+  project?: string;
+  /** Optional actor identifier (supervisor / worker / human). */
+  actor?: string;
+  /** Anthropic prompt-cache control. Defaults to `true` for `system` prompts ≥ 1024 tokens. */
+  promptCache?: boolean;
 }
 
 /**
- * Provider that produced an LLM response.
+ * Provider that produced an LLM response. `grok` removed in 0.3.0.
  */
-export type LLMProvider = 'anthropic' | 'grok' | 'groq';
+export type LLMProvider = 'anthropic' | 'gemini' | 'groq';
 
 /**
  * Result returned by a successful completion.
@@ -37,17 +61,35 @@ export type LLMProvider = 'anthropic' | 'grok' | 'groq';
 export interface LLMResult {
   content: string;
   provider: LLMProvider;
-  tokens: { input: number; output: number };
+  model: string;
+  tier: LLMTier;
+  tokens: { input: number; output: number; cacheRead?: number; cacheWrite?: number };
   latency: number;
+  /** Number of attempts before success (1 = primary succeeded). */
+  attempts: number;
+  /** Monotonic request id from AI Gateway, if present in headers. */
+  gatewayRequestId?: string;
 }
 
 /**
  * Environment bindings required by {@link complete}.
+ *
+ * `AI_GATEWAY_BASE_URL` is REQUIRED in 0.3.0. All provider calls flow through the
+ * Cloudflare AI Gateway for unified logging, rate limiting, and cost telemetry.
+ * In test/dev the caller may pass a custom fetch impl that short-circuits this.
  */
 export interface LLMEnv {
+  AI_GATEWAY_BASE_URL: string;
   ANTHROPIC_API_KEY: string;
-  GROK_API_KEY: string;
   GROQ_API_KEY: string;
+  /**
+   * Google Cloud short-lived access token with `aiplatform.endpoints.predict`.
+   * Callers mint this via the JWT-bearer flow (service account → token exchange);
+   * see `docs/runbooks/rotate-gcp-sa.md`. Token must be valid for ≥ 5 minutes.
+   */
+  VERTEX_ACCESS_TOKEN: string;
+  VERTEX_PROJECT: string;
+  VERTEX_LOCATION: string;
 }
 
 /**
@@ -59,109 +101,268 @@ export interface LLMDeps {
   now?: () => number;
 }
 
+// Model catalogue — keep in sync with docs/architecture/FACTORY_V1.md § LLM substrate.
+const MODELS = {
+  anthropic: {
+    fast: 'claude-haiku-4-20250514',
+    balanced: 'claude-sonnet-4-20250514',
+    smart: 'claude-opus-4-20250514',
+  },
+  gemini: {
+    smart: 'gemini-2.5-pro',
+  },
+  groq: {
+    verifier: 'llama-3.3-70b-versatile',
+  },
+} as const;
+
 const DEFAULT_MAX_TOKENS = 1024;
 const DEFAULT_TEMPERATURE = 0.7;
-const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
-const DEFAULT_GROK_MODEL = 'grok-3-fast';
-const DEFAULT_GROQ_MODEL = 'llama-3.3-70b-versatile';
+const DEFAULT_LONG_CONTEXT_THRESHOLD = 150_000; // tokens
+const MAX_ATTEMPTS = 3;
+const BASE_BACKOFF_MS = 250;
 
 interface ProviderError {
+  provider: LLMProvider;
   status: number;
+  retryable: boolean;
   message: string;
 }
 
-function isFailover(status: number): boolean {
-  return status === 429 || status >= 500;
+function isRetryable(status: number): boolean {
+  return status === 408 || status === 425 || status === 429 || status >= 500;
 }
 
-function buildAnthropicBody(messages: LLMMessage[], opts: LLMOptions, system?: string): string {
+function estimateTokens(messages: LLMMessage[], system?: string): number {
+  // Cheap estimator: ~4 chars/token. Good enough for threshold routing.
+  let chars = system?.length ?? 0;
+  for (const m of messages) chars += m.content.length;
+  return Math.ceil(chars / 4);
+}
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(resolve, ms);
+    if (signal) {
+      const onAbort = () => {
+        clearTimeout(t);
+        reject(new DOMException('Aborted', 'AbortError'));
+      };
+      if (signal.aborted) onAbort();
+      else signal.addEventListener('abort', onAbort, { once: true });
+    }
+  });
+}
+
+// ─── Provider request builders ─────────────────────────────────────────────
+
+function buildAnthropicRequest(
+  model: string,
+  messages: LLMMessage[],
+  opts: LLMOptions,
+  env: LLMEnv,
+): { url: string; headers: Record<string, string>; body: string } {
+  const sys = opts.system ?? messages.find((m) => m.role === 'system')?.content;
   const filtered = messages.filter((m) => m.role !== 'system');
-  const sys = system ?? messages.find((m) => m.role === 'system')?.content;
   const body: Record<string, unknown> = {
-    model: opts.model ?? DEFAULT_ANTHROPIC_MODEL,
+    model,
     max_tokens: opts.maxTokens ?? DEFAULT_MAX_TOKENS,
     temperature: opts.temperature ?? DEFAULT_TEMPERATURE,
     messages: filtered.map((m) => ({ role: m.role, content: m.content })),
   };
   if (sys) {
-    body.system = sys;
+    const cache = opts.promptCache ?? sys.length >= 4096;
+    body.system = cache
+      ? [{ type: 'text', text: sys, cache_control: { type: 'ephemeral' } }]
+      : sys;
   }
-  return JSON.stringify(body);
+  return {
+    url: `${env.AI_GATEWAY_BASE_URL}/anthropic/v1/messages`,
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-beta': 'prompt-caching-2024-07-31',
+    },
+    body: JSON.stringify(body),
+  };
 }
 
-function buildOpenAIBody(
+function buildGeminiRequest(
   model: string,
   messages: LLMMessage[],
   opts: LLMOptions,
-  system?: string,
-): string {
-  const sys = system ?? messages.find((m) => m.role === 'system')?.content;
-  const merged: LLMMessage[] = [];
+  env: LLMEnv,
+): { url: string; headers: Record<string, string>; body: string } {
+  const sys = opts.system ?? messages.find((m) => m.role === 'system')?.content;
+  const contents = messages
+    .filter((m) => m.role !== 'system')
+    .map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+  const body: Record<string, unknown> = {
+    contents,
+    generationConfig: {
+      maxOutputTokens: opts.maxTokens ?? DEFAULT_MAX_TOKENS,
+      temperature: opts.temperature ?? DEFAULT_TEMPERATURE,
+    },
+  };
   if (sys) {
-    merged.push({ role: 'system', content: sys });
+    body.systemInstruction = { parts: [{ text: sys }] };
   }
-  for (const m of messages) {
-    if (m.role !== 'system') {
-      merged.push(m);
-    }
-  }
-  return JSON.stringify({
-    model,
-    max_tokens: opts.maxTokens ?? DEFAULT_MAX_TOKENS,
-    temperature: opts.temperature ?? DEFAULT_TEMPERATURE,
-    messages: merged,
-  });
+  const path = `v1/projects/${env.VERTEX_PROJECT}/locations/${env.VERTEX_LOCATION}/publishers/google/models/${model}:generateContent`;
+  return {
+    url: `${env.AI_GATEWAY_BASE_URL}/google-vertex-ai/${path}`,
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${env.VERTEX_ACCESS_TOKEN}`,
+    },
+    body: JSON.stringify(body),
+  };
 }
+
+function buildGroqRequest(
+  model: string,
+  messages: LLMMessage[],
+  opts: LLMOptions,
+  env: LLMEnv,
+): { url: string; headers: Record<string, string>; body: string } {
+  const sys = opts.system ?? messages.find((m) => m.role === 'system')?.content;
+  const merged: LLMMessage[] = [];
+  if (sys) merged.push({ role: 'system', content: sys });
+  for (const m of messages) if (m.role !== 'system') merged.push(m);
+  return {
+    url: `${env.AI_GATEWAY_BASE_URL}/groq/openai/v1/chat/completions`,
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${env.GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: opts.maxTokens ?? DEFAULT_MAX_TOKENS,
+      temperature: opts.temperature ?? DEFAULT_TEMPERATURE,
+      messages: merged,
+    }),
+  };
+}
+
+// ─── Response parsers ──────────────────────────────────────────────────────
 
 interface AnthropicResponse {
   content?: Array<{ type: string; text?: string }>;
-  usage?: { input_tokens?: number; output_tokens?: number };
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    cache_read_input_tokens?: number;
+    cache_creation_input_tokens?: number;
+  };
+  model?: string;
 }
 
-interface OpenAIResponse {
+interface GeminiResponse {
+  candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+  };
+}
+
+interface GroqResponse {
   choices?: Array<{ message?: { content?: string } }>;
   usage?: { prompt_tokens?: number; completion_tokens?: number };
+  model?: string;
 }
 
-function parseAnthropic(json: unknown): { content: string; input: number; output: number } {
+function parseAnthropic(
+  json: unknown,
+): { content: string; input: number; output: number; cacheRead: number; cacheWrite: number; model?: string } {
   const r = json as AnthropicResponse;
-  const text = r.content?.find((c) => c.type === 'text')?.text ?? '';
   return {
-    content: text,
+    content: r.content?.find((c) => c.type === 'text')?.text ?? '',
     input: r.usage?.input_tokens ?? 0,
     output: r.usage?.output_tokens ?? 0,
+    cacheRead: r.usage?.cache_read_input_tokens ?? 0,
+    cacheWrite: r.usage?.cache_creation_input_tokens ?? 0,
+    model: r.model,
   };
 }
 
-function parseOpenAI(json: unknown): { content: string; input: number; output: number } {
-  const r = json as OpenAIResponse;
-  const text = r.choices?.[0]?.message?.content ?? '';
+function parseGemini(json: unknown): { content: string; input: number; output: number } {
+  const r = json as GeminiResponse;
+  const text =
+    r.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
   return {
     content: text,
-    input: r.usage?.prompt_tokens ?? 0,
-    output: r.usage?.completion_tokens ?? 0,
+    input: r.usageMetadata?.promptTokenCount ?? 0,
+    output: r.usageMetadata?.candidatesTokenCount ?? 0,
   };
 }
 
-async function callProvider(
+function parseGroq(json: unknown): { content: string; input: number; output: number; model?: string } {
+  const r = json as GroqResponse;
+  return {
+    content: r.choices?.[0]?.message?.content ?? '',
+    input: r.usage?.prompt_tokens ?? 0,
+    output: r.usage?.completion_tokens ?? 0,
+    model: r.model,
+  };
+}
+
+// ─── Core call with backoff ────────────────────────────────────────────────
+
+async function callWithBackoff(
   provider: LLMProvider,
   request: { url: string; headers: Record<string, string>; body: string },
   fetchImpl: typeof fetch,
-): Promise<unknown> {
-  const response = await fetchImpl(request.url, {
-    method: 'POST',
-    headers: request.headers,
-    body: request.body,
-  });
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    const err: ProviderError = {
-      status: response.status,
-      message: `${provider} request failed (${String(response.status)}): ${text.slice(0, 200)}`,
-    };
-    throw err;
+  signal: AbortSignal | undefined,
+  logger: Logger | undefined,
+): Promise<{ json: unknown; gatewayRequestId?: string; attempts: number }> {
+  let lastErr: ProviderError | undefined;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetchImpl(request.url, {
+        method: 'POST',
+        headers: request.headers,
+        body: request.body,
+        signal,
+      });
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        const err: ProviderError = {
+          provider,
+          status: response.status,
+          retryable: isRetryable(response.status),
+          message: `${provider} ${String(response.status)}: ${text.slice(0, 300)}`,
+        };
+        logger?.warn?.('llm.provider.error', { provider, status: response.status, attempt });
+        if (!err.retryable || attempt === MAX_ATTEMPTS) throw err;
+        lastErr = err;
+      } else {
+        const gatewayRequestId = response.headers.get('cf-aig-request-id') ?? undefined;
+        return { json: await response.json(), gatewayRequestId, attempts: attempt };
+      }
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') throw e;
+      if (typeof e === 'object' && e !== null && 'retryable' in e) {
+        const err = e as ProviderError;
+        if (!err.retryable || attempt === MAX_ATTEMPTS) throw err;
+        lastErr = err;
+      } else {
+        const err: ProviderError = {
+          provider,
+          status: 0,
+          retryable: true,
+          message: e instanceof Error ? e.message : String(e),
+        };
+        if (attempt === MAX_ATTEMPTS) throw err;
+        lastErr = err;
+      }
+    }
+    const backoff = BASE_BACKOFF_MS * 2 ** (attempt - 1) + Math.floor(Math.random() * 100);
+    await sleep(backoff, signal);
   }
-  return (await response.json()) as unknown;
+  throw lastErr ?? { provider, status: 0, retryable: false, message: 'exhausted' };
 }
 
 function isProviderError(err: unknown): err is ProviderError {
@@ -169,19 +370,110 @@ function isProviderError(err: unknown): err is ProviderError {
     typeof err === 'object' &&
     err !== null &&
     typeof (err as { status?: unknown }).status === 'number' &&
-    typeof (err as { message?: unknown }).message === 'string'
+    typeof (err as { message?: unknown }).message === 'string' &&
+    typeof (err as { provider?: unknown }).provider === 'string'
   );
 }
 
+// ─── Routing ───────────────────────────────────────────────────────────────
+
+interface RoutePlan {
+  primary: { provider: LLMProvider; model: string };
+  fallback?: { provider: LLMProvider; model: string };
+}
+
+function plan(tier: LLMTier, opts: LLMOptions, tokenEstimate: number): RoutePlan {
+  if (opts.model) {
+    // Explicit override — best-effort provider detection.
+    const m = opts.model;
+    if (m.startsWith('claude')) return { primary: { provider: 'anthropic', model: m } };
+    if (m.startsWith('gemini')) return { primary: { provider: 'gemini', model: m } };
+    return { primary: { provider: 'groq', model: m } };
+  }
+  const longContext = tokenEstimate >= (opts.longContextThreshold ?? DEFAULT_LONG_CONTEXT_THRESHOLD);
+  switch (tier) {
+    case 'verifier':
+      return { primary: { provider: 'groq', model: MODELS.groq.verifier } };
+    case 'smart':
+      return longContext
+        ? {
+            primary: { provider: 'gemini', model: MODELS.gemini.smart },
+            fallback: { provider: 'anthropic', model: MODELS.anthropic.smart },
+          }
+        : {
+            primary: { provider: 'anthropic', model: MODELS.anthropic.smart },
+            fallback: { provider: 'gemini', model: MODELS.gemini.smart },
+          };
+    case 'fast':
+      return { primary: { provider: 'anthropic', model: MODELS.anthropic.fast } };
+    case 'balanced':
+    default:
+      return longContext
+        ? {
+            primary: { provider: 'gemini', model: MODELS.gemini.smart },
+            fallback: { provider: 'anthropic', model: MODELS.anthropic.balanced },
+          }
+        : {
+            primary: { provider: 'anthropic', model: MODELS.anthropic.balanced },
+            fallback: { provider: 'gemini', model: MODELS.gemini.smart },
+          };
+  }
+}
+
+async function callOne(
+  leg: { provider: LLMProvider; model: string },
+  messages: LLMMessage[],
+  opts: LLMOptions,
+  env: LLMEnv,
+  fetchImpl: typeof fetch,
+  logger: Logger | undefined,
+): Promise<{ parsed: { content: string; input: number; output: number; cacheRead?: number; cacheWrite?: number; model?: string }; gatewayRequestId?: string; attempts: number }> {
+  let req: { url: string; headers: Record<string, string>; body: string };
+  switch (leg.provider) {
+    case 'anthropic':
+      req = buildAnthropicRequest(leg.model, messages, opts, env);
+      break;
+    case 'gemini':
+      req = buildGeminiRequest(leg.model, messages, opts, env);
+      break;
+    case 'groq':
+      req = buildGroqRequest(leg.model, messages, opts, env);
+      break;
+  }
+  const { json, gatewayRequestId, attempts } = await callWithBackoff(
+    leg.provider,
+    req,
+    fetchImpl,
+    opts.signal,
+    logger,
+  );
+  switch (leg.provider) {
+    case 'anthropic':
+      return { parsed: parseAnthropic(json), gatewayRequestId, attempts };
+    case 'gemini':
+      return { parsed: parseGemini(json), gatewayRequestId, attempts };
+    case 'groq':
+      return { parsed: parseGroq(json), gatewayRequestId, attempts };
+  }
+}
+
 /**
- * Runs a completion through the Anthropic → Grok → Groq failover chain.
+ * Run a completion through the routing plan for the requested tier.
+ *
+ * Routing summary (0.3.0):
+ *   - `fast`     → Anthropic Haiku
+ *   - `balanced` → Anthropic Sonnet; Gemini 2.5 Pro if `longContextThreshold` exceeded
+ *   - `smart`    → Anthropic Opus; Gemini 2.5 Pro if long-context
+ *   - `verifier` → Groq Llama 3.3 70B (no fallback — verifier is inherently cheap/best-effort)
+ *
+ * All provider traffic flows through Cloudflare AI Gateway at `AI_GATEWAY_BASE_URL`.
  *
  * @param messages - Ordered chat history.
- * @param env - API key bindings.
- * @param opts - Optional model/parameters override.
+ * @param env - API key + gateway bindings.
+ * @param opts - Optional tier/model/parameters override.
  * @param deps - Optional fetch/logger/clock injection (for testing).
  * @returns A {@link FactoryResponse} carrying either an {@link LLMResult} or
- *   an `LLM_ALL_PROVIDERS_FAILED` error.
+ *   an error (`LLM_ALL_PROVIDERS_FAILED`, `LLM_RATE_LIMITED`, or `INTERNAL_ERROR`).
  */
 export async function complete(
   messages: LLMMessage[],
@@ -192,190 +484,85 @@ export async function complete(
   if (messages.length === 0) {
     throw new ValidationError('messages must not be empty');
   }
+  if (!env.AI_GATEWAY_BASE_URL) {
+    throw new ValidationError('AI_GATEWAY_BASE_URL is required in 0.3.0');
+  }
   const fetchImpl = deps.fetch ?? fetch;
   const now = deps.now ?? (() => Date.now());
   const logger = deps.logger;
   const startedAt = now();
 
+  const tier: LLMTier = opts.tier ?? 'balanced';
+  const system = opts.system ?? messages.find((m) => m.role === 'system')?.content;
+  const tokenEstimate = estimateTokens(messages, system);
+  const route = plan(tier, opts, tokenEstimate);
+
   const attempts: Array<{ provider: LLMProvider; status?: number; message: string }> = [];
 
-  // Anthropic
-  try {
-    const json = await callProvider(
-      'anthropic',
-      {
-        url: 'https://api.anthropic.com/v1/messages',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-        },
-        body: buildAnthropicBody(messages, opts, opts.system),
-      },
-      fetchImpl,
-    );
-    const parsed = parseAnthropic(json);
-    return {
-      data: {
-        content: parsed.content,
-        provider: 'anthropic',
-        tokens: { input: parsed.input, output: parsed.output },
-        latency: now() - startedAt,
-      },
-      error: null,
-    };
-  } catch (err) {
-    const status = isProviderError(err) ? err.status : 0;
-    const message = isProviderError(err) ? err.message : (err as Error).message;
-    attempts.push({ provider: 'anthropic', status, message });
-    if (status !== 0 && !isFailover(status)) {
-      return providerErrorResponse(attempts, status === 429);
-    }
-    logger?.warn('llm.failover', { from: 'anthropic', to: 'grok', status, message });
-  }
-
-  // Grok
-  try {
-    const json = await callProvider(
-      'grok',
-      {
-        url: 'https://api.x.ai/v1/chat/completions',
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${env.GROK_API_KEY}`,
-        },
-        body: buildOpenAIBody(opts.model ?? DEFAULT_GROK_MODEL, messages, opts, opts.system),
-      },
-      fetchImpl,
-    );
-    const parsed = parseOpenAI(json);
-    return {
-      data: {
-        content: parsed.content,
-        provider: 'grok',
-        tokens: { input: parsed.input, output: parsed.output },
-        latency: now() - startedAt,
-      },
-      error: null,
-    };
-  } catch (err) {
-    const status = isProviderError(err) ? err.status : 0;
-    const message = isProviderError(err) ? err.message : (err as Error).message;
-    attempts.push({ provider: 'grok', status, message });
-    logger?.warn('llm.failover', { from: 'grok', to: 'groq', status, message });
-  }
-
-  // Groq
-  try {
-    const json = await callProvider(
-      'groq',
-      {
-        url: 'https://api.groq.com/openai/v1/chat/completions',
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${env.GROQ_API_KEY}`,
-        },
-        body: buildOpenAIBody(opts.model ?? DEFAULT_GROQ_MODEL, messages, opts, opts.system),
-      },
-      fetchImpl,
-    );
-    const parsed = parseOpenAI(json);
-    return {
-      data: {
-        content: parsed.content,
-        provider: 'groq',
-        tokens: { input: parsed.input, output: parsed.output },
-        latency: now() - startedAt,
-      },
-      error: null,
-    };
-  } catch (err) {
-    const status = isProviderError(err) ? err.status : 0;
-    const message = isProviderError(err) ? err.message : (err as Error).message;
-    attempts.push({ provider: 'groq', status, message });
-    logger?.error('llm.all_providers_failed', undefined, { attempts });
-  }
-
-  return providerErrorResponse(attempts, false);
-}
-
-function providerErrorResponse(
-  attempts: Array<{ provider: LLMProvider; status?: number; message: string }>,
-  rateLimited: boolean,
-): FactoryResponse<LLMResult> {
-  const base: FactoryBaseError = rateLimited
-    ? new RateLimitError('LLM provider rate limited', { code: ErrorCodes.LLM_RATE_LIMITED, attempts })
-    : new InternalError('All LLM providers failed', {
-        code: ErrorCodes.LLM_ALL_PROVIDERS_FAILED,
-        attempts,
+  for (const leg of [route.primary, route.fallback].filter(Boolean) as Array<{ provider: LLMProvider; model: string }>) {
+    try {
+      const result = await callOne(leg, messages, opts, env, fetchImpl, logger);
+      if (!result.parsed.content) {
+        throw { provider: leg.provider, status: 200, retryable: false, message: 'empty content' } satisfies ProviderError;
+      }
+      logger?.info?.('llm.complete', {
+        provider: leg.provider,
+        model: leg.model,
+        tier,
+        tokenEstimate,
+        attempts: result.attempts,
+        runId: opts.runId,
+        project: opts.project,
+        actor: opts.actor,
       });
+      return {
+        ok: true,
+        data: {
+          content: result.parsed.content,
+          provider: leg.provider,
+          model: result.parsed.model ?? leg.model,
+          tier,
+          tokens: {
+            input: result.parsed.input,
+            output: result.parsed.output,
+            cacheRead: result.parsed.cacheRead,
+            cacheWrite: result.parsed.cacheWrite,
+          },
+          latency: now() - startedAt,
+          attempts: result.attempts,
+          gatewayRequestId: result.gatewayRequestId,
+        },
+      };
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        return {
+          ok: false,
+          error: new FactoryBaseError(
+            ErrorCodes.INTERNAL_ERROR,
+            'llm call aborted',
+            { provider: leg.provider, model: leg.model },
+          ),
+        };
+      }
+      if (isProviderError(e)) {
+        attempts.push({ provider: e.provider, status: e.status, message: e.message });
+        if (e.status === 429 && !route.fallback) {
+          return {
+            ok: false,
+            error: new RateLimitError(`llm rate limited on ${e.provider}`, { attempts }),
+          };
+        }
+        logger?.warn?.('llm.leg.failed', { provider: leg.provider, status: e.status });
+        continue;
+      }
+      attempts.push({ provider: leg.provider, message: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
   return {
-    data: null,
-    error: {
-      code: rateLimited ? ErrorCodes.LLM_RATE_LIMITED : ErrorCodes.LLM_ALL_PROVIDERS_FAILED,
-      message: base.message,
-      status: base.status,
-      retryable: base.retryable,
-      context: base.context,
-    },
+    ok: false,
+    error: new InternalError('LLM_ALL_PROVIDERS_FAILED', { attempts, tier, tokenEstimate }),
   };
 }
 
-/**
- * Streams a completion from Anthropic. No failover is performed for streaming
- * responses; callers should fall back to {@link complete} on failure.
- *
- * @param messages - Ordered chat history.
- * @param env - Anthropic API key binding.
- * @param opts - Optional model/parameters override.
- * @param deps - Optional fetch override (for testing).
- * @returns The raw Anthropic streaming response body.
- */
-export async function stream(
-  messages: LLMMessage[],
-  env: { ANTHROPIC_API_KEY: string },
-  opts: LLMOptions = {},
-  deps: { fetch?: typeof fetch } = {},
-): Promise<ReadableStream<Uint8Array>> {
-  if (messages.length === 0) {
-    throw new ValidationError('messages must not be empty');
-  }
-  const fetchImpl = deps.fetch ?? fetch;
-  const body = JSON.parse(buildAnthropicBody(messages, opts, opts.system)) as Record<string, unknown>;
-  body.stream = true;
-  const response = await fetchImpl('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok || !response.body) {
-    throw new InternalError('Anthropic stream failed', {
-      code: ErrorCodes.LLM_ALL_PROVIDERS_FAILED,
-      status: response.status,
-    });
-  }
-  return response.body;
-}
-
-/**
- * Returns a {@link complete}-compatible function with a system prompt
- * pre-bound, so callers can hand around a domain-specific shortcut.
- *
- * @param system - System prompt to prepend to every call.
- * @returns A function that invokes {@link complete} with `system` injected.
- */
-export function withSystem(
-  system: string,
-): (
-  messages: LLMMessage[],
-  env: LLMEnv,
-  opts?: LLMOptions,
-  deps?: LLMDeps,
-) => Promise<FactoryResponse<LLMResult>> {
-  return (messages, env, opts = {}, deps = {}) =>
-    complete(messages, env, { ...opts, system }, deps);
-}
+export { MODELS };
