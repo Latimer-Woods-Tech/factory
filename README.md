@@ -1,3 +1,7 @@
+> 📘 **Canonical architecture:** [`docs/architecture/FACTORY_V1.md`](./docs/architecture/FACTORY_V1.md) — the single source of truth for what this system is and how to operate it.
+> 🔴 **Operating rules:** [`docs/supervisor/FRIDGE.md`](./docs/supervisor/FRIDGE.md) — non-negotiable; read first.
+> ⚖️ **Open decisions:** [`docs/supervisor/DECISIONS.md`](./docs/supervisor/DECISIONS.md) — gated `decision:needs-human`; resolve before SUP-3.
+
 # factory
 
 Shared CI/CD, infrastructure, and packages for every app in the **Latimer-Woods-Tech** organization.
