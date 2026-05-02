@@ -1,0 +1,28 @@
+# Production Canary — selfprime.net
+#
+# Runs every 4 hours against the live production API. On failure, alerts via
+# Pushover and rolls back the Worker to its previous version. Also triggered
+# manually via workflow_dispatch for on-demand health checks.
+#
+# Reusable source: Latimer-Woods-Tech/factory/.github/workflows/_app-prod-canary.yml@main
+
+concurrency:
+  group: canary-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+
+jobs:
+  canary:
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_app-prod-canary.yml@main
+    with:
+      base_url: https://api.selfprime.net
+      health_path: /health
+      canary_script: workers/smoke-all.mjs
+      rollback_on_failure: true
+      worker_name: prime-self-api
+      alert_on_failure: true
+    secrets: inherit

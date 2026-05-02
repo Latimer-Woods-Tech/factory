@@ -1,0 +1,61 @@
+# Deploy — Workers + Pages
+#
+# Runs on push to main only. Deploys the Cloudflare Worker API (prime-self-api)
+# and the Cloudflare Pages frontend (prime-self-ui) in parallel, then verifies
+# both health endpoints. Auto-rollback triggers if the Worker health probe fails.
+#
+# Reusable sources (Latimer-Woods-Tech/factory@main):
+#   _app-deploy.yml          — Cloudflare Workers deploy
+#   _app-deploy-pages.yml    — Cloudflare Pages deploy
+#   _post-deploy-verify.yml  — health probe + auto-rollback
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual deploy'
+        required: false
+        default: 'manual deploy'
+        type: string
+
+# ----------------------------------------------------------------------------
+# Workers (Cloudflare Worker — api.selfprime.net)
+# ----------------------------------------------------------------------------
+jobs:
+  deploy-workers:
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_app-deploy.yml@main
+    with:
+      working_directory: workers
+      environment: production
+      health_url: https://api.selfprime.net/health
+    secrets: inherit
+
+  verify-workers:
+    needs: deploy-workers
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_post-deploy-verify.yml@main
+    with:
+      health_url: https://api.selfprime.net/health
+      rollback_on_failure: true
+      worker_name: prime-self-api
+    secrets: inherit
+
+  # --------------------------------------------------------------------------
+  # Pages (Cloudflare Pages — selfprime.net)
+  # Runs in parallel with the Worker deploy; independent failure domain.
+  # --------------------------------------------------------------------------
+  deploy-pages:
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_app-deploy-pages.yml@main
+    with:
+      project_name: prime-self-ui
+      build_command: build:frontend
+      dist_dir: dist
+      environment: production
+      health_url: https://selfprime.net
+    secrets: inherit
