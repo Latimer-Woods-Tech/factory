@@ -1,3 +1,6 @@
+> 🔴 **Start here:** [`docs/supervisor/FRIDGE.md`](./docs/supervisor/FRIDGE.md) — operating rules for any work in this repo.
+> Full architecture: [`docs/supervisor/ARCHITECTURE.md`](./docs/supervisor/ARCHITECTURE.md). Open decisions: [`docs/supervisor/DECISIONS.md`](./docs/supervisor/DECISIONS.md).
+
 # factory
 
 Shared CI/CD, infrastructure, and packages for every app in the **Latimer-Woods-Tech** organization.
