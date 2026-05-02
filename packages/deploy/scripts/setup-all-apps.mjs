@@ -214,9 +214,7 @@ async function setupApp(app) {
 
   setGitHubSecret(name, 'PACKAGES_READ_TOKEN', requireEnv('PACKAGES_READ_TOKEN'));
   setGitHubSecret(name, 'CF_API_TOKEN', requireEnv('CF_API_TOKEN'));
-  setGitHubSecret(name, 'CLOUDFLARE_API_TOKEN', requireEnv('CF_API_TOKEN'));
   setGitHubSecret(name, 'CF_ACCOUNT_ID', requireEnv('CF_ACCOUNT_ID'));
-  setGitHubSecret(name, 'CLOUDFLARE_ACCOUNT_ID', requireEnv('CF_ACCOUNT_ID'));
   ensureGitHubEnvironment(name, 'staging');
   ensureGitHubEnvironment(name, 'production');
 

@@ -25,7 +25,7 @@ const configs = [
   { envKey: 'IJUSTUS_ID',        name: 'ijustus-db',        conn: process.env.IJUSTUS_CONN },
   { envKey: 'THE_CALLING_ID',    name: 'the-calling-db',    conn: process.env.THE_CALLING_CONN },
   { envKey: 'NEIGHBOR_AID_ID',   name: 'neighbor-aid-db',   conn: process.env.NEIGHBOR_AID_CONN },
-  { envKey: 'VIDEOKING_ID',      name: 'videoking-hyperdrive', conn: process.env.VIDEOKING_CONN }, // matches the existing CF config name
+  { envKey: 'VIDEOKING_ID',      name: 'videoking-hyperdrive', conn: process.env.VIDEOKING_CONN }, // preserves the legacy VideoKing Hyperdrive name used in docs/registry
   { envKey: 'XPELEVATOR_ID',      name: 'xpelevator-db',     conn: process.env.XPELEVATOR_CONN },
   { envKey: 'XICO_CITY_ID',       name: 'xico-city-db',      conn: process.env.XICO_CITY_CONN },
 ];
