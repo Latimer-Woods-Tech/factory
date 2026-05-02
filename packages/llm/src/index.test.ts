@@ -207,8 +207,8 @@ describe('complete', () => {
       { fetch: fetchImpl as unknown as typeof fetch },
     );
     expect(res.data!.tokens.cacheRead).toBe(100);
-    const call = fetchImpl.mock.calls[0] as unknown as [string | URL | Request, { body: string }];
-    const body = JSON.parse(call[1]!.body);
+    const call = fetchImpl.mock.calls[0] as unknown as [string, { body: string }];
+    const body = JSON.parse(call[1].body) as { system: unknown };
     expect(Array.isArray(body.system)).toBe(true);
   });
 
@@ -222,7 +222,7 @@ describe('complete', () => {
       { fetch: fetchImpl as unknown as typeof fetch, logger: { info } as unknown as import('@latimer-woods-tech/logger').Logger },
     );
     expect(info).toHaveBeenCalled();
-    const args = info.mock.calls[0];
+    const args = info.mock.calls[0] as unknown as [string, Record<string, unknown>];
     expect(args[1]).toMatchObject({ runId: 'r-1', project: 'p-1', actor: 'a-1' });
   });
 
