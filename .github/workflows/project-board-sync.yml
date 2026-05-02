@@ -57,16 +57,22 @@ jobs:
         run: |
           STATE="${STATUS_LABEL#status:}"
           case "$STATE" in
-            in_progress|blocked) STATUS_OPT="In Progress" ;;
-            done|abandoned)      STATUS_OPT="Done" ;;
+            in_progress) PRIMARY_OPT="In Progress"; FALLBACK_OPT="" ;;
+            blocked)     PRIMARY_OPT="Blocked"; FALLBACK_OPT="In Progress" ;;
+            done)        PRIMARY_OPT="Done"; FALLBACK_OPT="" ;;
+            abandoned)   PRIMARY_OPT="Abandoned"; FALLBACK_OPT="Done" ;;
             *) echo "unknown status label $STATUS_LABEL"; exit 0 ;;
           esac
           PROJECT_ID="PVT_kwDOEL0sNc4BWWtg"
           STATUS_FIELD=$(gh api graphql -f query='query($id: ID!) { node(id: $id) { ... on ProjectV2 { fields(first: 30) { nodes { __typename ... on ProjectV2SingleSelectField { id name options { id name } } } } } } }' -f id="$PROJECT_ID")
           FIELD_ID=$(echo "$STATUS_FIELD" | jq -r '.data.node.fields.nodes[] | select(.name=="Status") | .id')
-          OPTION_ID=$(echo "$STATUS_FIELD" | jq -r --arg n "$STATUS_OPT" '.data.node.fields.nodes[] | select(.name=="Status") | .options[] | select(.name==$n) | .id')
+          OPTION_ID=$(echo "$STATUS_FIELD" | jq -r --arg n "$PRIMARY_OPT" '.data.node.fields.nodes[] | select(.name=="Status") | .options[] | select(.name==$n) | .id')
+          if [ -z "$OPTION_ID" ] && [ -n "$FALLBACK_OPT" ]; then
+            OPTION_ID=$(echo "$STATUS_FIELD" | jq -r --arg n "$FALLBACK_OPT" '.data.node.fields.nodes[] | select(.name=="Status") | .options[] | select(.name==$n) | .id')
+          fi
           ITEM_ID=$(gh api graphql -f query='query($projectId: ID!, $contentId: ID!) { node(id: $projectId) { ... on ProjectV2 { items(first: 100) { nodes { id content { ... on Issue { id } } } } } } }' -f projectId="$PROJECT_ID" -f contentId="$ISSUE_NODE_ID" --jq ".data.node.items.nodes[] | select(.content.id==\"$ISSUE_NODE_ID\") | .id")
           if [ -z "$ITEM_ID" ]; then echo "item not on board, skipping"; exit 0; fi
+          if [ -z "$OPTION_ID" ]; then echo "status option not found on board, skipping"; exit 0; fi
           gh api graphql -f query='mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: String!) { updateProjectV2ItemFieldValue(input: { projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: { singleSelectOptionId: $value } }) { projectV2Item { id } } }' -f projectId="$PROJECT_ID" -f itemId="$ITEM_ID" -f fieldId="$FIELD_ID" -f value="$OPTION_ID"
 
   sync-status-from-comment:
@@ -88,16 +94,22 @@ jobs:
           STATE=$(echo "$COMMENT_BODY" | grep -oE 'state:[[:space:]]*[a-z_]+' | head -1 | sed 's/state:[[:space:]]*//')
           if [ -z "$STATE" ]; then echo "no state in /status comment"; exit 0; fi
           case "$STATE" in
-            in_progress|blocked) STATUS_OPT="In Progress" ;;
-            done|abandoned)      STATUS_OPT="Done" ;;
+            in_progress) PRIMARY_OPT="In Progress"; FALLBACK_OPT="" ;;
+            blocked)     PRIMARY_OPT="Blocked"; FALLBACK_OPT="In Progress" ;;
+            done)        PRIMARY_OPT="Done"; FALLBACK_OPT="" ;;
+            abandoned)   PRIMARY_OPT="Abandoned"; FALLBACK_OPT="Done" ;;
             *) echo "unknown state $STATE"; exit 0 ;;
           esac
           PROJECT_ID="PVT_kwDOEL0sNc4BWWtg"
           STATUS_FIELD=$(gh api graphql -f query='query($id: ID!) { node(id: $id) { ... on ProjectV2 { fields(first: 30) { nodes { __typename ... on ProjectV2SingleSelectField { id name options { id name } } } } } } }' -f id="$PROJECT_ID")
           FIELD_ID=$(echo "$STATUS_FIELD" | jq -r '.data.node.fields.nodes[] | select(.name=="Status") | .id')
-          OPTION_ID=$(echo "$STATUS_FIELD" | jq -r --arg n "$STATUS_OPT" '.data.node.fields.nodes[] | select(.name=="Status") | .options[] | select(.name==$n) | .id')
+          OPTION_ID=$(echo "$STATUS_FIELD" | jq -r --arg n "$PRIMARY_OPT" '.data.node.fields.nodes[] | select(.name=="Status") | .options[] | select(.name==$n) | .id')
+          if [ -z "$OPTION_ID" ] && [ -n "$FALLBACK_OPT" ]; then
+            OPTION_ID=$(echo "$STATUS_FIELD" | jq -r --arg n "$FALLBACK_OPT" '.data.node.fields.nodes[] | select(.name=="Status") | .options[] | select(.name==$n) | .id')
+          fi
           ITEM_ID=$(gh api graphql -f query='query($projectId: ID!, $contentId: ID!) { node(id: $projectId) { ... on ProjectV2 { items(first: 100) { nodes { id content { ... on Issue { id } } } } } } }' -f projectId="$PROJECT_ID" -f contentId="$ISSUE_NODE_ID" --jq ".data.node.items.nodes[] | select(.content.id==\"$ISSUE_NODE_ID\") | .id")
           if [ -z "$ITEM_ID" ]; then echo "item not on board, skipping"; exit 0; fi
+          if [ -z "$OPTION_ID" ]; then echo "status option not found on board, skipping"; exit 0; fi
           gh api graphql -f query='mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: String!) { updateProjectV2ItemFieldValue(input: { projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: { singleSelectOptionId: $value } }) { projectV2Item { id } } }' -f projectId="$PROJECT_ID" -f itemId="$ITEM_ID" -f fieldId="$FIELD_ID" -f value="$OPTION_ID"
 
   sync-deploy-sha-on-merge:

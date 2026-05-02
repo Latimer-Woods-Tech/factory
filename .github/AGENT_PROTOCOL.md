@@ -34,7 +34,7 @@ The repo seeds and maintains these labels via `.github/agent-labels.json` and `.
 | `status:done` | Agent completed implementation and posted the final `/status state:done` update. | Merge triage |
 | `status:abandoned` | Agent stopped without handing off a mergeable result. | Coordinator reassignment |
 
-Status labels are optional mirrors of the machine-readable `/status` comment. If they drift, the `/status` comment is the source of truth.
+Status labels are optional mirrors of the required `/status` audit trail. If they drift, update the `/status` comment first, then reconcile or remove the stale label before relying on project-board filters.
 
 ### 3. Branch naming
 
