@@ -145,8 +145,8 @@ runs:
       run: |
         IFS=',' read -ra BROWSERS <<< "${{ inputs.playwright_browsers }}"
         for browser in "${BROWSERS[@]}"; do
-          browser="$(echo "$browser" | tr -d ' ')"
-          npx playwright install --with-deps "$browser"
+          trimmed_browser="$(echo "$browser" | tr -d ' ')"
+          npx playwright install --with-deps "$trimmed_browser"
         done
       env:
         NODE_AUTH_TOKEN: ${{ inputs.node_auth_token }}
