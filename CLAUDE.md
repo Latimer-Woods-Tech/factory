@@ -1,3 +1,5 @@
+> 🔴 **NEW (2026-05-02): Rules on the Fridge** — the operating rules for any agent (human or AI) on this repo are in [`docs/supervisor/FRIDGE.md`](./docs/supervisor/FRIDGE.md). Read them before these Standing Orders.
+
 # Factory Core — Standing Orders
 
 ## Mission
