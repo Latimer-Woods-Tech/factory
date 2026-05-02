@@ -1,97 +1,36 @@
-## ✅ Definition of Ready — Does This Work Item Make Sense?
+## Summary
 
-- [ ] Outcome is explicit (not "improve X", but "reduce to <Y" or "add feature Z with metric M")
-- [ ] Owner assigned (Factory lead or app lead + person)
-- [ ] Dependencies named (other work, external APIs, secret changes)
-- [ ] Success metrics defined (measurable: latency, coverage, KPI, not "looks good")
-- [ ] Design implications checked (API surface, UI changes, or "no UI changes")
-- [ ] Data implications checked (schema, analytics, PII, or "no data changes")
-- [ ] Operational implications checked (monitoring, runbook stub, or "no ops needed")
-- [ ] Acceptance tests are designed (unit/integration/staging curl)
+_What does this PR do in one sentence?_
 
----
+## Blast radius
 
-## ✅ Definition of Done — Did We Build It Right?
+_Which apps, services, or users are affected? What happens if this breaks?_
 
-### Code Quality
-- [ ] Code review approved (≥2 approvals if required by branch protection)
-- [ ] TypeScript strict + no `any` in public APIs (internal-only `any` must have comment)
-- [ ] ESLint passes with `--max-warnings 0`
-- [ ] Build succeeds: `npm run build` produces clean output
+## Tier (pick one)
 
-### Testing
-- [ ] Coverage meets baseline:
-  - Foundation packages (errors, monitoring, logger, auth): 95%+
-  - Other packages: 85%+
-  - Worker apps: 80%+
-- [ ] Integration test added if this touches >1 package
-- [ ] Error cases tested: timeout, invalid input, 3p API down, rate limit
+- [ ] **Green** — `docs/**`, `*.md`, `session/**`
+- [ ] **Yellow** — `apps/web/**`, non-critical worker routes
+- [ ] **Red** — `.github/workflows/**`, `packages/**`, `migrations/**`, Stripe code, prod Wrangler config
 
-### Deployment & Verification
-- [ ] Staging deployment: successful build, no errors
-- [ ] Manual verification: `curl https://{staging-url}/health` returns `200`
-- [ ] Smoke test: happy path + one error scenario tested manually
-- [ ] If database migration: rollback tested successfully on staging
+## Fridge checklist (`docs/supervisor/FRIDGE.md`)
 
-### Documentation
-- [ ] README updated (setup, usage, API, or breaking changes)
-- [ ] JSDoc comments added/updated for public symbols
-- [ ] Changelog entry added to CHANGELOG.md
-- [ ] If new service: entry added to [docs/service-registry.yml](../docs/service-registry.yml)
-- [ ] If new runbook: added to [docs/runbooks/](../docs/runbooks/)
+- [ ] Not touching wordis-bond
+- [ ] No credentials in the diff (credential-scrub CI will enforce)
+- [ ] Red-tier changes have CODEOWNER review requested
+- [ ] `/admin` mutations have out-of-band approval comment if applicable
+- [ ] Irreversible actions have explicit approval
+- [ ] Related `capabilities.yml` declares correct `side_effects` level if this touches `/admin`
 
-### Design & Product (if UI changes)
-- [ ] Design review passed
-- [ ] Product KPI acceptance confirmed
-- [ ] Copy reviewed (on-brand, accessible reading level)
+## Validation
 
-### Performance (if applicable)
-- [ ] Performance budget checked:
-  - Cold Worker start: <50ms overhead
-  - API latency: P99 impact <100ms
-  - Bundle size: <50kb added
-- [ ] Profiling data captured if performance-sensitive
+- [ ] CI green (typecheck, lint, test, credential-scrub, capabilities-lint where applicable)
+- [ ] For runtime changes: curl / smoke test observed with expected status code
+- [ ] For production deploys: canary plan noted below
 
-### Security & Accessibility (if applicable)
-- [ ] Security review passed (if auth/payment/PII touched)
-- [ ] OWASP checklist passed (if API/endpoint changes)
-- [ ] Accessibility audit passed (if UI changes: WCAG 2.1 AA)
-- [ ] Secrets stored in env, not source code
+## Related issues
 
----
+_Closes, fixes, refs._
 
-<!-- Append this section just before the "Notes for Reviewers" line at the bottom of factory/.github/PULL_REQUEST_TEMPLATE.md -->
+## Rollback plan
 
----
-
-## ✅ Post-Merge Verification (within 60 seconds of merge)
-
-The merger is responsible for this section. Subagents do not merge — see [AGENT_PROTOCOL.md](.github/AGENT_PROTOCOL.md).
-
-- [ ] Deploy workflow(s) for the merge SHA queued (`deploy-frontend`, `deploy-workers`, or repo equivalent)
-- [ ] Both deploys completed successfully (not just queued)
-- [ ] Production smoke check returns expected response from the new SHA
-- [ ] If anything failed: triggered `deploy-recovery.yml` or rolled back; did NOT start the next merge
-
-If you skipped this section, you are inside the failure mode that broke main on May 1 2026. Don't.
-
----
-
-
-## Notes for Reviewers
-
-**If any box is unchecked but should be checked for this PR, request changes. Definition of Done is binary, not aspirational.**
-
-**Helpful resources:**
-- [Definition of Ready & Done Runbook](../docs/runbooks/definition-of-ready-done.md)
-- [CLAUDE.md Standing Orders](../CLAUDE.md)
-- [Package Dependency Order](../CLAUDE.md#package-dependency-order)
-- [Hard Constraints](../CLAUDE.md#hard-constraints)
-
----
-
-## Reviewer Checklist (Optional Comments)
-
-_Add comments here to help the author understand what to prioritize. Remove this section if not needed._
-
-- [ ]
+_If this breaks after merge, how do we revert? For migrations: is it reversible?_
