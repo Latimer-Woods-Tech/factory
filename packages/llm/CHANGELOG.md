@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.1 — 2026-05-02 PM
+
+### Added (no breaking changes)
+
+- **Grok opt-in provider.** `LLMProvider` now includes `'grok'`. Call with `{ model: 'grok-4-fast' }` or `{ model: 'grok-3-mini-latest' }` to route to xAI. Not in default tier routing — explicit model override only.
+- `LLMEnv.GROK_API_KEY` is **optional**; required only when a caller opts in via a `grok-*` model override.
+- `MODELS.grok.{fast, mini}` added to the catalogue.
+
+### Rationale
+
+Reversal of the 0.3.0 partial decision (D1 in `docs/supervisor/DECISIONS.md`): Grok stays available for workloads that benefit from its quirks — cheap experimental prompting in the xico-city user economy, artist-platform surface, etc. It does not compete with Anthropic / Gemini / Groq for the tier slots; it sits alongside as a per-call opt-in.
+
+### Consumers
+
+- Downstream packages do not need to declare `GROK_API_KEY` unless a route explicitly sends Grok model overrides. Existing code that dropped the key on 0.3.0 migration continues to work.
+
+
 ## 0.3.0 — 2026-05-02
 
 ### Breaking
