@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: Update Agent field on project
         env:
-          GH_TOKEN: ${{ secrets.GH_PROJECT_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
           ISSUE_NODE_ID: ${{ github.event.issue.node_id }}
           LABEL_NAME: ${{ github.event.label.name }}
           ACTION: ${{ github.event.action }}
@@ -24,7 +24,7 @@ jobs:
           if [ "$ACTION" = "labeled" ]; then
             AGENT_NAME="${LABEL_NAME#agent:claimed:}"
           fi
-          PROJECT_ID="PVT_kwDOEL0sNc4BImuG"
+          PROJECT_ID="PVT_kwDOEL0sNc4BWWtg"
           AGENT_FIELD_ID=$(gh api graphql -f query='query($id: ID!) { node(id: $id) { ... on ProjectV2 { fields(first: 30) { nodes { ... on ProjectV2Field { id name } } } } } }' -f id="$PROJECT_ID" --jq '.data.node.fields.nodes[] | select(.name=="Agent") | .id')
           ITEM_ID=$(gh api graphql -f query='query($projectId: ID!, $contentId: ID!) { node(id: $projectId) { ... on ProjectV2 { items(first: 100) { nodes { id content { ... on Issue { id } } } } } } }' -f projectId="$PROJECT_ID" -f contentId="$ISSUE_NODE_ID" --jq ".data.node.items.nodes[] | select(.content.id==\"$ISSUE_NODE_ID\") | .id")
           if [ -z "$ITEM_ID" ]; then echo "item not on board, skipping"; exit 0; fi
@@ -36,7 +36,7 @@ jobs:
     steps:
       - name: Parse /status and update Status field
         env:
-          GH_TOKEN: ${{ secrets.GH_PROJECT_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
           COMMENT_BODY: ${{ github.event.comment.body }}
           ISSUE_NODE_ID: ${{ github.event.issue.node_id }}
         run: |
@@ -49,7 +49,7 @@ jobs:
             abandoned)   STATUS_NAME="Done" ;;
             *)           echo "unknown state $STATE"; exit 0 ;;
           esac
-          PROJECT_ID="PVT_kwDOEL0sNc4BImuG"
+          PROJECT_ID="PVT_kwDOEL0sNc4BWWtg"
           FIELDS=$(gh api graphql -f query='query($id: ID!) { node(id: $id) { ... on ProjectV2 { fields(first: 30) { nodes { __typename ... on ProjectV2SingleSelectField { id name options { id name } } } } } } }' -f id="$PROJECT_ID")
           STATUS_FIELD_ID=$(echo "$FIELDS" | jq -r '.data.node.fields.nodes[] | select(.name=="Status") | .id')
           OPTION_ID=$(echo "$FIELDS" | jq -r --arg n "$STATUS_NAME" '.data.node.fields.nodes[] | select(.name=="Status") | .options[] | select(.name==$n) | .id')
@@ -63,12 +63,12 @@ jobs:
     steps:
       - name: Update Deploy SHA on linked issues
         env:
-          GH_TOKEN: ${{ secrets.GH_PROJECT_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          PROJECT_ID="PVT_kwDOEL0sNc4BImuG"
+          PROJECT_ID="PVT_kwDOEL0sNc4BWWtg"
           PR_NODE_ID=${{ github.event.pull_request.node_id }}
           LINKED_ISSUES=$(gh api graphql -f query='query($id: ID!) { node(id: $id) { ... on PullRequest { closingIssuesReferences(first: 10) { nodes { id number } } } } }' -f id="$PR_NODE_ID" --jq '.data.node.closingIssuesReferences.nodes[].id')
           DEPLOY_FIELD_ID=$(gh api graphql -f query='query($id: ID!) { node(id: $id) { ... on ProjectV2 { fields(first: 30) { nodes { ... on ProjectV2Field { id name } } } } } }' -f id="$PROJECT_ID" --jq '.data.node.fields.nodes[] | select(.name=="Deploy SHA") | .id')
