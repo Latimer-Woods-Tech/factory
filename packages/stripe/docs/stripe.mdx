@@ -119,7 +119,7 @@ import {
 
 const stripe = createStripeClient(env.STRIPE_SECRET_KEY);
 
-// Subscription checkout (monthly or annual)
+// Checkout — frontend passes the appropriate priceId (monthly, annual, or one-time)
 app.post('/api/checkout', authMiddleware, async (c) => {
   const { priceId } = await c.req.json<{ priceId: string }>();
   const user = c.get('user');

@@ -320,13 +320,16 @@ describe('createCheckoutSession', () => {
       stripeClient: client,
     });
 
-    expect(checkoutCreate).not.toHaveBeenCalledWith(
-      expect.objectContaining({ payment_method_types: expect.anything() as unknown }),
-      expect.anything() as unknown,
-    );
-    expect(checkoutCreate).not.toHaveBeenCalledWith(
-      expect.objectContaining({ metadata: expect.anything() as unknown }),
-      expect.anything() as unknown,
+    // Exact match confirms neither payment_method_types nor metadata was passed
+    expect(checkoutCreate).toHaveBeenCalledWith(
+      {
+        mode: 'subscription',
+        customer: 'cus_123',
+        success_url: 'https://app/ok',
+        cancel_url: 'https://app/cancel',
+        line_items: [{ price: 'price_pro', quantity: 1 }],
+      },
+      {},
     );
   });
 });
