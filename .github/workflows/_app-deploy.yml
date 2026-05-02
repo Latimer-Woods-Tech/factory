@@ -23,8 +23,8 @@
 # REQUIRED SECRETS (passed via `secrets: inherit` from org-level vault)
 #   FACTORY_APP_ID            - GitHub App ID for `factory-cross-repo`
 #   FACTORY_APP_PRIVATE_KEY   - PEM private key for the same App
-#   CLOUDFLARE_API_TOKEN      - Token with Workers Scripts:Edit on this account
-#   CLOUDFLARE_ACCOUNT_ID     - Cloudflare account ID
+#   CF_API_TOKEN              - Token with Workers Scripts:Edit on this account
+#   CF_ACCOUNT_ID             - Cloudflare account ID
 #
 # REQUIRED REPO STATE
 #   GitHub Environment named `production` and/or `staging` must exist on the
@@ -100,8 +100,8 @@ jobs:
       - name: Deploy to Cloudflare
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
           command: ${{ inputs.wrangler_command }}
       - name: Post-deploy health check
         if: ${{ inputs.health_url != '' }}

@@ -56,5 +56,8 @@ jobs:
       - name: Enforce workers.dev URL policy
         run: node scripts/check-workers-url-policy.mjs
 
+      - name: Enforce naming conventions
+        run: node scripts/check-naming-conventions.mjs
+
       - name: Enforce smoke secret contract
         run: node scripts/check-smoke-secret-contract.mjs

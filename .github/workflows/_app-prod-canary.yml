@@ -25,7 +25,7 @@
 #
 # REQUIRED SECRETS (via secrets: inherit)
 #   PUSHOVER_USER_KEY, PUSHOVER_APP_TOKEN — alert channel
-#   CF_API_TOKEN, CLOUDFLARE_ACCOUNT_ID  — for rollback
+#   CF_API_TOKEN, CF_ACCOUNT_ID  — for rollback
 #
 # RELATED
 #   factory#71 (SYN-3)
@@ -127,8 +127,10 @@ jobs:
       - name: Rollback
         if: failure() && inputs.rollback_on_failure && inputs.worker_name != ''
         env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
           echo "Rolling back Worker ${{ inputs.worker_name }} to previous version..."
           # Fetch second-latest version

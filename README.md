@@ -5,6 +5,7 @@ Shared CI/CD, infrastructure, and packages for every app in the **Latimer-Woods-
 If you're an agent or a new contributor, **start here**, then go to:
 - [`docs/AGENTS.md`](docs/AGENTS.md) — explicit agent onboarding guide
 - [`docs/CI_CD.md`](docs/CI_CD.md) — CI/CD architecture
+- [`docs/NAMING_CONVENTIONS.md`](docs/NAMING_CONVENTIONS.md) — cross-repo naming contract
 - [`docs/NEW_APP_CHECKLIST.md`](docs/NEW_APP_CHECKLIST.md) — adding a new app to the ecosystem
 
 ---

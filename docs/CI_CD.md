@@ -107,7 +107,7 @@ How a deploy authenticates, end to end:
 2. **`secrets: inherit`** passes org-level secrets into factory's reusable workflow.
 3. **`actions/create-github-app-token@v2`** mints a short-lived (~1h) GitHub App installation token from `FACTORY_APP_ID` + `FACTORY_APP_PRIVATE_KEY`. This token has scoped access only to the Latimer-Woods-Tech org.
 4. **GitHub Packages** uses that token to authenticate `npm ci` for `@latimer-woods-tech/*` deps.
-5. **Cloudflare** is authenticated via `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` (org-level secrets).
+5. **Cloudflare** is authenticated via `CF_API_TOKEN` + `CF_ACCOUNT_ID` (org-level secrets). If a third-party tool still expects `CLOUDFLARE_*` environment variables, map them from those canonical secrets inside the workflow.
 
 No long-lived PATs in CI. The GitHub App is the source of truth.
 
@@ -123,9 +123,10 @@ These live at https://github.com/organizations/Latimer-Woods-Tech/settings/secre
 | `FACTORY_APP_PRIVATE_KEY` | GitHub App PEM | Every CI/deploy workflow |
 | `FACTORY_APP_INSTALLATION_ID` | GitHub App install on org | Maintenance scripts |
 | `FACTORY_APP_CLIENT_ID` | GitHub App OAuth ID | Reserved |
-| `CLOUDFLARE_API_TOKEN` | CF dashboard | Deploy workflows |
-| `CLOUDFLARE_ACCOUNT_ID` | CF dashboard | Deploy workflows |
-| `CF_API_TOKEN` | Legacy alias of above | Deprecated, will be removed |
+| `CF_API_TOKEN` | CF dashboard | Deploy workflows |
+| `CF_ACCOUNT_ID` | CF dashboard | Deploy workflows |
+| `CLOUDFLARE_API_TOKEN` | Compatibility alias only | Legacy workflows/tools |
+| `CLOUDFLARE_ACCOUNT_ID` | Compatibility alias only | Legacy workflows/tools |
 | `STRIPE_SECRET_KEY` | Stripe dashboard | HumanDesign + payment-touching apps |
 | `STRIPE_WEBHOOK_SECRET` | Stripe dashboard | Same |
 | `STRIPE_PRICE_*` | Stripe price objects | HumanDesign (10 prices) |
@@ -203,7 +204,7 @@ See [`NEW_APP_CHECKLIST.md`](NEW_APP_CHECKLIST.md).
 ## Adding a new reusable workflow
 
 1. Create `factory/.github/workflows/_my-thing.yml`.
-2. Top of file must be a header comment matching the format in the existing three (purpose, inputs, secrets, conventions, related workflows).
+2. Top of file must follow [`docs/NAMING_CONVENTIONS.md`](NAMING_CONVENTIONS.md): `_*.yml` filename, matching `name:`, and the standard header comment block.
 3. Test the workflow with a smoke caller in any private app repo before merging.
 4. Update this doc + `README.md`'s repo map.
 5. Open a PR.

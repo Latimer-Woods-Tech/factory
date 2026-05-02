@@ -1,3 +1,23 @@
+# =============================================================================
+# Example reusable workflow used as a smoke template for cross-repo consumption.
+#
+# WHAT IT DOES
+#   Echoes a single line so maintainers can validate reusable workflow wiring.
+#
+# WHO CALLS IT
+#   Ad hoc smoke callers in app repos or local experiments.
+#
+# HOW TO CALL
+#   jobs:
+#     hello:
+#       uses: Latimer-Woods-Tech/factory/.github/workflows/_hello-reusable.yml@main
+#       secrets: inherit
+#
+# RELATED
+#   docs/CI_CD.md
+#   docs/NAMING_CONVENTIONS.md
+# =============================================================================
+
 name: _hello-reusable
 on:
   workflow_call:
