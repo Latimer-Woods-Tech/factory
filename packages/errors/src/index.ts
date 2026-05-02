@@ -33,6 +33,7 @@ export const ErrorCodes = {
   STRIPE_WEBHOOK_INVALID: 'STRIPE_WEBHOOK_INVALID',
   STRIPE_PAYMENT_FAILED: 'STRIPE_PAYMENT_FAILED',
   VALIDATION_ERROR: 'VALIDATION_ERROR',
+  BAD_REQUEST: 'BAD_REQUEST',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
   NOT_FOUND: 'NOT_FOUND',
   RATE_LIMITED: 'RATE_LIMITED',
@@ -129,6 +130,22 @@ export class ForbiddenError extends FactoryBaseError {
 export class ValidationError extends FactoryBaseError {
   public constructor(message = 'Validation failed', context?: ErrorContext) {
     super(ErrorCodes.VALIDATION_ERROR, message, 422, false, context);
+  }
+}
+
+/**
+ * Generic bad-request error (HTTP 400).
+ *
+ * Use when the client sent a request that cannot be processed due to
+ * malformed syntax or invalid parameters, but the issue is not a typed
+ * constraint violation (which uses {@link ValidationError} with HTTP 422).
+ *
+ * Commonly maps from client-side form errors, missing required fields, or
+ * invalid query parameters.
+ */
+export class BadRequestError extends FactoryBaseError {
+  public constructor(message = 'Bad request', context?: ErrorContext) {
+    super(ErrorCodes.BAD_REQUEST, message, 400, false, context);
   }
 }
 

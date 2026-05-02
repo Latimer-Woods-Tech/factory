@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   AuthError,
+  BadRequestError,
   FactoryBaseError,
   ForbiddenError,
   InternalError,
@@ -47,6 +48,8 @@ describe('typed error subclasses', () => {
     expect(new ForbiddenError().retryable).toBe(false);
     expect(new ValidationError().status).toBe(422);
     expect(new ValidationError().retryable).toBe(false);
+    expect(new BadRequestError().status).toBe(400);
+    expect(new BadRequestError().retryable).toBe(false);
     expect(new InternalError().status).toBe(500);
     expect(new InternalError().retryable).toBe(true);
     expect(new RateLimitError().status).toBe(429);
