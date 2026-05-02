@@ -244,7 +244,6 @@ export interface Env {
   SENTRY_DSN: string;
   POSTHOG_KEY: string;
   ANTHROPIC_API_KEY: string;
-  GROK_API_KEY: string;
   GROQ_API_KEY: string;
   RESEND_API_KEY: string;
 
@@ -384,7 +383,6 @@ describe('${APP_NAME}', () => {
       SENTRY_DSN: '',
       POSTHOG_KEY: '',
       ANTHROPIC_API_KEY: '',
-      GROK_API_KEY: '',
       GROQ_API_KEY: '',
       RESEND_API_KEY: '',
     });

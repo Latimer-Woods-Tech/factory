@@ -15,10 +15,8 @@ vi.mock('@latimer-woods-tech/llm', () => ({
 import { complete } from '@latimer-woods-tech/llm';
 const mockComplete = vi.mocked(complete);
 
-const MOCK_ENV = {
-  ANTHROPIC_API_KEY: 'ak',
-  GROK_API_KEY: 'gk',
-  GROQ_API_KEY: 'gq',
+const MOCK_ENV = { AI_GATEWAY_BASE_URL: 'https://gw.test', ANTHROPIC_API_KEY: 'ak',
+  GROQ_API_KEY: 'gq', VERTEX_ACCESS_TOKEN: 'v', VERTEX_PROJECT: 'p', VERTEX_LOCATION: 'us-central1',
 };
 
 afterEach(() => {
@@ -71,7 +69,7 @@ describe('registerVoice / getVoiceProfile', () => {
 describe('generateCopy', () => {
   it('calls complete with a system prompt and returns content', async () => {
     mockComplete.mockResolvedValueOnce({
-      data: { content: 'Generated copy', provider: 'anthropic', tokens: { input: 10, output: 5 }, latency: 100 },
+      data: { content: 'Generated copy', provider: 'anthropic', tokens: { input: 10, output: 5 }, latency: 100, model: 'claude-sonnet-4-20250514', tier: 'balanced', attempts: 1 },
       error: null,
     });
 
@@ -92,7 +90,7 @@ describe('generateCopy', () => {
 
   it('appends a maxLen hint to the user prompt when provided', async () => {
     mockComplete.mockResolvedValueOnce({
-      data: { content: 'Short copy', provider: 'anthropic', tokens: { input: 5, output: 3 }, latency: 50 },
+      data: { content: 'Short copy', provider: 'anthropic', tokens: { input: 5, output: 3 }, latency: 50, model: 'claude-sonnet-4-20250514', tier: 'balanced', attempts: 1 },
       error: null,
     });
 
@@ -104,7 +102,7 @@ describe('generateCopy', () => {
 
   it('chooses the correct voice profile for the appId', async () => {
     mockComplete.mockResolvedValueOnce({
-      data: { content: 'Healing copy', provider: 'anthropic', tokens: { input: 10, output: 5 }, latency: 100 },
+      data: { content: 'Healing copy', provider: 'anthropic', tokens: { input: 10, output: 5 }, latency: 100, model: 'claude-sonnet-4-20250514', tier: 'balanced', attempts: 1 },
       error: null,
     });
 
