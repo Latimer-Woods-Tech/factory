@@ -26,3 +26,17 @@ OR open a PR updating this file directly, linking to the discussion in the PR bo
 | D2 | Template blessed threshold | **3 successful runs, 0 reverts, 0 human overrides** | 2026-05-02 | `ARCHITECTURE.md` §5.5 |
 | D3 | Lock primitive | **`LockDO` Durable Object singleton per app, D1 as audit log** | 2026-05-02 | `ARCHITECTURE.md` §5.8 |
 | D4 | Capability mutation flag | **Graded `side_effects` levels (none/read-external/write-app/write-external)**, not boolean `mutating` | 2026-05-02 | `ARCHITECTURE.md` §7 |
+
+---
+
+## Partial reversal: D1-Grok-opt-in (2026-05-02 PM)
+
+**Context:** Original D1 resolution (2026-05-02 AM) dropped Grok entirely in favor of Gemini 2.5 Pro (long-context) + Groq Llama (verifier). Adrian reversed partially after shipping `llm@0.3.0`.
+
+**New resolution:** Grok **stays available** in `@latimer-woods-tech/llm` as an explicit opt-in provider. Callers invoke it via `{ model: 'grok-4-fast' }` or `{ model: 'grok-3-mini-latest' }` — it is **not** in the default tier routing (fast / balanced / smart / verifier remain Anthropic + Gemini + Groq).
+
+**Rationale:** xico-city's artist-platform user economy may want cheap experimental prompting where Grok's quirks are a feature rather than a bug. Keeping it callable but off the hot path preserves the clean routing for production workloads.
+
+**Implementation:** `llm@0.3.1` (factory PR forthcoming). `GROK_API_KEY` becomes optional in `LLMEnv`; only required when caller opts in.
+
+**Non-effects:** Groq (verifier) stays. Gemini (long-context fallback) stays. Anthropic (primary) stays. No change to steady-state cost model.

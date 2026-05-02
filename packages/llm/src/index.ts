@@ -52,7 +52,7 @@ export interface LLMOptions {
 /**
  * Provider that produced an LLM response. `grok` removed in 0.3.0.
  */
-export type LLMProvider = 'anthropic' | 'gemini' | 'groq';
+export type LLMProvider = 'anthropic' | 'gemini' | 'groq' | 'grok';
 
 /**
  * Result returned by a successful completion.
@@ -81,6 +81,8 @@ export interface LLMEnv {
   AI_GATEWAY_BASE_URL: string;
   ANTHROPIC_API_KEY: string;
   GROQ_API_KEY: string;
+  /** Optional — only required when caller passes `{ model: 'grok-*' }` override. */
+  GROK_API_KEY?: string;
   /**
    * Google Cloud short-lived access token with `aiplatform.endpoints.predict`.
    * Callers mint this via the JWT-bearer flow (service account → token exchange);
@@ -112,6 +114,11 @@ const MODELS = {
   },
   groq: {
     verifier: 'llama-3.3-70b-versatile',
+  },
+  grok: {
+    /** Opt-in only via `{ model: 'grok-*' }`. Not in default tier routing. */
+    fast: 'grok-4-fast',
+    mini: 'grok-3-mini-latest',
   },
 } as const;
 
@@ -236,6 +243,34 @@ function buildGroqRequest(
     headers: {
       'content-type': 'application/json',
       authorization: `Bearer ${env.GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: opts.maxTokens ?? DEFAULT_MAX_TOKENS,
+      temperature: opts.temperature ?? DEFAULT_TEMPERATURE,
+      messages: merged,
+    }),
+  };
+}
+
+function buildGrokRequest(
+  model: string,
+  messages: LLMMessage[],
+  opts: LLMOptions,
+  env: LLMEnv,
+): { url: string; headers: Record<string, string>; body: string } {
+  if (!env.GROK_API_KEY) {
+    throw new ValidationError('GROK_API_KEY required for grok-* model override');
+  }
+  const sys = opts.system ?? messages.find((m) => m.role === 'system')?.content;
+  const merged: LLMMessage[] = [];
+  if (sys) merged.push({ role: 'system', content: sys });
+  for (const m of messages) if (m.role !== 'system') merged.push(m);
+  return {
+    url: `${env.AI_GATEWAY_BASE_URL}/grok/v1/chat/completions`,
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${env.GROK_API_KEY}`,
     },
     body: JSON.stringify({
       model,
@@ -387,6 +422,7 @@ function plan(tier: LLMTier, opts: LLMOptions, tokenEstimate: number): RoutePlan
     const m = opts.model;
     if (m.startsWith('claude')) return { primary: { provider: 'anthropic', model: m } };
     if (m.startsWith('gemini')) return { primary: { provider: 'gemini', model: m } };
+    if (m.startsWith('grok')) return { primary: { provider: 'grok', model: m } };
     return { primary: { provider: 'groq', model: m } };
   }
   const longContext = tokenEstimate >= (opts.longContextThreshold ?? DEFAULT_LONG_CONTEXT_THRESHOLD);
@@ -438,6 +474,9 @@ async function callOne(
     case 'groq':
       req = buildGroqRequest(leg.model, messages, opts, env);
       break;
+    case 'grok':
+      req = buildGrokRequest(leg.model, messages, opts, env);
+      break;
   }
   const { json, gatewayRequestId, attempts } = await callWithBackoff(
     leg.provider,
@@ -452,6 +491,8 @@ async function callOne(
     case 'gemini':
       return { parsed: parseGemini(json), gatewayRequestId, attempts };
     case 'groq':
+      return { parsed: parseGroq(json), gatewayRequestId, attempts };
+    case 'grok':
       return { parsed: parseGroq(json), gatewayRequestId, attempts };
   }
 }
