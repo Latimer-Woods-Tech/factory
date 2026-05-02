@@ -650,6 +650,7 @@ After (~4–6 weeks):
 | D2 | Template blessed threshold | **3 successful runs, 0 reverts, 0 human overrides.** |
 | D3 | Lock primitive | **`LockDO` Durable Object, not D1 CAS.** |
 | D4 | Capability mutation flag | **Graded `side_effects` levels, not boolean `mutating`.** |
+| O3 | Template authoring surface | **YAML in `docs/supervisor/plans/`, versioned with code.** Code-review applies; `template-suite.yml` test harness runs on every PR. Notion option rejected. |
 
 ### Still open — need your call before Week 3
 
@@ -657,7 +658,6 @@ After (~4–6 weeks):
 |---|---|---|---|
 | O1 | Supervisor runtime location | New `apps/supervisor` worker (not extend `factory-admin`) | Low — can decide week 3 |
 | O2 | Memory backend default | Agent Memory primary with D1 dual-write | Low — dual-write defers the choice past ship |
-| O3 | Template authoring surface | YAML in factory repo (versioned; code-review applies) | Low |
 
 ---
 
