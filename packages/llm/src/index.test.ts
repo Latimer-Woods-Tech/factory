@@ -47,7 +47,7 @@ describe('complete', () => {
     expect(res.data!.tokens.input).toBe(12);
     expect(res.data!.gatewayRequestId).toBe('aig-xyz');
     expect(fetchImpl).toHaveBeenCalledOnce();
-    const call = fetchImpl.mock.calls[0]!;
+    const call = fetchImpl.mock.calls[0] as unknown as [string | URL | Request, RequestInit?];
     expect(String(call[0])).toContain('anthropic/v1/messages');
   });
 
@@ -103,7 +103,7 @@ describe('complete', () => {
     );
     expect(res.error).toBeNull();
     expect(res.data!.provider).toBe('groq');
-    const call = fetchImpl.mock.calls[0]!;
+    const call = fetchImpl.mock.calls[0] as unknown as [string | URL | Request, RequestInit?];
     expect(String(call[0])).toContain('groq/openai/v1/chat/completions');
   });
 
