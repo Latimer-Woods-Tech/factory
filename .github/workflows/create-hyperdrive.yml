@@ -33,8 +33,8 @@ jobs:
           THE_CALLING_CONN: ${{ secrets.THECALLING_CONNECTION_STRING }}
           # neighbor-aid falls back to NICHESTREAM only until it has a dedicated Neon secret.
           NEIGHBOR_AID_CONN: ${{ secrets.NEIGHBOR_AID_CONNECTION_STRING || secrets.NICHESTREAM_CONNECTION_STRING }}
-          # videoking/nichestream currently uses the legacy NICHESTREAM connection secret.
-          VIDEOKING_CONN: ${{ secrets.NICHESTREAM_CONNECTION_STRING }}
+          # videoking prefers its own secret, but still falls back to the legacy NICHESTREAM name during migration.
+          VIDEOKING_CONN: ${{ secrets.VIDEOKING_CONNECTION_STRING || secrets.NICHESTREAM_CONNECTION_STRING }}
           XPELEVATOR_CONN: ${{ secrets.MEXXICO_CITY_CONNECTION_STRING }}
           XICO_CITY_CONN: ${{ secrets.MEXXICO_CITY_CONNECTION_STRING }}
         run: node packages/deploy/scripts/create-hyperdrive.mjs
