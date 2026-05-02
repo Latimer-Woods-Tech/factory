@@ -33,7 +33,7 @@ function geminiResponse(text = 'gemini-hello') {
 
 describe('complete', () => {
   it('routes balanced tier to Anthropic and returns parsed result', async () => {
-    const fetchImpl = vi.fn(async () => anthropicResponse('ok'));
+    const fetchImpl = vi.fn(() => Promise.resolve(anthropicResponse('ok')));
     const res = await complete(
       [{ role: 'user', content: 'hi' }],
       ENV,
@@ -52,9 +52,9 @@ describe('complete', () => {
   });
 
   it('routes long-context balanced to Gemini primary', async () => {
-    const fetchImpl = vi.fn(async (url: string | URL | Request) => {
-      if (String(url).includes('google-vertex-ai')) return geminiResponse('long');
-      return new Response('', { status: 500 });
+    const fetchImpl = vi.fn((url: string | URL | Request) => {
+      if (String(url).includes('google-vertex-ai')) return Promise.resolve(geminiResponse('long'));
+      return Promise.resolve(new Response('', { status: 500 }));
     });
     const longText = 'x'.repeat(700_000); // ~175k tokens estimated
     const res = await complete(
@@ -69,10 +69,10 @@ describe('complete', () => {
   });
 
   it('falls back to Gemini when Anthropic returns 503', async () => {
-    const fetchImpl = vi.fn(async (url: string | URL | Request) => {
-      if (String(url).includes('anthropic')) return new Response('boom', { status: 503 });
-      if (String(url).includes('google-vertex-ai')) return geminiResponse('fallback');
-      return new Response('', { status: 500 });
+    const fetchImpl = vi.fn((url: string | URL | Request) => {
+      if (String(url).includes('anthropic')) return Promise.resolve(new Response('boom', { status: 503 }));
+      if (String(url).includes('google-vertex-ai')) return Promise.resolve(geminiResponse('fallback'));
+      return Promise.resolve(new Response('', { status: 500 }));
     });
     const res = await complete(
       [{ role: 'user', content: 'hi' }],
@@ -86,13 +86,15 @@ describe('complete', () => {
   });
 
   it('verifier tier hits Groq only', async () => {
-    const fetchImpl = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          choices: [{ message: { content: 'verdict' } }],
-          usage: { prompt_tokens: 5, completion_tokens: 3 },
-        }),
-        { status: 200 },
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: 'verdict' } }],
+            usage: { prompt_tokens: 5, completion_tokens: 3 },
+          }),
+          { status: 200 },
+        ),
       ),
     );
     const res = await complete(
@@ -109,7 +111,7 @@ describe('complete', () => {
   });
 
   it('returns LLM_ALL_PROVIDERS_FAILED when both legs fail non-retryably', async () => {
-    const fetchImpl = vi.fn(async () => new Response('nope', { status: 400 }));
+    const fetchImpl = vi.fn(() => Promise.resolve(new Response('nope', { status: 400 })));
     const res = await complete(
       [{ role: 'user', content: 'hi' }],
       ENV,
@@ -130,9 +132,9 @@ describe('complete', () => {
 
   it('respects AbortSignal and returns aborted error', async () => {
     const ctl = new AbortController();
-    const fetchImpl = vi.fn(async (_url, init) => {
+    const fetchImpl = vi.fn((_url: string | URL | Request, init?: RequestInit) => {
       return new Promise<Response>((_resolve, reject) => {
-        (init as RequestInit).signal?.addEventListener('abort', () =>
+        init?.signal?.addEventListener('abort', () =>
           reject(new DOMException('Aborted', 'AbortError')),
         );
       });
