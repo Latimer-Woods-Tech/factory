@@ -127,6 +127,7 @@ jobs:
       - name: Rollback
         if: failure() && inputs.rollback_on_failure && inputs.worker_name != ''
         env:
+          # Keep both env var names until all Wrangler/tooling paths use CF_* consistently.
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}

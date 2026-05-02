@@ -20,6 +20,7 @@ Factory publishes shared workflows, packages, and operational templates for othe
 
 - Canonical secret names are `CF_API_TOKEN` and `CF_ACCOUNT_ID`.
 - When a third-party tool still expects `CLOUDFLARE_API_TOKEN` or `CLOUDFLARE_ACCOUNT_ID` as environment variables, map those environment variables from the canonical secrets instead of reading legacy secret names directly.
+- In practice, reusable workflows may export both `CF_*` and `CLOUDFLARE_*` environment variables, but both values should come from `secrets.CF_API_TOKEN` / `secrets.CF_ACCOUNT_ID`.
 
 ### Workers URLs
 
@@ -34,6 +35,8 @@ Factory publishes shared workflows, packages, and operational templates for othe
 
 ### Smoke-test secrets
 
+- `SMOKE_USER_*` is the baseline authenticated end-user path.
+- `SMOKE_PRACTITIONER_*` is the elevated practitioner/operator path for apps that expose practitioner-only tools or routes.
 - Authenticated smoke credentials use:
   - `SMOKE_USER_EMAIL`
   - `SMOKE_USER_PASSWORD`

@@ -2,8 +2,10 @@
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = process.cwd();
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(SCRIPT_DIR, '..');
 const NAMING_DOC = path.join(ROOT, 'docs', 'NAMING_CONVENTIONS.md');
 const WORKFLOWS_DIR = path.join(ROOT, '.github', 'workflows');
 const HEADER_LINE = '# =============================================================================';
@@ -14,9 +16,18 @@ if (!existsSync(NAMING_DOC)) {
   violations.push('Missing docs/NAMING_CONVENTIONS.md');
 }
 
-const workflowFiles = readdirSync(WORKFLOWS_DIR)
-  .filter((entry) => entry.startsWith('_') && entry.endsWith('.yml'))
-  .sort();
+const workflowFiles = [];
+
+if (!existsSync(WORKFLOWS_DIR)) {
+  violations.push('Missing .github/workflows directory');
+} else {
+  // Factory standardizes reusable workflows on the `_*.yml` form.
+  workflowFiles.push(
+    ...readdirSync(WORKFLOWS_DIR)
+      .filter((entry) => entry.startsWith('_') && entry.endsWith('.yml'))
+      .sort(),
+  );
+}
 
 for (const fileName of workflowFiles) {
   const absolutePath = path.join(WORKFLOWS_DIR, fileName);
@@ -26,7 +37,7 @@ for (const fileName of workflowFiles) {
   const nameLine = lines.find((line) => line.startsWith('name: '));
 
   if (lines[0] !== HEADER_LINE) {
-    violations.push(`${fileName}:1 reusable workflows must start with the standard header banner`);
+    violations.push(`${fileName}:1 reusable workflows must start with "${HEADER_LINE}"`);
   }
 
   if (!nameLine) {
@@ -53,4 +64,4 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log('Naming convention check passed for reusable workflows.');
+console.log('Naming convention checks passed.');
