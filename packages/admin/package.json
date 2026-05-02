@@ -27,12 +27,11 @@
     "prepublish": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
-    "@latimer-woods-tech/errors": "^0.2.0",
-    "@latimer-woods-tech/auth": "^0.2.0",
-    "@latimer-woods-tech/analytics": "^0.2.0",
-    "@latimer-woods-tech/neon": "^0.2.0",
-    "hono": "^4.12.14",
-    "@latimer-woods-tech/logger": "^0.2.0"
+    "@latimer-woods-tech/errors": "file:../errors",
+    "@latimer-woods-tech/auth": "file:../auth",
+    "@latimer-woods-tech/analytics": "file:../analytics",
+    "@latimer-woods-tech/neon": "file:../neon",
+    "hono": "^4.12.14"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
