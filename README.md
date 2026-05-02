@@ -19,7 +19,7 @@ factory is the **plumbing layer**. Every app in the org imports from it. It owns
 
 | Layer | Where | What |
 |---|---|---|
-| Reusable CI/CD workflows | `.github/workflows/_*.yml` | `_app-ci.yml`, `_app-deploy.yml`, `_post-deploy-verify.yml` |
+| Reusable CI/CD workflows | `.github/workflows/_*.yml` | `_app-ci.yml`, `_app-ci-pnpm.yml`, `_app-deploy.yml`, `_app-deploy-pnpm.yml`, `_post-deploy-verify.yml` |
 | Shared npm packages | `packages/*` | 12 packages published to GitHub Packages under `@latimer-woods-tech/*` |
 | Provisioning workflows | `.github/workflows/*` | One-shot scripts for R2, Hyperdrive, secrets, scaffolding |
 | Documentation | `docs/*` | Architecture, runbooks, checklists, ADRs |
@@ -78,6 +78,41 @@ jobs:
 ```
 
 That's it. Inherit conventions, get free CI/CD, stop drifting.
+
+**pnpm apps** (e.g. videoking) — use the pnpm variants instead:
+
+```yaml
+# ci.yml
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+jobs:
+  ci:
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_app-ci-pnpm.yml@main
+    secrets: inherit
+```
+
+```yaml
+# deploy.yml — slim caller with post-deploy verify
+name: deploy
+on:
+  push: { branches: [main] }
+jobs:
+  deploy:
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_app-deploy-pnpm.yml@main
+    with:
+      environment: production
+    secrets: inherit
+  verify:
+    needs: deploy
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_post-deploy-verify.yml@main
+    with:
+      health_url: https://your-app.adrper79.workers.dev/health
+      rollback_on_failure: true
+      worker_name: your-app
+    secrets: inherit
+```
 
 For deeper reference: [`docs/CI_CD.md`](docs/CI_CD.md).
 
