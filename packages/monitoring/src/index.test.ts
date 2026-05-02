@@ -353,6 +353,7 @@ describe('initPostHog', () => {
       expect.stringContaining('400'),
       'warning',
     );
+    expect(mockSetContext).toHaveBeenCalledWith('messageContext', { host: HOST });
   });
 
   it('capture does not throw when the fetch call itself rejects', async () => {
@@ -364,6 +365,7 @@ describe('initPostHog', () => {
       expect.stringContaining('network error'),
       'warning',
     );
+    expect(mockSetContext).toHaveBeenCalledWith('messageContext', { host: HOST });
   });
 
   it('capture works without optional properties', async () => {
