@@ -91,18 +91,15 @@ runs:
   using: composite
   steps:
     # ── Node.js + package auth ──────────────────────────────────────────────
+    # actions/setup-node configures .npmrc for the @latimer-woods-tech scope
+    # automatically when registry-url is set. The NODE_AUTH_TOKEN env var on
+    # each npm/npx step is sufficient — no manual .npmrc write needed.
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node_version }}
         registry-url: 'https://npm.pkg.github.com'
         scope: '@latimer-woods-tech'
-
-    - name: Configure npm auth for @latimer-woods-tech/*
-      shell: bash
-      working-directory: ${{ inputs.working_directory }}
-      run: |
-        echo "//npm.pkg.github.com/:_authToken=${{ inputs.node_auth_token }}" >> .npmrc
 
     - name: Install dependencies
       shell: bash
@@ -126,9 +123,23 @@ runs:
       working-directory: ${{ inputs.working_directory }}
       run: npm test --if-present
 
+    # ── Playwright config detection (guards browser install + test run) ─────
+    - name: Detect Playwright config
+      if: ${{ inputs.run_playwright == 'true' }}
+      id: pw_detect
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        if [ -f "playwright.config.ts" ] || [ -f "playwright.config.js" ]; then
+          echo "found=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "found=false" >> "$GITHUB_OUTPUT"
+          echo "::notice::No playwright.config.* found; skipping Playwright / axe steps"
+        fi
+
     # ── Playwright browser installation ────────────────────────────────────
     - name: Install Playwright browsers
-      if: ${{ inputs.run_playwright == 'true' }}
+      if: ${{ inputs.run_playwright == 'true' && steps.pw_detect.outputs.found == 'true' }}
       shell: bash
       working-directory: ${{ inputs.working_directory }}
       run: |
@@ -137,23 +148,21 @@ runs:
           browser="$(echo "$browser" | tr -d ' ')"
           npx playwright install --with-deps "$browser"
         done
+      env:
+        NODE_AUTH_TOKEN: ${{ inputs.node_auth_token }}
 
     # ── Playwright E2E + axe accessibility tests ────────────────────────────
     - name: Run Playwright (+ axe) tests
-      if: ${{ inputs.run_playwright == 'true' }}
+      if: ${{ inputs.run_playwright == 'true' && steps.pw_detect.outputs.found == 'true' }}
       shell: bash
       working-directory: ${{ inputs.working_directory }}
-      run: |
-        if [ -f "playwright.config.ts" ] || [ -f "playwright.config.js" ]; then
-          npx playwright test --reporter=list
-        else
-          echo "::notice::No playwright.config.* found; skipping Playwright / axe step"
-        fi
+      run: npx playwright test --reporter=list
       env:
         BASE_URL: ${{ inputs.playwright_base_url }}
+        NODE_AUTH_TOKEN: ${{ inputs.node_auth_token }}
 
     - name: Upload Playwright report on failure
-      if: ${{ inputs.run_playwright == 'true' && failure() }}
+      if: ${{ inputs.run_playwright == 'true' && steps.pw_detect.outputs.found == 'true' && failure() }}
       uses: actions/upload-artifact@v4
       with:
         name: playwright-report-${{ github.run_id }}
