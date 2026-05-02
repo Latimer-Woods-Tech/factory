@@ -39,6 +39,10 @@
 
 name: _app-ci
 
+concurrency:
+  group: ci-${{ inputs.working_directory }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_call:
     inputs:

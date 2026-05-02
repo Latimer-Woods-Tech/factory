@@ -51,6 +51,10 @@
 
 name: _app-deploy
 
+concurrency:
+  group: deploy-${{ inputs.environment }}-${{ github.repository }}
+  cancel-in-progress: false
+
 on:
   workflow_call:
     inputs:

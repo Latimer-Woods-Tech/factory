@@ -1,0 +1,101 @@
+# =============================================================================
+# Daily PR Queue Digest — pushes an overnight summary to Pushover.
+#
+# WHAT IT DOES
+#   Queries all open PRs across Latimer-Woods-Tech org. Groups by age, check
+#   state, claim state. Posts summary to Pushover so the user gets a 9am ET
+#   heads-up on queue depth, stale PRs, and failing checks.
+#
+# SCHEDULE
+#   9 AM ET weekdays = 13:00 UTC Mon-Fri (EDT) or 14:00 UTC (EST).
+#   Using 13:00 UTC; shift to 14:00 after DST ends.
+#
+# SECRETS USED
+#   GH_PAT               — read access across org
+#   PUSHOVER_USER_KEY    — recipient user key
+#   PUSHOVER_APP_TOKEN   — videoking-alerts app token (via factory's conn)
+#
+# RELATED
+#   factory#84 (MA-6)
+# =============================================================================
+name: PR Queue Digest (daily)
+
+on:
+  schedule:
+    - cron: '0 13 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch org PRs + format digest
+        id: build
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          set -euo pipefail
+          # All open PRs across org
+          PRS=$(gh search prs --owner Latimer-Woods-Tech --state open --json number,title,repository,author,createdAt,updatedAt,isDraft,labels,url --limit 100)
+          COUNT=$(echo "$PRS" | jq 'length')
+          NOW=$(date -u +%s)
+
+          # Categorize
+          STALE=$(echo "$PRS" | jq -r --argjson now "$NOW" \
+            '.[] | select(((now - (.createdAt | fromdateiso8601)) / 3600) > 48) | "  - \(.repository.nameWithOwner)#\(.number): \(.title) (\((now - (.createdAt | fromdateiso8601)) / 3600 | floor)h)"' | head -10)
+          CLAIMED=$(echo "$PRS" | jq -r '.[] | select(.labels | any(.name | startswith("agent:claimed:"))) | "  - \(.repository.nameWithOwner)#\(.number): \(.title)"' | head -10)
+          UNCLAIMED=$(echo "$PRS" | jq -r '.[] | select((.labels | any(.name | startswith("agent:claimed:"))) | not) | select(.isDraft | not) | "  - \(.repository.nameWithOwner)#\(.number): \(.title)"' | head -10)
+          BLOCKED=$(echo "$PRS" | jq -r '.[] | select(.labels | any(.name == "blocked" or .name == "status:blocked")) | "  - \(.repository.nameWithOwner)#\(.number): \(.title)"' | head -10)
+
+          # By repo
+          BY_REPO=$(echo "$PRS" | jq -r 'group_by(.repository.nameWithOwner) | map("  \(.[0].repository.nameWithOwner): \(length)") | .[]')
+
+          DATE=$(date -u +%Y-%m-%d)
+          BODY=$(cat <<EOF
+          LatWood PR Queue — $DATE 9:00 ET
+
+          Total open: $COUNT
+
+          By repo:
+          $BY_REPO
+
+          🟡 Stale (>48h):
+          ${STALE:-  (none)}
+
+          🟢 Claimed by an agent:
+          ${CLAIMED:-  (none)}
+
+          🔵 Unclaimed (ready to pick up):
+          ${UNCLAIMED:-  (none)}
+
+          🔴 Blocked:
+          ${BLOCKED:-  (none)}
+
+          Board: https://github.com/orgs/Latimer-Woods-Tech/projects/1
+          EOF
+          )
+          echo "body<<DIGEST_EOF" >> "$GITHUB_OUTPUT"
+          echo "$BODY" >> "$GITHUB_OUTPUT"
+          echo "DIGEST_EOF" >> "$GITHUB_OUTPUT"
+          echo "---"
+          echo "$BODY"
+
+      - name: Post to Pushover
+        env:
+          PUSHOVER_USER_KEY: ${{ secrets.PUSHOVER_USER_KEY }}
+          PUSHOVER_APP_TOKEN: ${{ secrets.PUSHOVER_APP_TOKEN }}
+          BODY: ${{ steps.build.outputs.body }}
+        run: |
+          if [ -z "${PUSHOVER_USER_KEY:-}" ] || [ -z "${PUSHOVER_APP_TOKEN:-}" ]; then
+            echo "::warning::Pushover secrets missing; skipping push"
+            exit 0
+          fi
+          curl -fsS -X POST https://api.pushover.net/1/messages.json \
+            --data-urlencode "token=$PUSHOVER_APP_TOKEN" \
+            --data-urlencode "user=$PUSHOVER_USER_KEY" \
+            --data-urlencode "title=LatWood PR Queue" \
+            --data-urlencode "message=$BODY" \
+            --data-urlencode "priority=0"
