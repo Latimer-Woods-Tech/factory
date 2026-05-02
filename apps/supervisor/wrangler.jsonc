@@ -1,0 +1,51 @@
+{
+  "name": "factory-supervisor",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+
+  "durable_objects": {
+    "bindings": [
+      { "name": "SUPERVISOR", "class_name": "SupervisorDO" },
+      { "name": "LOCK", "class_name": "LockDO" }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["SupervisorDO", "LockDO"]
+    }
+  ],
+
+  "d1_databases": [
+    {
+      "binding": "MEMORY",
+      "database_name": "factory-supervisor-memory",
+      "database_id": "REPLACE_AFTER_PROVISIONING"
+    },
+    {
+      "binding": "LLM_LEDGER",
+      "database_name": "factory-supervisor-ledger",
+      "database_id": "REPLACE_AFTER_PROVISIONING"
+    }
+  ],
+
+  "vars": {
+    "AI_GATEWAY_BASE_URL": "https://gateway.ai.cloudflare.com/v1/REPLACE/supervisor",
+    "VERTEX_PROJECT": "factory-495015",
+    "VERTEX_LOCATION": "us-central1",
+    "PER_RUN_CAP_CENTS": "500"
+  },
+
+  "env": {
+    "production": {
+      "routes": [
+        { "pattern": "supervisor.apunlimited.com/*", "zone_name": "apunlimited.com" }
+      ]
+    },
+    "staging": {
+      "workers_dev": true
+    }
+  }
+}
