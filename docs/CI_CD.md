@@ -48,7 +48,7 @@ GitHub Team plan rule: **a private repo's reusable workflows are accessible only
 
 ---
 
-## The three reusable workflows
+## The reusable workflows
 
 ### `_app-ci.yml`
 Run on every push and PR. Authenticates to GitHub Packages so private `@latimer-woods-tech/*` deps install. Runs `typecheck`, `lint`, `test`, `build` from the app's package.json (skipping any that don't exist).
@@ -76,6 +76,12 @@ jobs:
       health_url: https://app.example.com/healthz
     secrets: inherit
 ```
+
+### `_app-ci-pnpm.yml`
+Same contract as `_app-ci.yml`, but installs with `pnpm install --frozen-lockfile` for repos that keep pnpm as the source of truth.
+
+### `_app-deploy-pnpm.yml`
+Same contract as `_app-deploy.yml`, but installs with pnpm before deploy so pnpm-based repos can stay on a ≤ 30-line caller workflow.
 
 ### `_post-deploy-verify.yml`
 Stronger post-deploy check with retry/backoff plus optional auto-rollback to a captured prior version ID. Use this for production-grade deploys; the inline health check in `_app-deploy.yml` is fine for staging.

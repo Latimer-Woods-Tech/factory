@@ -1,23 +1,20 @@
 # =============================================================================
-# Reusable deploy workflow for Latimer-Woods-Tech apps (Cloudflare Workers).
+# Reusable deploy workflow for Latimer-Woods-Tech apps that install with pnpm.
 #
 # WHAT IT DOES
-#   Installs deps from GitHub Packages, runs `wrangler deploy`, optionally
-#   probes a health URL with retry. Targets either staging or production
-#   GitHub Environment so required-reviewer gates apply automatically.
+#   Installs deps from GitHub Packages with pnpm, runs `wrangler deploy`,
+#   and optionally probes a health URL with retry.
 #
 # WHO CALLS IT
-#   Every app repo's `.github/workflows/deploy.yml` should call this when a
-#   push to main lands (production) or a push to staging/* lands (staging).
+#   App repos with a pnpm lockfile that still want the standard factory deploy shape.
 #
 # HOW TO CALL
 #   jobs:
 #     deploy:
-#       uses: Latimer-Woods-Tech/factory/.github/workflows/_app-deploy.yml@main
+#       uses: Latimer-Woods-Tech/factory/.github/workflows/_app-deploy-pnpm.yml@main
 #       with:
-#         environment: production           # or 'staging'
-#         working_directory: workers        # if app is in a subdir
-#         health_url: https://app.example.com/healthz
+#         environment: production
+#         health_url: https://app.example.com/health
 #       secrets: inherit
 #
 # REQUIRED SECRETS (passed via `secrets: inherit` from org-level vault)
@@ -26,33 +23,16 @@
 #   CF_API_TOKEN or CLOUDFLARE_API_TOKEN
 #   CF_ACCOUNT_ID or CLOUDFLARE_ACCOUNT_ID
 #
-# REQUIRED REPO STATE
-#   GitHub Environment named `production` and/or `staging` must exist on the
-#   calling repo. Public repos get required-reviewer gates; private repos on
-#   the Team plan get bare environments only (Enterprise needed for private
-#   repo gates).
-#
-# OPTIONAL INPUTS
-#   node_version       - Node.js major version (default '22')
-#   working_directory  - Subdir to run wrangler in (default '.')
-#   environment        - GitHub Environment name (default 'production')
-#   wrangler_command   - Wrangler CLI command (default 'deploy')
-#   health_url         - URL to probe post-deploy. Empty string skips the check.
-#
-# OUTPUT
-#   No outputs. Failure exits non-zero. For auto-rollback, chain
-#   `_post-deploy-verify.yml` with `rollback_on_failure: true`.
-#
 # RELATED
-#   _app-ci.yml              - Pre-deploy CI (typecheck, lint, test, build)
-#   _post-deploy-verify.yml  - Stronger verify with auto-rollback
+#   _app-deploy.yml          - npm variant
+#   _app-ci-pnpm.yml         - pnpm CI variant
 #   docs/CI_CD.md            - Full architecture reference
 # =============================================================================
 
-name: _app-deploy
+name: _app-deploy-pnpm
 
 concurrency:
-  group: deploy-${{ inputs.environment }}-${{ github.repository }}
+  group: deploy-pnpm-${{ inputs.environment }}-${{ github.repository }}
   cancel-in-progress: false
 
 on:
@@ -61,6 +41,9 @@ on:
       node_version:
         type: string
         default: '22'
+      pnpm_version:
+        type: string
+        default: '9'
       working_directory:
         type: string
         default: '.'
@@ -94,14 +77,19 @@ jobs:
           app-id: ${{ secrets.FACTORY_APP_ID }}
           private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ inputs.pnpm_version }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.node_version }}
           registry-url: 'https://npm.pkg.github.com'
           scope: '@latimer-woods-tech'
+          cache: pnpm
+          cache-dependency-path: ${{ inputs.working_directory }}/pnpm-lock.yaml
       - name: Configure npm auth
         run: echo "//npm.pkg.github.com/:_authToken=${{ steps.app-token.outputs.token }}" >> .npmrc
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
         env:
           NODE_AUTH_TOKEN: ${{ steps.app-token.outputs.token }}
       - name: Deploy to Cloudflare

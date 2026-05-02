@@ -2,7 +2,7 @@
 /**
  * setup-all-apps.mjs
  *
- * One-pass script to wire all 6 Factory apps from Factory Core.
+ * One-pass script to wire configured Factory app repos from Factory Core.
  * Sets GitHub repo secrets and Wrangler Worker secrets for every app.
  * Idempotent — safe to re-run. Uses --overwrite for existing secrets.
  *
@@ -19,6 +19,7 @@
  *   export JWT_SECRET_IJUSTUS="..."
  *   export JWT_SECRET_THE_CALLING="..."
  *   export JWT_SECRET_NEIGHBOR_AID="..."
+ *   export JWT_SECRET_VIDEOKING="..."
  *   export SENTRY_DSN_WORDIS_BOND="..."
  *   ... (same pattern for each secret × each app)
  *
@@ -69,6 +70,12 @@ const APPS = [
     workerName: 'neighbor-aid',
     envKey: 'NEIGHBOR_AID',
     extraSecrets: ['STRIPE_SECRET_KEY', 'RESEND_API_KEY'],
+  },
+  {
+    name: 'videoking',
+    workerName: 'nichestream-api',
+    envKey: 'VIDEOKING',
+    extraSecrets: ['STRIPE_SECRET_KEY'],
   },
 ];
 
@@ -158,6 +165,13 @@ function setGitHubSecret(repo, name, value) {
   run(cmd);
 }
 
+function ensureGitHubEnvironment(repo, environment) {
+  const fullRepo = `Latimer-Woods-Tech/${repo}`;
+  const cmd = `gh api --method PUT -H "Accept: application/vnd.github+json" repos/${fullRepo}/environments/${environment}`;
+  console.log(`  gh api --method PUT repos/${fullRepo}/environments/${environment}`);
+  run(cmd);
+}
+
 // ─── Wrangler Secret ─────────────────────────────────────────────────────────
 
 /**
@@ -200,7 +214,11 @@ async function setupApp(app) {
 
   setGitHubSecret(name, 'PACKAGES_READ_TOKEN', requireEnv('PACKAGES_READ_TOKEN'));
   setGitHubSecret(name, 'CF_API_TOKEN', requireEnv('CF_API_TOKEN'));
+  setGitHubSecret(name, 'CLOUDFLARE_API_TOKEN', requireEnv('CF_API_TOKEN'));
   setGitHubSecret(name, 'CF_ACCOUNT_ID', requireEnv('CF_ACCOUNT_ID'));
+  setGitHubSecret(name, 'CLOUDFLARE_ACCOUNT_ID', requireEnv('CF_ACCOUNT_ID'));
+  ensureGitHubEnvironment(name, 'staging');
+  ensureGitHubEnvironment(name, 'production');
 
   // Optional: Neon preview branch URL for CI migration dry-run
   const neonPreviewUrl = optionalEnv(`NEON_PREVIEW_URL_${envKey}`);

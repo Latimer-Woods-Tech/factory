@@ -103,7 +103,9 @@ factory/
 ├── .github/
 │   └── workflows/
 │       ├── _app-ci.yml              ← reusable CI for every app
+│       ├── _app-ci-pnpm.yml         ← reusable CI for pnpm-based apps
 │       ├── _app-deploy.yml          ← reusable deploy for every app
+│       ├── _app-deploy-pnpm.yml     ← reusable deploy for pnpm-based apps
 │       ├── _post-deploy-verify.yml  ← reusable health-check + rollback
 │       └── *.yml                    ← provisioning + maintenance workflows
 ├── packages/                        ← shared @latimer-woods-tech/* packages
