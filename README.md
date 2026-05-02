@@ -20,6 +20,7 @@ factory is the **plumbing layer**. Every app in the org imports from it. It owns
 | Layer | Where | What |
 |---|---|---|
 | Reusable CI/CD workflows | `.github/workflows/_*.yml` | `_app-ci.yml`, `_app-ci-pnpm.yml`, `_app-deploy.yml`, `_app-deploy-pnpm.yml`, `_post-deploy-verify.yml` |
+| Composite skills | `skills/*/` | `skills/global/testing` — vitest + Playwright + axe + CodeQL |: SYN-8 publish skills/global/testing composite action (vitest + playwright + axe + CodeQL))
 | Shared npm packages | `packages/*` | 12 packages published to GitHub Packages under `@latimer-woods-tech/*` |
 | Provisioning workflows | `.github/workflows/*` | One-shot scripts for R2, Hyperdrive, secrets, scaffolding |
 | Documentation | `docs/*` | Architecture, runbooks, checklists, ADRs |

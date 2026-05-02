@@ -1,0 +1,166 @@
+# =============================================================================
+# Factory Global Testing Skill — composite action
+# Org: Latimer-Woods-Tech/factory  ·  Caller: any Latimer-Woods-Tech app repo
+# Trigger: composite (steps-level reuse, not workflow_call)
+#
+# WHAT IT DOES
+#   Runs the four standard quality gates for every Factory app:
+#     1. Vitest      — unit / integration tests with coverage
+#     2. Playwright  — E2E browser tests
+#     3. Axe         — WCAG 2.2 AA accessibility checks via @axe-core/playwright
+#     4. CodeQL      — static security analysis (requires security-events: write)
+#
+# HOW TO CALL (minimal)
+#   steps:
+#     - uses: actions/checkout@v4
+#     - uses: Latimer-Woods-Tech/factory/skills/global/testing@main
+#       with:
+#         node_auth_token: ${{ secrets.GITHUB_TOKEN }}
+#
+# HOW TO CALL (with CodeQL — calling workflow must have security-events: write)
+#   permissions:
+#     contents: read
+#     security-events: write
+#   steps:
+#     - uses: actions/checkout@v4
+#     - uses: Latimer-Woods-Tech/factory/skills/global/testing@main
+#       with:
+#         node_auth_token: ${{ secrets.GITHUB_TOKEN }}
+#         run_codeql: 'true'
+#
+# INPUTS
+#   node_version         Node.js major version (default: '22')
+#   working_directory    Subdir to run commands in (default: '.')
+#   node_auth_token      Token for @latimer-woods-tech/* package auth [REQUIRED]
+#   run_vitest           Run vitest unit tests (default: 'true')
+#   run_playwright       Run Playwright E2E + axe tests (default: 'true')
+#   playwright_browsers  Comma-separated browsers to install (default: 'chromium')
+#   playwright_base_url  Base URL for Playwright; empty skips network-dependent tests
+#   run_codeql           Run CodeQL security scan (default: 'false')
+#   codeql_languages     Languages for CodeQL analysis (default: 'javascript-typescript')
+#
+# RELATED
+#   .github/workflows/_app-ci.yml     — source typecheck + lint + build
+#   docs/CI_CD.md                     — full CI/CD architecture reference
+#   skills/global/testing/README.md   — integration guide with copy-paste examples
+# =============================================================================
+
+name: 'Factory Global Testing Skill'
+description: >
+  Runs vitest unit tests, Playwright E2E + axe accessibility tests, and an
+  optional CodeQL security scan. Authenticates to GitHub Packages so private
+  @latimer-woods-tech/* dependencies resolve. Drop-in composite action for
+  any Latimer-Woods-Tech app repo.
+
+inputs:
+  node_version:
+    description: 'Node.js major version'
+    default: '22'
+  working_directory:
+    description: 'Subdirectory to run commands in (monorepo root relative)'
+    default: '.'
+  node_auth_token:
+    description: >
+      GitHub token for @latimer-woods-tech/* package auth.
+      Pass ${{ secrets.GITHUB_TOKEN }} or a factory-cross-repo App token.
+    required: true
+  run_vitest:
+    description: 'Run vitest unit / integration tests with coverage'
+    default: 'true'
+  run_playwright:
+    description: 'Run Playwright E2E tests (includes axe a11y assertions if present)'
+    default: 'true'
+  playwright_browsers:
+    description: 'Comma-separated Playwright browser names to install (e.g. chromium,firefox)'
+    default: 'chromium'
+  playwright_base_url:
+    description: >
+      Base URL injected as BASE_URL env var for Playwright tests.
+      Leave empty to use whatever is configured in playwright.config.*
+    default: ''
+  run_codeql:
+    description: >
+      Run CodeQL static security analysis.
+      The calling workflow MUST declare: permissions.security-events: write
+    default: 'false'
+  codeql_languages:
+    description: 'Comma-separated CodeQL language identifiers'
+    default: 'javascript-typescript'
+
+runs:
+  using: composite
+  steps:
+    # ── Node.js + package auth ──────────────────────────────────────────────
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node_version }}
+        registry-url: 'https://npm.pkg.github.com'
+        scope: '@latimer-woods-tech'
+
+    - name: Configure npm auth for @latimer-woods-tech/*
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        echo "//npm.pkg.github.com/:_authToken=${{ inputs.node_auth_token }}" >> .npmrc
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: npm ci
+      env:
+        NODE_AUTH_TOKEN: ${{ inputs.node_auth_token }}
+
+    # ── CodeQL init (must precede any build / test steps) ──────────────────
+    - name: Initialize CodeQL
+      if: ${{ inputs.run_codeql == 'true' }}
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ inputs.codeql_languages }}
+        queries: security-extended
+
+    # ── Vitest unit / integration tests ────────────────────────────────────
+    - name: Run vitest
+      if: ${{ inputs.run_vitest == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: npm test --if-present
+
+    # ── Playwright browser installation ────────────────────────────────────
+    - name: Install Playwright browsers
+      if: ${{ inputs.run_playwright == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        IFS=',' read -ra BROWSERS <<< "${{ inputs.playwright_browsers }}"
+        for browser in "${BROWSERS[@]}"; do
+          browser="$(echo "$browser" | tr -d ' ')"
+          npx playwright install --with-deps "$browser"
+        done
+
+    # ── Playwright E2E + axe accessibility tests ────────────────────────────
+    - name: Run Playwright (+ axe) tests
+      if: ${{ inputs.run_playwright == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        if [ -f "playwright.config.ts" ] || [ -f "playwright.config.js" ]; then
+          npx playwright test --reporter=list
+        else
+          echo "::notice::No playwright.config.* found; skipping Playwright / axe step"
+        fi
+      env:
+        BASE_URL: ${{ inputs.playwright_base_url }}
+
+    - name: Upload Playwright report on failure
+      if: ${{ inputs.run_playwright == 'true' && failure() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-report-${{ github.run_id }}
+        path: ${{ inputs.working_directory }}/playwright-report/
+        retention-days: 7
+
+    # ── CodeQL analysis + upload ────────────────────────────────────────────
+    - name: Perform CodeQL analysis
+      if: ${{ inputs.run_codeql == 'true' }}
+      uses: github/codeql-action/analyze@v3

@@ -49,6 +49,41 @@ GitHub Team plan rule: **a private repo's reusable workflows are accessible only
 
 ---
 
+## Skills (composite actions)
+
+Factory publishes reusable composite actions under `skills/` in addition to reusable workflows. Composite actions are referenced at the **step level** (not job level) and are suited for bundling multi-tool testing pipelines.
+
+### `skills/global/testing`
+
+Runs the four standard quality gates in a single step: Vitest, Playwright, axe (via `@axe-core/playwright`), and CodeQL. Full documentation in [`skills/global/testing/README.md`](../skills/global/testing/README.md).
+
+**Caller (unit tests only):**
+```yaml
+steps:
+  - uses: actions/checkout@v4
+  - uses: Latimer-Woods-Tech/factory/skills/global/testing@main
+    with:
+      node_auth_token: ${{ secrets.GITHUB_TOKEN }}
+      run_playwright: 'false'
+```
+
+**Caller (full suite with CodeQL):**
+```yaml
+permissions:
+  contents: read
+  security-events: write   # required for CodeQL
+steps:
+  - uses: actions/checkout@v4
+  - uses: Latimer-Woods-Tech/factory/skills/global/testing@main
+    with:
+      node_auth_token: ${{ secrets.GITHUB_TOKEN }}
+      playwright_base_url: 'https://staging.example.com'
+      run_codeql: 'true'
+```
+
+---
+
+## The three reusable workflows
 ## The reusable workflows
 
 ### `_app-ci.yml`
