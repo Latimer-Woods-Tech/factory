@@ -1,0 +1,82 @@
+id: db-migration-gap-fix
+version: 1
+tier: yellow
+triggers:
+  labels_any_of: [bug]
+  title_pattern: "^(MIGRATION:|DatabaseError|column .* does not exist)"
+  body_patterns:
+    - "(sentry\\.io/|DatabaseError|does not exist)"
+preconditions:
+  - capability_exists: sentry.getIssue
+  - capability_exists: github.readFile
+  - capability_exists: github.comment
+  - capability_exists: github.addLabel
+slots:
+  - name: sentry_issue_id
+    type: string
+    validator: "^[A-Z][A-Z0-9\\-]+-\\d+$"
+    source: issue_body
+    referential_check: sentry.getIssue
+  - name: table_name
+    type: string
+    validator: "^[a-z_][a-z0-9_]{0,62}$"
+    source: issue_body
+  - name: column_or_relation
+    type: string
+    validator: "^[a-z_][a-z0-9_]{0,62}$"
+    source: issue_body
+steps:
+  - id: s1
+    tool: sentry.getIssue
+    depends_on: null
+    params:
+      issue_id: "$slots.sentry_issue_id"
+    intent: "Fetch the Sentry issue to confirm the DatabaseError text and extract stack context."
+    requires_human_review: false
+  - id: s2
+    tool: github.readFile
+    depends_on: s1
+    params:
+      path: "workers/src/db/migrations/"
+      ref: "main"
+      grep: "$slots.column_or_relation"
+    intent: "Scan migrations directory for a migration that creates the referenced column or relation."
+    requires_human_review: false
+  - id: s3
+    tool: github.readFile
+    depends_on: s2
+    params:
+      path: "workers/src/db/migrations/"
+      ref: "main"
+      grep: "$slots.table_name"
+    intent: "Cross-check the table name in migrations to bracket the migration range to apply."
+    requires_human_review: false
+  - id: s4
+    tool: github.comment
+    depends_on: s3
+    params:
+      body: "Supervisor runbook: apply migrations that introduce `$slots.table_name.$slots.column_or_relation` on prod. Migration authored in repo (see $s2.matches, $s3.matches) but not applied in prod database. Human action required: run `psql` against prod replica of the affected worker DB and apply migrations N..M in order. Sentry: $slots.sentry_issue_id. If no matching migration is found in $s2/$s3, reclassify this issue to tier:red (migration authoring needed)."
+    intent: "Post the apply-runbook as a comment so a human can execute the psql step; supervisor never writes to prod DB."
+    requires_human_review: false
+  - id: s5
+    tool: github.addLabel
+    depends_on: s4
+    params:
+      label: "needs-human:db-migration"
+    intent: "Flag the issue so an on-call human picks up the psql apply step."
+    requires_human_review: false
+acceptance_gate:
+  description: "The supervisor has posted a comment containing 'apply migrations' on the triggering issue."
+  verifier_query:
+    tool: github.readFile
+    query: "issues/$issue.number/comments?author=supervisor-bot&body_contains=apply%20migrations"
+    assert: "count >= 1"
+rollback:
+  - on_step: s4
+    action: github.comment
+    params:
+      body: "Supervisor rollback: the previous runbook comment on $slots.sentry_issue_id may be incomplete or incorrect; please disregard and await re-run."
+  - on_step: s5
+    action: github.removeLabel
+    params:
+      label: "needs-human:db-migration"

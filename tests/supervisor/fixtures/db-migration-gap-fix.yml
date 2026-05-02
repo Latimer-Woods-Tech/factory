@@ -1,0 +1,20 @@
+fixture_for: db-migration-gap-fix
+issue:
+  title: "DatabaseError: column creators.onboarded_at does not exist"
+  labels: [bug]
+  body: |
+    Sentry is firing on production videoking workers after the latest deploy.
+
+    Sentry issue: https://sentry.io/organizations/factory/issues/VIDEOKING-4821/
+    Sentry ID: VIDEOKING-4821
+
+    Stack trace (trimmed):
+    ```
+    asyncpg.exceptions.UndefinedColumnError: column creators.onboarded_at does not exist
+      at workers/src/routes/creators.ts:142
+    ```
+
+    Table: creators
+    Column: onboarded_at
+
+    Looks like the migration landed in `workers/src/db/migrations/` on main but was never applied to the prod DB. Need someone to apply the pending migrations on prod — supervisor should assemble the runbook.

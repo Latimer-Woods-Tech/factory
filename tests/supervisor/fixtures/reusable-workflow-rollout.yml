@@ -1,0 +1,15 @@
+fixture_for: reusable-workflow-rollout
+issue:
+  title: "VK-7: Replace videoking deploy.yml with factory reusable workflow"
+  labels: [enhancement, hardening]
+  body: |
+    Migrate videoking off its bespoke deploy pipeline and onto factory's
+    reusable `_app-deploy.yml`, matching the pattern xpelevator and ijustus
+    already adopted.
+
+    - target repo: videoking
+    - workflow kind: deploy
+    - existing file: .github/workflows/deploy.yml
+
+    Acceptance: PR opens replacing deploy.yml with a ~5-10 line caller that
+    invokes factory's `_app-deploy.yml`, and CI on the PR passes.

@@ -1,0 +1,93 @@
+id: reusable-workflow-rollout
+version: 1
+tier: yellow
+triggers:
+  labels_any_of: [enhancement, hardening]
+  title_pattern: "(_app-ci|_app-deploy|reusable workflow|factory workflow)"
+  body_patterns:
+    - "(?i)(replace|migrate|adopt|switch).*(workflow|deploy\\.yml|ci\\.yml)"
+preconditions:
+  - capability_exists: github.readFile
+  - capability_exists: github.openPR
+  - capability_exists: factory_admin.repo.health
+slots:
+  - name: target_repo
+    type: enum
+    values: [HumanDesign, videoking, xico-city, ijustus, xpelevator, factory-admin]
+    referential_check: factory_admin.repo.health
+    source: issue_title
+  - name: workflow_kind
+    type: enum
+    values: [ci, deploy, prod-canary, reliability-gate]
+    source: issue_body
+  - name: existing_workflow_path
+    type: string
+    validator: "^\\.github/workflows/[A-Za-z0-9_.-]+\\.ya?ml$"
+    source: issue_body
+    default: ".github/workflows/deploy.yml"
+steps:
+  - id: s1
+    tool: factory_admin.repo.health
+    depends_on: null
+    params:
+      repo: "$slots.target_repo"
+    intent: "Confirm the target repo is healthy and reachable before proposing workflow changes."
+    requires_human_review: false
+  - id: s2
+    tool: github.readFile
+    depends_on: s1
+    params:
+      repo: "$slots.target_repo"
+      path: "$slots.existing_workflow_path"
+      ref: "main"
+    intent: "Read the app's current workflow file so the caller can preserve any custom inputs."
+    requires_human_review: false
+  - id: s3
+    tool: github.readFile
+    depends_on: s1
+    params:
+      repo: "factory-admin"
+      path: ".github/workflows/_app-$slots.workflow_kind.yml"
+      ref: "main"
+    intent: "Read the factory reusable workflow signature to wire the caller's inputs correctly."
+    requires_human_review: false
+  - id: s4
+    tool: github.openPR
+    depends_on: s3
+    params:
+      repo: "$slots.target_repo"
+      base: "main"
+      head: "supervisor/reusable-$slots.workflow_kind-rollout"
+      title: "Adopt factory reusable _app-$slots.workflow_kind workflow"
+      body: |
+        Replaces `$slots.existing_workflow_path` with a thin caller that invokes
+        factory's reusable `_app-$slots.workflow_kind.yml`.
+
+        - Removes: `$slots.existing_workflow_path`
+        - Adds: `.github/workflows/$slots.workflow_kind.yml` (caller, ~5-10 lines)
+
+        Pattern source: VK-7, xpelevator/ijustus adoption.
+      changes:
+        - op: delete
+          path: "$slots.existing_workflow_path"
+        - op: create
+          path: ".github/workflows/$slots.workflow_kind.yml"
+          from_template: "factory/callers/_app-$slots.workflow_kind.caller.yml"
+          inputs_from: "$s2.content"
+          reusable_signature: "$s3.content"
+      labels: [enhancement, hardening, supervisor]
+    intent: "Open a PR that swaps the bespoke workflow for a thin caller of the factory reusable."
+    requires_human_review: true
+acceptance_gate:
+  description: "Caller PR opens and CI on the PR head passes (green check on the new caller workflow)."
+  verifier_query:
+    tool: github.readFile
+    query: "repo=$slots.target_repo pr=$s4.number check_runs status=completed conclusion=success workflow=$slots.workflow_kind"
+    assert: "count >= 1"
+rollback:
+  - on_step: s4
+    action: github.closePR
+    params:
+      repo: "$slots.target_repo"
+      number: "$s4.number"
+      comment: "Auto-rollback: acceptance_gate failed for reusable-workflow-rollout."
