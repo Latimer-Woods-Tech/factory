@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [wordis-bond, cypher-healing, ijustus, the-calling, neighbor-aid]
+        app: [wordis-bond, cypher-healing, ijustus, the-calling]
 
     steps:
       - name: Generate GitHub App token
@@ -56,7 +56,6 @@ jobs:
             prime-self)     export DATABASE_URL="${{ secrets.SELFPRIME_CONNECTION_STRING }}" ;;
             ijustus)        export DATABASE_URL="${{ secrets.KAIROSCOUNCIL_CONNECTION_STRING }}" ;;
             the-calling)    export DATABASE_URL="${{ secrets.THECALLING_CONNECTION_STRING }}" ;;
-            neighbor-aid)   export DATABASE_URL="${{ secrets.NICHESTREAM_CONNECTION_STRING }}" ;;
           esac
           npx drizzle-kit migrate
         working-directory: app

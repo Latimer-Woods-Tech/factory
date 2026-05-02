@@ -31,7 +31,7 @@ jobs:
           PRIME_SELF_CONN: ${{ secrets.SELFPRIME_CONNECTION_STRING }}
           IJUSTUS_CONN: ${{ secrets.KAIROSCOUNCIL_CONNECTION_STRING }}
           THE_CALLING_CONN: ${{ secrets.THECALLING_CONNECTION_STRING }}
-          NEIGHBOR_AID_CONN: ${{ secrets.NICHESTREAM_CONNECTION_STRING }}
+          NEIGHBOR_AID_CONN: ${{ secrets.NEIGHBOR_AID_CONNECTION_STRING }}
           XPELEVATOR_CONN: ${{ secrets.MEXXICO_CITY_CONNECTION_STRING }}
           XICO_CITY_CONN: ${{ secrets.MEXXICO_CITY_CONNECTION_STRING }}
         run: node packages/deploy/scripts/create-hyperdrive.mjs
