@@ -1,11 +1,11 @@
 ---
 title: "@latimer-woods-tech/monitoring"
-description: Sentry error reporting for Cloudflare Workers.
+description: Sentry + PostHog observability for Cloudflare Workers.
 ---
 
 # @latimer-woods-tech/monitoring
 
-Sentry integration scoped to Cloudflare Workers. Depends on `@latimer-woods-tech/errors`.
+Sentry + PostHog observability utilities scoped to Cloudflare Workers. Depends on `@latimer-woods-tech/errors`.
 
 ## Installation
 
@@ -16,57 +16,131 @@ npm install @latimer-woods-tech/monitoring
 ## Bindings required
 
 ```jsonc
-// wrangler.jsonc vars (or secrets for DSN)
+// wrangler.jsonc vars (or secrets for DSN / key)
 // Set via: wrangler secret put SENTRY_DSN
+// Set via: wrangler secret put POSTHOG_KEY
 ```
 
-## API
+## Sentry API
 
-### `initSentry(opts)`
+### `withSentry(configFn, handler)`
 
-Initializes the Sentry client for the current request lifecycle.
+Wraps a Cloudflare Worker (or Hono app) with Sentry monitoring.
+Re-exported from `@sentry/cloudflare`.
 
 ```typescript
-function initSentry(opts: {
-  dsn: string;
-  environment?: string;
-  release?: string;
-}): SentryClient;
+export default withSentry(
+  (env: Env) => ({ dsn: env.SENTRY_DSN, tracesSampleRate: 0.1, sendDefaultPii: true }),
+  app,
+);
 ```
 
-### `captureException(client, error, context?)`
+### `createSentryCloudflareConfig(dsn, opts)`
 
-Reports a `FactoryError` or unknown error to Sentry.
+Builds a `withSentry` config object from the DSN and options.
 
 ```typescript
-function captureException(
-  client: SentryClient,
-  error: unknown,
+function createSentryCloudflareConfig(
+  dsn: string,
+  opts: { tracesSampleRate: number; sendDefaultPii?: boolean; release?: string },
+): SentryCloudflareConfig;
+```
+
+### `sentryMiddleware(config)`
+
+Hono middleware that initialises Sentry per-request and wraps handlers in a performance transaction.
+
+```typescript
+app.use('*', sentryMiddleware({ dsn: env.SENTRY_DSN, environment: 'production' }));
+```
+
+### `captureError(err, context?)`
+
+Reports an error to Sentry with optional user/request context.
+
+```typescript
+function captureError(err: unknown, context?: ErrorCaptureContext): string;
+```
+
+### `captureMessage(message, level?, context?)`
+
+Captures a structured message event.
+
+```typescript
+function captureMessage(
+  message: string,
+  level?: 'debug' | 'info' | 'warning' | 'error',
   context?: Record<string, unknown>,
-): void;
+): string;
 ```
 
-### `withSentry(handler, opts)`
+### `withPerformance(name, fn)`
 
-Wraps a Hono handler to automatically catch and report unhandled errors.
+Runs an async operation inside a named Sentry span.
 
 ```typescript
-function withSentry(
-  handler: MiddlewareHandler,
-  opts: { dsn: string; environment?: string },
-): MiddlewareHandler;
+async function withPerformance<T>(name: string, fn: () => Promise<T>): Promise<T>;
+```
+
+### `setUserContext(user)`
+
+Binds the current user identity to the active Sentry scope.
+
+```typescript
+function setUserContext(user: MonitoringUserContext): void;
+```
+
+## PostHog API
+
+### `initPostHog(config, deps?)`
+
+Initialises a lightweight PostHog HTTP client for Cloudflare Workers.
+No Node.js SDK dependency. Failures are captured via Sentry and never thrown.
+
+```typescript
+function initPostHog(config: PostHogConfig, deps?: PostHogDeps): PostHogClient;
+
+interface PostHogConfig {
+  apiKey: string;   // phc_... key from env.POSTHOG_KEY
+  host?: string;    // defaults to https://us.i.posthog.com
+}
+```
+
+#### `client.capture(event, distinctId, properties?)`
+
+Sends a custom event to PostHog.
+
+```typescript
+await posthog.capture('video.watched', userId, { videoId, durationMs });
+```
+
+#### `client.identify(distinctId, properties?)`
+
+Identifies a user and sets profile traits.
+
+```typescript
+await posthog.identify(userId, { email, plan: 'pro' });
 ```
 
 ## Example
 
 ```typescript
-import { withSentry } from '@latimer-woods-tech/monitoring';
+import { withSentry, createSentryCloudflareConfig, initPostHog } from '@latimer-woods-tech/monitoring';
 import { Hono } from 'hono';
 
-const app = new Hono();
+const app = new Hono<{ Bindings: { SENTRY_DSN: string; POSTHOG_KEY: string } }>();
 
-app.use('*', withSentry((c, next) => next(), {
-  dsn: c.env.SENTRY_DSN,
-  environment: 'production',
-}));
+app.get('/api/video/:id/watch', async (c) => {
+  const posthog = initPostHog({ apiKey: c.env.POSTHOG_KEY });
+  const userId = c.get('user').sub;
+
+  await posthog.capture('video.watched', userId, { videoId: c.req.param('id') });
+
+  return c.json({ ok: true });
+});
+
+export default withSentry(
+  (env) => createSentryCloudflareConfig(env.SENTRY_DSN, { tracesSampleRate: 0.1, sendDefaultPii: true }),
+  app,
+);
 ```
