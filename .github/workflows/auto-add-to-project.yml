@@ -1,4 +1,15 @@
-name: Auto-add to LatWood Operations Project
+# =============================================================================
+# Auto Project Sync — adds new issues and PRs to the LatWood Operations board.
+#
+# WHAT IT DOES
+#   Adds newly opened issues/PRs in this repo to the shared GitHub Project so
+#   board automation can populate Agent / Status / Deploy SHA fields later.
+#
+# TOKENS
+#   Uses the Factory GitHub App token, not a long-lived PAT or GH_PROJECT_TOKEN.
+#   Projects automation should follow the repo-wide short-lived App-token pattern.
+# =============================================================================
+name: Auto Project Sync
 
 on:
   issues:

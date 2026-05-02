@@ -11,7 +11,8 @@
 #   Using 13:00 UTC; shift to 14:00 after DST ends.
 #
 # SECRETS USED
-#   GH_PAT               — read access across org
+#   FACTORY_APP_ID       — GitHub App ID for `factory-cross-repo`
+#   FACTORY_APP_PRIVATE_KEY — PEM private key for the same App
 #   PUSHOVER_USER_KEY    — recipient user key
 #   PUSHOVER_APP_TOKEN   — videoking-alerts app token (via factory's conn)
 #
@@ -32,10 +33,17 @@ jobs:
   digest:
     runs-on: ubuntu-latest
     steps:
+      - name: Mint factory App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: Latimer-Woods-Tech
       - name: Fetch org PRs + format digest
         id: build
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           set -euo pipefail
           # All open PRs across org

@@ -1,0 +1,59 @@
+{
+  "labels": [
+    {
+      "name": "agent:claimed:copilot",
+      "color": "1d76db",
+      "description": "Issue currently claimed by Copilot"
+    },
+    {
+      "name": "agent:claimed:claude-code",
+      "color": "1d76db",
+      "description": "Issue currently claimed by Claude Code"
+    },
+    {
+      "name": "agent:claimed:sauna-1",
+      "color": "1d76db",
+      "description": "Issue currently claimed by Sauna agent 1"
+    },
+    {
+      "name": "agent:claimed:sauna-2",
+      "color": "1d76db",
+      "description": "Issue currently claimed by Sauna agent 2"
+    },
+    {
+      "name": "agent:claimed:sauna-3",
+      "color": "1d76db",
+      "description": "Issue currently claimed by Sauna agent 3"
+    },
+    {
+      "name": "agent:claimed:sauna-4",
+      "color": "1d76db",
+      "description": "Issue currently claimed by Sauna agent 4"
+    },
+    {
+      "name": "agent:claimed:sauna-5",
+      "color": "1d76db",
+      "description": "Issue currently claimed by Sauna agent 5"
+    },
+    {
+      "name": "status:in_progress",
+      "color": "fbca04",
+      "description": "Agent is actively working the issue"
+    },
+    {
+      "name": "status:blocked",
+      "color": "6f42c1",
+      "description": "Blocked on dep or decision"
+    },
+    {
+      "name": "status:done",
+      "color": "0e8a16",
+      "description": "Implementation is complete and ready for merge triage"
+    },
+    {
+      "name": "status:abandoned",
+      "color": "8c959f",
+      "description": "Agent stopped and the issue needs reassignment"
+    }
+  ]
+}
