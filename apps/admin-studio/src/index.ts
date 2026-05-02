@@ -12,6 +12,7 @@ import { envContextMiddleware } from './middleware/env-context.js';
 import { auditMiddleware } from './middleware/audit.js';
 
 import auth from './routes/auth.js';
+import { runAnalysisCycle } from './routes/ai.js';
 import me from './routes/me.js';
 import tests from './routes/tests.js';
 import deploy from './routes/deploy.js';
@@ -114,4 +115,7 @@ app.notFound((c) =>
 
 export default {
   fetch: app.fetch,
+  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(runAnalysisCycle(env));
+  },
 } satisfies ExportedHandler<Env>;
