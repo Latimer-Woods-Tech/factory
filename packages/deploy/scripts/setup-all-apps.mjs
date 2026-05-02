@@ -73,7 +73,7 @@ const APPS = [
   },
   {
     name: 'videoking',
-    workerName: 'nichestream-api',
+    workerName: 'nichestream-api', // historical Worker name behind api.itsjusus.com
     envKey: 'VIDEOKING',
     extraSecrets: ['STRIPE_SECRET_KEY'],
   },
