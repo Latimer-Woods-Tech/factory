@@ -1,3 +1,7 @@
+> ⚠️ **SUPERSEDED 2026-05-02** by [`docs/architecture/FACTORY_V1.md`](./docs/architecture/FACTORY_V1.md). This document is retained for historical context only. Do not rely on it for current architecture or policy.
+
+---
+
 
 
 | THE FACTORY Factory Core *Architecture Specification v1.0* |
