@@ -1,3 +1,5 @@
+> 📘 **Canonical architecture:** [`docs/architecture/FACTORY_V1.md`](./docs/architecture/FACTORY_V1.md). Read it to understand the system. [`docs/supervisor/FRIDGE.md`](./docs/supervisor/FRIDGE.md) overrides these Standing Orders.
+
 # Factory Core — Standing Orders
 
 ## Mission
