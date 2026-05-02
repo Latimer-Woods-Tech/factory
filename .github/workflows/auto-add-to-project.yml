@@ -14,4 +14,4 @@ jobs:
       - uses: actions/add-to-project@v1.0.2
         with:
           project-url: https://github.com/orgs/Latimer-Woods-Tech/projects/1
-          github-token: ${{ secrets.GH_PROJECT_TOKEN }}
+          github-token: ${{ secrets.GH_PAT }}
