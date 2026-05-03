@@ -1,0 +1,41 @@
+id: package-version-migration
+version: 1
+description: "Migrate a worker/app to consume a @latimer-woods-tech/* package, removing the inline implementation"
+tier: yellow
+triggers:
+  labels_any_of: [area:packages, type:refactor]
+  title_pattern: "consume|migrate|@latimer-woods-tech|delete.*lib|remove.*inline"
+preconditions:
+  - file_exists: "package.json"
+  - file_not_contains: "node_modules"
+slots:
+  - name: package_name
+    type: string
+    validator: "^@latimer-woods-tech/[a-z-]+$"
+    source: issue_body | issue_title
+  - name: file_to_delete
+    type: string
+    validator: "^[a-zA-Z0-9/_.-]+\.(?:js|ts)$"
+    source: issue_body
+  - name: repo
+    type: string
+    validator: "^[a-zA-Z0-9-]+$"
+    source: issue_metadata
+steps:
+  - id: s1
+    tool: github.readFile
+    params: { repo: "$slots.repo", path: "$slots.file_to_delete" }
+    intent: "read existing inline implementation to verify replacement is complete"
+  - id: s2
+    tool: github.readFile
+    params: { repo: "$slots.repo", path: "package.json" }
+    intent: "verify new package is listed as dependency"
+  - id: s3
+    tool: github.openPR
+    requires_human_review: true
+    intent: "open PR updating imports and removing inline file"
+    side_effects: write-app
+acceptance_gate:
+  description: "package.json references the new package AND the inline file is deleted in the PR diff"
+rollback:
+  - { on_step: s3, action: github.closePR }

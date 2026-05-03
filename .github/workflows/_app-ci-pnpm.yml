@@ -1,12 +1,15 @@
 # =============================================================================
-# Reusable CI workflow for Latimer-Woods-Tech apps that install with pnpm.
+# Reusable CI workflow for Latimer-Woods-Tech apps — pnpm variant.
 #
 # WHAT IT DOES
+#   Like _app-ci.yml but uses pnpm instead of npm. Use this for apps that
+#   manage their lockfile with pnpm (e.g. videoking).
 #   Runs typecheck, lint, test, and build against an app's source.
 #   Authenticates to GitHub Packages so private @latimer-woods-tech/* deps resolve.
 #
 # WHO CALLS IT
-#   App repos using pnpm for lockfile/install parity.
+#   App repos that use pnpm. Currently: videoking.
+#   Use _app-ci.yml for npm-based apps.
 #
 # HOW TO CALL
 #   jobs:
@@ -18,27 +21,43 @@
 #   FACTORY_APP_ID            - GitHub App ID for `factory-cross-repo`
 #   FACTORY_APP_PRIVATE_KEY   - PEM private key for the same App
 #
+# OPTIONAL INPUTS
+#   pnpm_version       - pnpm major version to install (default '9')
+#   node_version       - Node.js major version (default '22')
+#   working_directory  - Subdir to run in if app is in a monorepo (default '.')
+#   run_lint           - Skip with false to disable lint step (default true)
+#   run_typecheck      - Skip with false to disable typecheck (default true)
+#   run_test           - Skip with false to disable tests (default true)
+#   run_build          - Skip with false to disable build (default true)
+#
+# CONVENTIONS
+#   App package.json must define scripts: typecheck, lint, test, build.
+#   Missing scripts are skipped (--if-present), so partial coverage is fine.
+#   pnpm-lock.yaml must be committed. --frozen-lockfile is enforced.
+#   Node 22 is required for wrangler@latest. Don't downgrade unless you know why.
+#
 # RELATED
-#   _app-ci.yml              - npm variant
-#   _app-deploy-pnpm.yml     - pnpm deploy variant
+#   _app-ci.yml              - npm variant (for most apps)
+#   _app-deploy-pnpm.yml     - Production/staging deploy for pnpm apps
+#   _post-deploy-verify.yml  - Health check + auto-rollback after deploy
 #   docs/CI_CD.md            - Full architecture reference
 # =============================================================================
 
 name: _app-ci-pnpm
 
 concurrency:
-  group: ci-pnpm-${{ inputs.working_directory }}-${{ github.head_ref || github.ref }}
+  group: ci-${{ inputs.working_directory }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 on:
   workflow_call:
     inputs:
-      node_version:
-        type: string
-        default: '22'
       pnpm_version:
         type: string
         default: '9'
+      node_version:
+        type: string
+        default: '22'
       working_directory:
         type: string
         default: '.'
@@ -67,13 +86,6 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
     steps:
       - uses: actions/checkout@v4
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.FACTORY_APP_ID }}
-          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ inputs.pnpm_version }}
@@ -82,18 +94,17 @@ jobs:
           node-version: ${{ inputs.node_version }}
           registry-url: 'https://npm.pkg.github.com'
           scope: '@latimer-woods-tech'
-          cache: pnpm
-          cache-dependency-path: ${{ inputs.working_directory }}/pnpm-lock.yaml
-      - name: Configure npm auth
-        run: echo "//npm.pkg.github.com/:_authToken=${{ steps.app-token.outputs.token }}" >> .npmrc
+          cache: 'pnpm'
+      - name: Configure npm auth for GitHub Packages
+        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
       - run: pnpm install --frozen-lockfile
         env:
-          NODE_AUTH_TOKEN: ${{ steps.app-token.outputs.token }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - if: ${{ inputs.run_typecheck }}
-        run: pnpm run typecheck --if-present
+        run: pnpm run --if-present typecheck
       - if: ${{ inputs.run_lint }}
-        run: pnpm run lint --if-present
+        run: pnpm run --if-present lint
       - if: ${{ inputs.run_test }}
-        run: pnpm test --if-present
+        run: pnpm run --if-present test
       - if: ${{ inputs.run_build }}
-        run: pnpm run build --if-present
+        run: pnpm run --if-present build

@@ -1,0 +1,15 @@
+fixture_for: docs-naming-convention
+issue:
+  title: "docs(naming): add NAMING_CONVENTIONS.md under docs/supervisor"
+  labels: [documentation, hardening]
+  body: |
+    We need a canonical naming-conventions doc referenced by the policy-drift-guard.
+
+    path: docs/supervisor/NAMING_CONVENTIONS.md
+    parent_dir: docs/supervisor
+    branch: supervisor/docs/naming-conventions
+
+    content: |
+      # Naming Conventions
+
+      This document defines naming rules across factory apps.

@@ -1,3 +1,7 @@
+> 📘 **Canonical architecture:** [`docs/architecture/FACTORY_V1.md`](./docs/architecture/FACTORY_V1.md) — the single source of truth for what this system is and how to operate it.
+> 🔴 **Operating rules:** [`docs/supervisor/FRIDGE.md`](./docs/supervisor/FRIDGE.md) — non-negotiable; read first.
+> ⚖️ **Open decisions:** [`docs/supervisor/DECISIONS.md`](./docs/supervisor/DECISIONS.md) — gated `decision:needs-human`; resolve before SUP-3.
+
 # factory
 
 Shared CI/CD, infrastructure, and packages for every app in the **Latimer-Woods-Tech** organization.
@@ -15,7 +19,7 @@ factory is the **plumbing layer**. Every app in the org imports from it. It owns
 
 | Layer | Where | What |
 |---|---|---|
-| Reusable CI/CD workflows | `.github/workflows/_*.yml` | `_app-ci.yml`, `_app-deploy.yml`, `_post-deploy-verify.yml` |
+| Reusable CI/CD workflows | `.github/workflows/_*.yml` | `_app-ci.yml`, `_app-ci-pnpm.yml`, `_app-deploy.yml`, `_app-deploy-pnpm.yml`, `_post-deploy-verify.yml` |
 | Shared npm packages | `packages/*` | 12 packages published to GitHub Packages under `@latimer-woods-tech/*` |
 | Provisioning workflows | `.github/workflows/*` | One-shot scripts for R2, Hyperdrive, secrets, scaffolding |
 | Documentation | `docs/*` | Architecture, runbooks, checklists, ADRs |
@@ -74,6 +78,41 @@ jobs:
 ```
 
 That's it. Inherit conventions, get free CI/CD, stop drifting.
+
+**pnpm apps** (e.g. videoking) — use the pnpm variants instead:
+
+```yaml
+# ci.yml
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+jobs:
+  ci:
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_app-ci-pnpm.yml@main
+    secrets: inherit
+```
+
+```yaml
+# deploy.yml — slim caller with post-deploy verify
+name: deploy
+on:
+  push: { branches: [main] }
+jobs:
+  deploy:
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_app-deploy-pnpm.yml@main
+    with:
+      environment: production
+    secrets: inherit
+  verify:
+    needs: deploy
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_post-deploy-verify.yml@main
+    with:
+      health_url: https://your-app.adrper79.workers.dev/health
+      rollback_on_failure: true
+      worker_name: your-app
+    secrets: inherit
+```
 
 For deeper reference: [`docs/CI_CD.md`](docs/CI_CD.md).
 

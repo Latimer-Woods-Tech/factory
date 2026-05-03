@@ -18,7 +18,10 @@
  *   BRIEF_LEARNING_GOAL   — Learning goal string (may be empty)
  *   BRIEF_KEY_POINTS      — JSON array string (used for step count)
  *   ANTHROPIC_API_KEY     — Anthropic API key
- *   GROK_API_KEY          — Grok API key
+ *   AI_GATEWAY_BASE_URL  — Cloudflare AI Gateway base URL
+ *   VERTEX_ACCESS_TOKEN  — GCP access token (JWT-bearer)
+ *   VERTEX_PROJECT       — GCP project id
+ *   VERTEX_LOCATION      — GCP region (default us-central1)
  *   GROQ_API_KEY          — Groq API key
  *   GITHUB_OUTPUT         — Path to GitHub Actions output file
  *
@@ -42,13 +45,15 @@ const {
   TONE_BLOCK       : tone       = '',
   BRIEF_LEARNING_GOAL: learningGoal = '',
   BRIEF_KEY_POINTS : briefKeyPts = '[]',
-  ANTHROPIC_API_KEY = '',
-  GROK_API_KEY      = '',
+  ANTHROPIC_API_KEY = '',  AI_GATEWAY_BASE_URL = '',
+  VERTEX_ACCESS_TOKEN  = '',
+  VERTEX_PROJECT       = '',
+  VERTEX_LOCATION      = 'us-central1',
   GROQ_API_KEY      = '',
   GITHUB_OUTPUT,
 } = process.env;
 
-const env = { ANTHROPIC_API_KEY, GROK_API_KEY, GROQ_API_KEY };
+const env = { AI_GATEWAY_BASE_URL, ANTHROPIC_API_KEY, GROQ_API_KEY, VERTEX_ACCESS_TOKEN, VERTEX_PROJECT, VERTEX_LOCATION };
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -48,7 +48,7 @@ GitHub Team plan rule: **a private repo's reusable workflows are accessible only
 
 ---
 
-## The reusable workflows
+## The three reusable workflows
 
 ### `_app-ci.yml`
 Run on every push and PR. Authenticates to GitHub Packages so private `@latimer-woods-tech/*` deps install. Runs `typecheck`, `lint`, `test`, `build` from the app's package.json (skipping any that don't exist).
@@ -78,10 +78,36 @@ jobs:
 ```
 
 ### `_app-ci-pnpm.yml`
-Same contract as `_app-ci.yml`, but installs with `pnpm install --frozen-lockfile` for repos that keep pnpm as the source of truth.
+Identical to `_app-ci.yml` but uses **pnpm** instead of npm. Use this for apps that commit a `pnpm-lock.yaml` (currently: videoking). Enforces `--frozen-lockfile`.
+
+**Caller:**
+```yaml
+jobs:
+  ci:
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_app-ci-pnpm.yml@main
+    secrets: inherit
+```
 
 ### `_app-deploy-pnpm.yml`
-Same contract as `_app-deploy.yml`, but installs with pnpm before deploy so pnpm-based repos can stay on a ≤ 30-line caller workflow.
+Identical to `_app-deploy.yml` but uses **pnpm** instead of npm. Passes `packageManager: pnpm` to `wrangler-action` so Wrangler resolves scripts through pnpm.
+
+**Caller (with chained post-deploy verify — recommended for production):**
+```yaml
+jobs:
+  deploy:
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_app-deploy-pnpm.yml@main
+    with:
+      environment: production
+    secrets: inherit
+  verify:
+    needs: deploy
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_post-deploy-verify.yml@main
+    with:
+      health_url: https://app.example.com/healthz
+      rollback_on_failure: true
+      worker_name: app-production
+    secrets: inherit
+```
 
 ### `_post-deploy-verify.yml`
 Stronger post-deploy check with retry/backoff plus optional auto-rollback to a captured prior version ID. Use this for production-grade deploys; the inline health check in `_app-deploy.yml` is fine for staging.

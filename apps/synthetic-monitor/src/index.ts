@@ -346,5 +346,20 @@ export default {
       failed,
       total: result.results.length,
     }));
+    if (env.MONITOR_KV) {
+      const snapshot = {
+        ts: result.checkedAt,
+        status: result.status,
+        failed: result.results.filter(r => !r.ok).map(r => ({
+          id: r.id, latencyMs: r.latencyMs, error: r.error,
+        })),
+        latencies: Object.fromEntries(result.results.map(r => [r.id, r.latencyMs])),
+      };
+      const key = `snapshots:${result.checkedAt}`;
+      await Promise.all([
+        env.MONITOR_KV.put(key, JSON.stringify(snapshot), { expirationTtl: 604800 }),
+        env.MONITOR_KV.put('latest', JSON.stringify(snapshot)),
+      ]);
+    }
   },
 };

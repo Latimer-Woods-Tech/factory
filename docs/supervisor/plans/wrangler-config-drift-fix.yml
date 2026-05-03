@@ -1,0 +1,86 @@
+id: wrangler-config-drift-fix
+version: 1
+tier: yellow
+triggers:
+  labels_any_of: [bug]
+  title_pattern: "(wrangler|binding|Hyperdrive)"
+  body_patterns:
+    - "(wrangler\\.jsonc|binding|hyperdrive|kv|r2|d1|durable_object)"
+preconditions:
+  - capability_exists: github.readFile
+  - capability_exists: github.openPR
+  - capability_exists: cloudflare.listWorkers
+  - capability_exists: factory_admin.repo.health
+slots:
+  - name: app_name
+    type: enum
+    values: [HumanDesign, videoking, xico-city, factory-admin]
+    source: issue_body
+    referential_check: factory_admin.repo.health
+  - name: binding_kind
+    type: enum
+    values: [hyperdrive, kv, r2, d1, durable_object]
+    source: issue_body
+  - name: binding_id
+    type: string
+    validator: "^[a-f0-9]{32}$|^[A-Z][A-Z0-9_]{2,63}$"
+    source: issue_body
+    referential_check: cloudflare.listWorkers
+  - name: worker_name
+    type: string
+    validator: "^[a-z][a-z0-9-]{1,62}$"
+    source: issue_body
+    referential_check: factory_admin.worker.status
+steps:
+  - id: s1
+    tool: github.readFile
+    depends_on: null
+    params:
+      repo: "$slots.app_name"
+      path: "wrangler.jsonc"
+    intent: "Read the worker's current wrangler.jsonc to inspect declared bindings."
+    requires_human_review: false
+  - id: s2
+    tool: cloudflare.listWorkers
+    depends_on: s1
+    params:
+      filter_binding_kind: "$slots.binding_kind"
+      filter_binding_id: "$slots.binding_id"
+    intent: "Verify whether the referenced binding exists in the Cloudflare account and resolve the correct ID if drifted."
+    requires_human_review: false
+  - id: s3
+    tool: factory_admin.worker.status
+    depends_on: s2
+    params:
+      worker: "$slots.worker_name"
+    intent: "Cross-check the worker's deploy status to confirm the drift is live and not mid-deploy."
+    requires_human_review: false
+  - id: s4
+    tool: github.openPR
+    depends_on: s3
+    params:
+      repo: "$slots.app_name"
+      branch: "supervisor/wrangler-drift-$slots.worker_name"
+      title: "fix(wrangler): correct $slots.binding_kind binding for $slots.worker_name"
+      body: "Automated fix: wrangler.jsonc referenced a stale $slots.binding_kind binding. Updated to the resolved ID from cloudflare.listWorkers (see $s2). Current file state captured in $s1."
+      files:
+        - path: "wrangler.jsonc"
+          from_step: s1
+          patch_kind: "update_binding"
+          binding_kind: "$slots.binding_kind"
+          new_binding_id: "$s2.resolved_id"
+    intent: "Open a PR with the corrected binding ID so a human can review and merge."
+    requires_human_review: true
+acceptance_gate:
+  description: "PR is opened on the target repo and the new binding ID resolves to a live Cloudflare resource of the expected kind."
+  verifier_query:
+    tool: cloudflare.listWorkers
+    query: "bindings[?id=='$s2.resolved_id' && kind=='$slots.binding_kind']"
+    assert: "count >= 1"
+rollback:
+  - on_step: s4
+    action: github.closePR
+    params:
+      repo: "$slots.app_name"
+      pr: "$s4.pr_number"
+      comment: "Supervisor rollback: closing wrangler drift fix PR after acceptance gate failure."

@@ -1,12 +1,16 @@
 # =============================================================================
-# Reusable deploy workflow for Latimer-Woods-Tech apps that install with pnpm.
+# Reusable deploy workflow for Latimer-Woods-Tech apps — pnpm variant.
 #
 # WHAT IT DOES
-#   Installs deps from GitHub Packages with pnpm, runs `wrangler deploy`,
-#   and optionally probes a health URL with retry.
+#   Like _app-deploy.yml but uses pnpm instead of npm. Use this for apps that
+#   manage their lockfile with pnpm (e.g. videoking).
+#   Installs deps from GitHub Packages via pnpm, runs `wrangler deploy`,
+#   optionally probes a health URL with retry. Targets either staging or
+#   production GitHub Environment so required-reviewer gates apply automatically.
 #
 # WHO CALLS IT
-#   App repos with a pnpm lockfile that still want the standard factory deploy shape.
+#   App repos that use pnpm. Currently: videoking.
+#   Chain with _post-deploy-verify.yml for production-grade auto-rollback.
 #
 # HOW TO CALL
 #   jobs:
@@ -14,36 +18,71 @@
 #       uses: Latimer-Woods-Tech/factory/.github/workflows/_app-deploy-pnpm.yml@main
 #       with:
 #         environment: production
-#         health_url: https://app.example.com/health
+#         health_url: https://app.example.com/healthz
+#       secrets: inherit
+#
+# HOW TO CALL WITH POST-DEPLOY VERIFY (recommended for production)
+#   jobs:
+#     deploy:
+#       uses: Latimer-Woods-Tech/factory/.github/workflows/_app-deploy-pnpm.yml@main
+#       with:
+#         environment: production
+#       secrets: inherit
+#     verify:
+#       needs: deploy
+#       uses: Latimer-Woods-Tech/factory/.github/workflows/_post-deploy-verify.yml@main
+#       with:
+#         health_url: https://app.example.com/healthz
+#         rollback_on_failure: true
+#         worker_name: my-app-production
 #       secrets: inherit
 #
 # REQUIRED SECRETS (passed via `secrets: inherit` from org-level vault)
 #   FACTORY_APP_ID            - GitHub App ID for `factory-cross-repo`
 #   FACTORY_APP_PRIVATE_KEY   - PEM private key for the same App
-#   CF_API_TOKEN or CLOUDFLARE_API_TOKEN
-#   CF_ACCOUNT_ID or CLOUDFLARE_ACCOUNT_ID
+#   CLOUDFLARE_API_TOKEN      - Token with Workers Scripts:Edit on this account
+#   CLOUDFLARE_ACCOUNT_ID     - Cloudflare account ID
+#
+# REQUIRED REPO STATE
+#   GitHub Environment named `production` and/or `staging` must exist on the
+#   calling repo. Public repos get required-reviewer gates; private repos on
+#   the Team plan get bare environments only (Enterprise needed for private
+#   repo gates).
+#
+# OPTIONAL INPUTS
+#   pnpm_version       - pnpm major version to install (default '9')
+#   node_version       - Node.js major version (default '22')
+#   working_directory  - Subdir to run wrangler in (default '.')
+#   environment        - GitHub Environment name (default 'production')
+#   wrangler_command   - Wrangler CLI command (default 'deploy')
+#   health_url         - URL to probe post-deploy. Empty string skips the check.
+#
+# OUTPUT
+#   No outputs. Failure exits non-zero. For auto-rollback, chain
+#   `_post-deploy-verify.yml` with `rollback_on_failure: true`.
 #
 # RELATED
-#   _app-deploy.yml          - npm variant
-#   _app-ci-pnpm.yml         - pnpm CI variant
+#   _app-deploy.yml          - npm variant (for most apps)
+#   _app-ci-pnpm.yml         - Pre-deploy CI for pnpm apps
+#   _post-deploy-verify.yml  - Stronger verify with auto-rollback
 #   docs/CI_CD.md            - Full architecture reference
 # =============================================================================
 
 name: _app-deploy-pnpm
 
 concurrency:
-  group: deploy-pnpm-${{ inputs.environment }}-${{ github.repository }}
+  group: deploy-${{ inputs.environment }}-${{ github.repository }}
   cancel-in-progress: false
 
 on:
   workflow_call:
     inputs:
-      node_version:
-        type: string
-        default: '22'
       pnpm_version:
         type: string
         default: '9'
+      node_version:
+        type: string
+        default: '22'
       working_directory:
         type: string
         default: '.'
@@ -70,13 +109,6 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
     steps:
       - uses: actions/checkout@v4
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.FACTORY_APP_ID }}
-          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ inputs.pnpm_version }}
@@ -85,19 +117,19 @@ jobs:
           node-version: ${{ inputs.node_version }}
           registry-url: 'https://npm.pkg.github.com'
           scope: '@latimer-woods-tech'
-          cache: pnpm
-          cache-dependency-path: ${{ inputs.working_directory }}/pnpm-lock.yaml
-      - name: Configure npm auth
-        run: echo "//npm.pkg.github.com/:_authToken=${{ steps.app-token.outputs.token }}" >> .npmrc
+          cache: 'pnpm'
+      - name: Configure npm auth for GitHub Packages
+        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
       - run: pnpm install --frozen-lockfile
         env:
-          NODE_AUTH_TOKEN: ${{ steps.app-token.outputs.token }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Deploy to Cloudflare
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CF_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || secrets.CF_ACCOUNT_ID }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: ${{ inputs.wrangler_command }}
+          packageManager: pnpm
       - name: Post-deploy health check
         if: ${{ inputs.health_url != '' }}
         run: |

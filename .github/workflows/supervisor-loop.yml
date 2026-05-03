@@ -1,0 +1,30 @@
+name: Supervisor Loop
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Specific issue number to process (optional)'
+        required: false
+        type: string
+
+jobs:
+  supervise:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run supervisor core
+        run: node .github/scripts/supervisor-core.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
+          PUSHOVER_USER: ${{ secrets.PUSHOVER_USER }}
+          TRIGGER_ISSUE: ${{ github.event.issue.number || inputs.issue_number || '' }}
