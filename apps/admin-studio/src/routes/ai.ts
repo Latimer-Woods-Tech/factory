@@ -469,7 +469,7 @@ Return ONLY valid JSON — no prose, no markdown:
     content: newContent,
     message: `[auto] ${body.summary}`,
     branch: branchName,
-    sha: sourceFile.sha,
+    baseSha: sourceFile.sha,
   });
 
   // 5. Open draft PR
@@ -489,7 +489,7 @@ Return ONLY valid JSON — no prose, no markdown:
     draft: true,
   });
 
-  return c.json({ branch: branchName, pr: pr.html_url, patch, status: 'pr_ready' });
+  return c.json({ branch: branchName, pr: pr.url, patch, status: 'pr_ready' });
 });
 
 export default ai;
