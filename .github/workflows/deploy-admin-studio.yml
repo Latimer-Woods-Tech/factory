@@ -47,7 +47,7 @@ jobs:
           done
 
       - name: Install admin-studio
-        run: npm ci --legacy-peer-deps
+        run: npm install --legacy-peer-deps
         working-directory: apps/admin-studio
 
       - name: Typecheck
