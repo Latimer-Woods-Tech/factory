@@ -21,9 +21,12 @@ export interface VoiceSessionConfig {
     TELNYX_API_KEY: string;
     DEEPGRAM_API_KEY: string;
     ELEVENLABS_API_KEY: string;
+    AI_GATEWAY_BASE_URL: string;
     ANTHROPIC_API_KEY: string;
-    GROK_API_KEY: string;
     GROQ_API_KEY: string;
+    VERTEX_ACCESS_TOKEN: string;
+    VERTEX_PROJECT: string;
+    VERTEX_LOCATION: string;
   };
 }
 
@@ -312,9 +315,12 @@ export class VoiceSession extends EventTarget {
     this.dispatchEvent(new CustomEvent('transcript', { detail: userTranscript }));
 
     const llmEnv: LLMEnv = {
+      AI_GATEWAY_BASE_URL: this.config.env.AI_GATEWAY_BASE_URL,
       ANTHROPIC_API_KEY: this.config.env.ANTHROPIC_API_KEY,
-      GROK_API_KEY: this.config.env.GROK_API_KEY,
       GROQ_API_KEY: this.config.env.GROQ_API_KEY,
+      VERTEX_ACCESS_TOKEN: this.config.env.VERTEX_ACCESS_TOKEN,
+      VERTEX_PROJECT: this.config.env.VERTEX_PROJECT,
+      VERTEX_LOCATION: this.config.env.VERTEX_LOCATION,
     };
     const llmResponse: FactoryResponse<{ content: string }> = await llmComplete(
       this.history,

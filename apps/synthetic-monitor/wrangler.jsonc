@@ -3,9 +3,13 @@
   "name": "synthetic-monitor",
   "main": "src/index.ts",
   "compatibility_date": "2025-01-01",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "triggers": {
-    "crons": ["*/5 * * * *"]
+    "crons": [
+      "*/5 * * * *"
+    ]
   },
   "vars": {
     "ENVIRONMENT": "development",
@@ -16,18 +20,38 @@
       "name": "synthetic-monitor",
       "workers_dev": true,
       "triggers": {
-        "crons": ["*/5 * * * *"]
+        "crons": [
+          "*/5 * * * *"
+        ]
       },
       "services": [
-        { "binding": "SCHEDULE_WORKER", "service": "schedule-worker" },
-        { "binding": "VIDEO_CRON", "service": "video-cron" },
-        { "binding": "ADMIN_STUDIO_STAGING", "service": "admin-studio-staging" },
-        { "binding": "PRIME_SELF", "service": "prime-self" }
+        {
+          "binding": "SCHEDULE_WORKER",
+          "service": "schedule-worker"
+        },
+        {
+          "binding": "VIDEO_CRON",
+          "service": "video-cron"
+        },
+        {
+          "binding": "ADMIN_STUDIO_STAGING",
+          "service": "admin-studio-staging"
+        },
+        {
+          "binding": "PRIME_SELF",
+          "service": "prime-self"
+        }
       ],
       "vars": {
         "ENVIRONMENT": "production",
         "TARGETS_JSON": "[{\"id\":\"selfprime.home\",\"url\":\"https://selfprime.net/\",\"contains\":\"Prime Self\"},{\"id\":\"selfprime.pricing\",\"url\":\"https://selfprime.net/pricing.html\",\"contains\":\"Pricing\"},{\"id\":\"selfprime.practitioners\",\"url\":\"https://selfprime.net/practitioners.html\",\"contains\":\"Practitioner\"},{\"id\":\"selfprime.api.health\",\"url\":\"https://prime-self.adrper79.workers.dev/health\",\"contains\":\"ok\"},{\"id\":\"prime-self.api\",\"url\":\"https://prime-self.adrper79.workers.dev/health\",\"expectedStatus\":200},{\"id\":\"admin-studio.staging.health\",\"url\":\"https://admin-studio-staging.adrper79.workers.dev/health\",\"expectedStatus\":200,\"contains\":\"ok\"},{\"id\":\"schedule-worker.health\",\"url\":\"https://schedule-worker.adrper79.workers.dev/health\",\"expectedStatus\":200},{\"id\":\"video-cron.health\",\"url\":\"https://video-cron.adrper79.workers.dev/health\",\"expectedStatus\":200},{\"id\":\"schedule-worker.manifest\",\"url\":\"https://schedule-worker.adrper79.workers.dev/manifest\",\"expectedStatus\":200,\"contains\":\"manifestVersion\"},{\"id\":\"video-cron.manifest\",\"url\":\"https://video-cron.adrper79.workers.dev/manifest\",\"expectedStatus\":200,\"contains\":\"manifestVersion\"},{\"id\":\"admin-studio.manifest\",\"url\":\"https://admin-studio-staging.adrper79.workers.dev/manifest\",\"expectedStatus\":200,\"contains\":\"manifestVersion\"},{\"id\":\"slo.journey.render-ingest\",\"url\":\"https://schedule-worker.adrper79.workers.dev/health\",\"expectedStatus\":200,\"contains\":\"ok\"},{\"id\":\"slo.journey.video-dispatch\",\"url\":\"https://video-cron.adrper79.workers.dev/health\",\"expectedStatus\":200,\"contains\":\"ok\"},{\"id\":\"slo.journey.auth-api\",\"url\":\"https://prime-self.adrper79.workers.dev/health\",\"expectedStatus\":200,\"contains\":\"ok\"},{\"id\":\"slo.journey.operator-plane\",\"url\":\"https://admin-studio-staging.adrper79.workers.dev/health\",\"expectedStatus\":200,\"contains\":\"ok\"},{\"id\":\"slo.journey.webhook\",\"url\":\"https://schedule-worker.adrper79.workers.dev/stripe/health\",\"expectedStatus\":200,\"contains\":\"ok\"}]"
-      }
+      },
+      "kv_namespaces": [
+        {
+          "binding": "MONITOR_KV",
+          "id": "6579dabe32f0444ba29bfb722c1e02b1"
+        }
+      ]
     }
   }
 }

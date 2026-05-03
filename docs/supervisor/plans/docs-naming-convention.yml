@@ -1,0 +1,99 @@
+id: docs-naming-convention
+version: 1
+tier: green
+triggers:
+  labels_any_of: [docs, documentation, hardening]
+  title_pattern: "^docs[(:]"
+  body_patterns:
+    - "(?is)path\s*[:=]\s*(docs|documents)/"
+    - "(?is)(content|body)\s*[:=]"
+preconditions:
+  - capability_exists: github.readFile
+  - capability_exists: github.openPR
+  - capability_exists: github.addLabel
+  - capability_exists: github.comment
+slots:
+  - name: target_path
+    type: string
+    validator: "^(docs|documents)/.+\.md$"
+    source: issue_body
+  - name: parent_dir
+    type: string
+    validator: "^(docs|documents)(/.+)?$"
+    source: issue_body
+  - name: commit_message
+    type: string
+    validator: "^(docs|chore)[(:]"
+    source: issue_title
+  - name: doc_body
+    type: string
+    validator: "(?s)^.{1,200000}$"
+    source: issue_body
+  - name: branch_name
+    type: string
+    validator: "^supervisor/docs/[a-z0-9][a-z0-9-]{0,60}$"
+    source: issue_title
+  - name: scope
+    type: enum
+    values: [naming, architecture, protocol, policy, readme, runbook, general]
+    source: issue_labels
+    default: general
+steps:
+  - id: s1
+    tool: github.readFile
+    depends_on: null
+    params:
+      path: "$slots.parent_dir"
+      ref: "main"
+    intent: "Verify the parent directory exists before writing a new doc into it."
+  - id: s2
+    tool: github.readFile
+    depends_on: s1
+    params:
+      path: "$slots.target_path"
+      ref: "main"
+      allow_missing: true
+    intent: "Check whether the target doc already exists so the PR is an add vs. update."
+  - id: s3
+    tool: github.openPR
+    depends_on: s2
+    params:
+      branch: "$slots.branch_name"
+      base: "main"
+      title: "$slots.commit_message"
+      commit_message: "$slots.commit_message"
+      files:
+        - path: "$slots.target_path"
+          content: "$slots.doc_body"
+      body: |
+        Auto-drafted by supervisor for cluster `docs-naming-convention`.
+        Scope: $slots.scope
+        Target: $slots.target_path
+        Source issue: see linked issue.
+      labels: [docs, supervisor, tier-green]
+    intent: "Open a docs-only PR adding/updating the target markdown file."
+    requires_human_review: true
+  - id: s4
+    tool: github.comment
+    depends_on: s3
+    params:
+      pr: "$s3.number"
+      body: "Supervisor opened this docs PR from the linked issue. CI runs docs-lint + credential-scrub only; no code paths touched."
+    intent: "Leave a reviewer-facing note on the PR explaining provenance."
+acceptance_gate:
+  description: "A PR was opened on the expected branch with exactly one changed file whose path equals the requested target_path."
+  verifier_query:
+    tool: github.openPR
+    query: "pr:$s3.number files.path == '$slots.target_path' AND files.count == 1 AND base == 'main' AND head == '$slots.branch_name'"
+    assert: "count >= 1"
+rollback:
+  - on_step: s3
+    action: github.closePR
+    params:
+      pr: "$s3.number"
+      comment: "Rolling back supervisor-drafted docs PR; see linked issue for retry."
+  - on_step: s4
+    action: github.removeLabel
+    params:
+      pr: "$s3.number"
+      label: "supervisor"

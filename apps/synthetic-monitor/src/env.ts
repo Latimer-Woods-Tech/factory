@@ -17,4 +17,6 @@ export interface Env {
   ADMIN_STUDIO_STAGING?: Fetcher;
   /** Optional service binding for internal prime-self checks. */
   PRIME_SELF?: Fetcher;
+  /** KV namespace for writing monitor snapshots. Optional — graceful no-op if absent. */
+  MONITOR_KV?: KVNamespace;
 }

@@ -1,3 +1,7 @@
+> ⚠️ **SUPERSEDED 2026-05-02** by [`docs/architecture/FACTORY_V1.md`](./docs/architecture/FACTORY_V1.md). This document is retained for historical context only. Do not rely on it for current architecture or policy.
+
+---
+
 # Factory Core — Master Execution Plan: Stage 6+
 
 > **Status:** All 19 `@latimer-woods-tech/*` packages published at `v0.2.0`. `scaffold.mjs` + `setup-all-apps.mjs` live. All 6 app repos + `factory-admin` created.
