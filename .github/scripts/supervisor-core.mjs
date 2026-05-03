@@ -7,6 +7,7 @@ const MONITORED_REPOS = ['factory', 'HumanDesign', 'videoking', 'xico-city'];
 const DENYLIST = new Set(['wordis-bond']);
 const RUN_ID = `sup-${Date.now()}`;
 const { GH_TOKEN, ANTHROPIC_API_KEY, PUSHOVER_TOKEN, PUSHOVER_USER, TRIGGER_ISSUE } = process.env;
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001';
 
 // ─── GitHub API ───────────────────────────────────────────────────────────────
 
@@ -104,6 +105,15 @@ function parseTemplate(raw) {
 // ─── Deterministic template matching ─────────────────────────────────────────
 
 const MATCH_RULES = {
+  'syn-package-migration': ({ title, labels }) =>
+    /\bSYN-[0-9]+\b|@latimer-woods-tech\/|extract .*package|package migration|monitoring\)|realtime\)|stripe\)|publish skills|composite action/i.test(title) ||
+    labels.includes('area:packages') ||
+    labels.includes('area:realtime') ||
+    labels.includes('area:monitoring'),
+  'ux-regression-triage': ({ title, labels }) =>
+    /\[P[0-3]\]\[UX\]|\bUX\b|mobile|viewport|accessibility|a11y|dashboard|modal|pricing/i.test(title) ||
+    labels.includes('ux') ||
+    labels.includes('accessibility'),
   'docs-naming-convention': ({ title, labels }) =>
     /doc|naming|convention|readme|changelog/i.test(`${title} ${labels.join(' ')}`),
   'deps-bump-minor-patch': ({ title }) =>
@@ -167,7 +177,7 @@ async function extractSlots(slotNames, issue, factoryContext = '') {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-3-5-haiku-20241022',
+      model: ANTHROPIC_MODEL,
       max_tokens: 500,
       system:
         contextPrefix +
