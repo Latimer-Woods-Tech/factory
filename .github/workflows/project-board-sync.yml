@@ -41,7 +41,7 @@ jobs:
           gh api graphql -f query='mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: String!) { updateProjectV2ItemFieldValue(input: { projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: { text: $value } }) { projectV2Item { id } } }' -f projectId="$PROJECT_ID" -f itemId="$ITEM_ID" -f fieldId="$AGENT_FIELD_ID" -f value="$AGENT_NAME"
 
   sync-status-from-comment:
-    if: github.event_name == 'issue_comment' && startsWith(github.event.comment.body, '/status')
+    if: github.event_name == 'issue_comment' && github.event.issue.pull_request == null && startsWith(github.event.comment.body, '/status')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
