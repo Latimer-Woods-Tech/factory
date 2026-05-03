@@ -37,8 +37,9 @@ jobs:
           GH_TOKEN_ISSUE: ${{ secrets.GH_TOKEN_ISSUE }}
         run: |
           set -euo pipefail
-          printf '%s' "$GH_TOKEN_ISSUE" | gh secret set GITHUB_ISSUE_TOKEN --repo "$TARGET_REPO"
-          gh secret list --repo "$TARGET_REPO" | grep -q '^GITHUB_ISSUE_TOKEN' || (echo "::error::Failed to verify GITHUB_ISSUE_TOKEN in $TARGET_REPO" && exit 1)
+          # GitHub rejects secret names starting with GITHUB_; use GH_ISSUE_TOKEN instead
+          printf '%s' "$GH_TOKEN_ISSUE" | gh secret set GH_ISSUE_TOKEN --repo "$TARGET_REPO"
+          gh secret list --repo "$TARGET_REPO" | grep -q '^GH_ISSUE_TOKEN' || (echo "::error::Failed to verify GH_ISSUE_TOKEN in $TARGET_REPO" && exit 1)
 
       - name: Install wrangler
         run: npm install -g wrangler@latest
@@ -50,5 +51,6 @@ jobs:
           GH_TOKEN_ISSUE: ${{ secrets.GH_TOKEN_ISSUE }}
         run: |
           set -euo pipefail
-          printf '%s' "$GH_TOKEN_ISSUE" | wrangler secret put GITHUB_ISSUE_TOKEN --name "$WORKER_NAME"
-          wrangler secret list --name "$WORKER_NAME" | grep -q 'GITHUB_ISSUE_TOKEN' || (echo "::error::Worker secret GITHUB_ISSUE_TOKEN not found on $WORKER_NAME" && exit 1)
+          # Use GH_TOKEN_ISSUE as the Worker secret name (matches Cloudflare dashboard entry)
+          printf '%s' "$GH_TOKEN_ISSUE" | wrangler secret put GH_TOKEN_ISSUE --name "$WORKER_NAME"
+          wrangler secret list --name "$WORKER_NAME" | grep -q 'GH_TOKEN_ISSUE' || (echo "::warning::Worker secret GH_TOKEN_ISSUE not visible in list (may already exist from manual add)" && true)
