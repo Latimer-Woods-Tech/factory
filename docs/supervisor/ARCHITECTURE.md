@@ -651,13 +651,13 @@ After (~4–6 weeks):
 | D3 | Lock primitive | **`LockDO` Durable Object, not D1 CAS.** |
 | D4 | Capability mutation flag | **Graded `side_effects` levels, not boolean `mutating`.** |
 | O2 | Memory backend default | **CF Agent Memory primary + D1 dual-write.** `MEMORY_BACKEND=agent` is the default; flip to `d1` on beta flakiness, zero data loss. Monthly reconciliation workflow checks drift. Promotion decision: stay if Agent Memory hits GA cleanly; flip primary to D1 permanently if beta extends past 2026-Q3 or two breaking changes occur. |
+| O3 | Template authoring surface | **YAML in `docs/supervisor/plans/`, versioned with code.** Code-review applies; `template-suite.yml` test harness runs on every PR. Notion option rejected. |
 
 ### Still open — need your call before Week 3
 
 | # | Question | Recommendation | Cost of deferring |
 |---|---|---|---|
 | O1 | Supervisor runtime location | New `apps/supervisor` worker (not extend `factory-admin`) | Low — can decide week 3 |
-| O3 | Template authoring surface | YAML in factory repo (versioned; code-review applies) | Low |
 
 ---
 
