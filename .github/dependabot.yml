@@ -1,0 +1,40 @@
+version: 2
+updates:
+  # npm — factory packages
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/New_York
+    groups:
+      patch-updates:
+        update-types: ["patch"]
+      minor-updates:
+        update-types: ["minor"]
+    ignore:
+      # Don't auto-bump major versions
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    labels:
+      - dependencies
+      - supervisor:approved-source
+    commit-message:
+      prefix: chore(deps)
+    open-pull-requests-limit: 5
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions-updates:
+        patterns: ["*"]
+    labels:
+      - dependencies
+      - supervisor:approved-source
+    commit-message:
+      prefix: chore(actions)
+    open-pull-requests-limit: 3

@@ -1,0 +1,45 @@
+id: syn-package-migration
+version: 1
+tier: yellow
+triggers:
+  labels_any_of: [dependencies, packages, migration, refactor]
+  title_pattern: "^(feat|refactor|chore)\\(.*\\):\\s*(SYN-|.*package|.*extract)"
+  body_patterns:
+    - "(?is)(package|migration|extract|workspace|publish|composite action|shared)"
+preconditions:
+  - capability_exists: github.comment
+  - capability_exists: github.addLabel
+slots:
+  - name: package_name
+    type: string
+    validator: "(?s)^.{0,120}$"
+    source: issue_title
+  - name: target_repo
+    type: string
+    validator: "(?s)^.{0,120}$"
+    source: issue_title
+steps:
+  - id: s1
+    tool: github.comment
+    depends_on: null
+    params:
+      issue: "$issue.number"
+      body: |
+        Supervisor triage plan for SYN/package migration.
+        - Confirm API compatibility and semver impact
+        - Verify import path + build/test changes across affected apps
+        - Validate release, changelog, and rollback plan
+        - Require human approval before execution
+    intent: "Post migration triage checklist and request explicit review."
+acceptance_gate:
+  description: "Issue contains supervisor triage comment for SYN/package migration."
+  verifier_query:
+    tool: github.comment
+    query: "issue:$issue.number body contains 'Supervisor triage plan for SYN/package migration'"
+    assert: "count >= 1"
+rollback:
+  - on_step: s1
+    action: github.removeLabel
+    params:
+      issue: "$issue.number"
+      label: "status:wip"
