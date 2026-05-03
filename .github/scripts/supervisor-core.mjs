@@ -7,7 +7,7 @@ const MONITORED_REPOS = ['factory', 'HumanDesign', 'videoking', 'xico-city'];
 const DENYLIST = new Set(['wordis-bond']);
 const RUN_ID = `sup-${Date.now()}`;
 const { GH_TOKEN, ANTHROPIC_API_KEY, PUSHOVER_TOKEN, PUSHOVER_USER, TRIGGER_ISSUE } = process.env;
-const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-haiku-latest';
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001';
 
 // ─── GitHub API ───────────────────────────────────────────────────────────────
 
