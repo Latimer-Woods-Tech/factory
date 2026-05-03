@@ -11,11 +11,29 @@ const lookbackMs = parseInt(LOOKBACK_HOURS, 10) * 60 * 60 * 1000;
 const since = new Date(Date.now() - lookbackMs).toISOString();
 
 async function sentry(path) {
-  const res = await fetch(`https://sentry.io/api/0${path}`, {
-    headers: { Authorization: `Bearer ${SENTRY_TOKEN}` },
-  });
-  if (!res.ok) throw new Error(`Sentry ${path} → ${res.status}`);
-  return res.json();
+  let attempt = 0;
+  while (attempt < 4) {
+    const res = await fetch(`https://sentry.io/api/0${path}`, {
+      headers: { Authorization: `Bearer ${SENTRY_TOKEN}` },
+    });
+
+    if (res.ok) return res.json();
+
+    if (res.status === 429) {
+      const retryAfter = parseInt(res.headers.get('retry-after') || '0', 10);
+      const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+        ? retryAfter * 1000
+        : 1000 * Math.pow(2, attempt + 1);
+      console.warn(`Sentry rate-limited ${path}; retrying in ${waitMs}ms (attempt ${attempt + 1}/4)`);
+      await new Promise(r => setTimeout(r, waitMs));
+      attempt++;
+      continue;
+    }
+
+    throw new Error(`Sentry ${path} → ${res.status}`);
+  }
+
+  throw new Error(`Sentry ${path} → 429 (exhausted retries)`);
 }
 
 async function ghPost(path, data) {
@@ -55,9 +73,15 @@ let created = 0, skipped = 0;
 
 for (const project of projects) {
   const slug = project.slug;
-  const issues = await sentry(
-    `/projects/${ORG_SLUG}/${slug}/issues/?query=firstSeen%3A>${encodeURIComponent(since)}&limit=25`
-  );
+  let issues = [];
+  try {
+    issues = await sentry(
+      `/projects/${ORG_SLUG}/${slug}/issues/?query=firstSeen%3A>${encodeURIComponent(since)}&limit=25`
+    );
+  } catch (err) {
+    console.warn(`Skipping project ${slug}: ${err instanceof Error ? err.message : String(err)}`);
+    continue;
+  }
 
   for (const issue of issues) {
     const title = `[Sentry/${slug}] ${issue.title}`;
