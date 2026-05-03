@@ -51,7 +51,7 @@ GitHub Team plan rule: **a private repo's reusable workflows are accessible only
 ## The three reusable workflows
 
 ### `_app-ci.yml`
-Run on every push and PR. Authenticates to GitHub Packages so private `@latimer-woods-tech/*` deps install. Runs `typecheck`, `lint`, `test`, `build` from the app's package.json (skipping any that don't exist).
+Run on every push and PR. Authenticates to GitHub Packages so private `@latimer-woods-tech/*` deps install. Runs `typecheck`, `lint`, `test`, `build` from the app's package.json (skipping any that don't exist). If the repo contains `drizzle.config.*`, CI also fails fast on duplicate migration numbers or broken `meta/_journal.json` / snapshot references before install/build work starts.
 
 **Caller:**
 ```yaml
@@ -78,7 +78,7 @@ jobs:
 ```
 
 ### `_app-ci-pnpm.yml`
-Identical to `_app-ci.yml` but uses **pnpm** instead of npm. Use this for apps that commit a `pnpm-lock.yaml` (currently: videoking). Enforces `--frozen-lockfile`.
+Identical to `_app-ci.yml` but uses **pnpm** instead of npm. Use this for apps that commit a `pnpm-lock.yaml` (currently: videoking). Enforces `--frozen-lockfile` and applies the same Drizzle migration integrity guard.
 
 **Caller:**
 ```yaml
