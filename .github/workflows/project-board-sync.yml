@@ -15,8 +15,9 @@ jobs:
   sync-agent-field:
     if: github.event_name == 'issues' && startsWith(github.event.label.name, 'agent:claimed:')
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/create-github-app-token@v1
+      - uses: actions/create-github-app-token@v2
         id: app-token
         with:
           app-id: ${{ secrets.FACTORY_APP_ID }}
@@ -42,8 +43,9 @@ jobs:
   sync-status-from-comment:
     if: github.event_name == 'issue_comment' && startsWith(github.event.comment.body, '/status')
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/create-github-app-token@v1
+      - uses: actions/create-github-app-token@v2
         id: app-token
         with:
           app-id: ${{ secrets.FACTORY_APP_ID }}
@@ -73,8 +75,9 @@ jobs:
   sync-deploy-sha-on-merge:
     if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/create-github-app-token@v1
+      - uses: actions/create-github-app-token@v2
         id: app-token
         with:
           app-id: ${{ secrets.FACTORY_APP_ID }}

@@ -225,7 +225,7 @@ Hosted on factory, callable from any app repo with a 5-line caller workflow. The
 | `_post-deploy-verify.yml` | `/health` curl + optional smoke + rollback on fail | Live |
 | `_app-reliability-gate.yml` | CVE + P0-blocker + coverage regression checks (SYN-2) | Merged 2026-05-02 |
 | `_app-prod-canary.yml` | Post-deploy canary ride + Sentry spike rollback (SYN-3) | Merged 2026-05-02 |
-| `_app-ci-pnpm.yml` / `_app-deploy-pnpm.yml` | pnpm variant for videoking (VK-9) | Pending |
+| `_app-ci-pnpm.yml` / `_app-deploy-pnpm.yml` | pnpm variant for videoking (VK-7/VK-9) | Live |
 
 **Caller shape** every app uses:
 

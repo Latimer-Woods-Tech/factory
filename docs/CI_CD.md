@@ -77,6 +77,38 @@ jobs:
     secrets: inherit
 ```
 
+### `_app-ci-pnpm.yml`
+Identical to `_app-ci.yml` but uses **pnpm** instead of npm. Use this for apps that commit a `pnpm-lock.yaml` (currently: videoking). Enforces `--frozen-lockfile`.
+
+**Caller:**
+```yaml
+jobs:
+  ci:
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_app-ci-pnpm.yml@main
+    secrets: inherit
+```
+
+### `_app-deploy-pnpm.yml`
+Identical to `_app-deploy.yml` but uses **pnpm** instead of npm. Passes `packageManager: pnpm` to `wrangler-action` so Wrangler resolves scripts through pnpm.
+
+**Caller (with chained post-deploy verify — recommended for production):**
+```yaml
+jobs:
+  deploy:
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_app-deploy-pnpm.yml@main
+    with:
+      environment: production
+    secrets: inherit
+  verify:
+    needs: deploy
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_post-deploy-verify.yml@main
+    with:
+      health_url: https://app.example.com/healthz
+      rollback_on_failure: true
+      worker_name: app-production
+    secrets: inherit
+```
+
 ### `_post-deploy-verify.yml`
 Stronger post-deploy check with retry/backoff plus optional auto-rollback to a captured prior version ID. Use this for production-grade deploys; the inline health check in `_app-deploy.yml` is fine for staging.
 

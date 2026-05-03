@@ -48,6 +48,7 @@ const PROJECTS = [
   { name: 'ijustus-worker',         slug: 'ijustus-worker',         envKey: 'IJUSTUS' },
   { name: 'the-calling-worker',     slug: 'the-calling-worker',     envKey: 'THE_CALLING' },
   { name: 'neighbor-aid-worker',    slug: 'neighbor-aid-worker',    envKey: 'NEIGHBOR_AID' },
+  { name: 'videoking',              slug: 'videoking',              envKey: 'VIDEOKING' },
   { name: 'factory-admin-worker',   slug: 'factory-admin-worker',   envKey: 'FACTORY_ADMIN' },
 ];
 
@@ -200,7 +201,7 @@ async function main() {
   }
 
   if (!DRY_RUN && failed.length === 0) {
-    console.log(`\n  All 7 DSNs written to: ${ENV_FILE}`);
+    console.log(`\n  All 8 DSNs written to: ${ENV_FILE}`);
     console.log('\n  Next steps:');
     console.log('  1. source .env.sentry  (or load it into your shell)');
     console.log('  2. node packages/deploy/scripts/setup-all-apps.mjs');
