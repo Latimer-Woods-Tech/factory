@@ -650,13 +650,13 @@ After (~4–6 weeks):
 | D2 | Template blessed threshold | **3 successful runs, 0 reverts, 0 human overrides.** |
 | D3 | Lock primitive | **`LockDO` Durable Object, not D1 CAS.** |
 | D4 | Capability mutation flag | **Graded `side_effects` levels, not boolean `mutating`.** |
+| O2 | Memory backend default | **CF Agent Memory primary + D1 dual-write.** `MEMORY_BACKEND=agent` is the default; flip to `d1` on beta flakiness, zero data loss. Monthly reconciliation workflow checks drift. Promotion decision: stay if Agent Memory hits GA cleanly; flip primary to D1 permanently if beta extends past 2026-Q3 or two breaking changes occur. |
 | O1 | Supervisor runtime location | **New `apps/supervisor` worker — `factory-admin` stays read-only.** |
 
 ### Still open — need your call before Week 3
 
 | # | Question | Recommendation | Cost of deferring |
 |---|---|---|---|
-| O2 | Memory backend default | Agent Memory primary with D1 dual-write | Low — dual-write defers the choice past ship |
 | O3 | Template authoring surface | YAML in factory repo (versioned; code-review applies) | Low |
 
 ---

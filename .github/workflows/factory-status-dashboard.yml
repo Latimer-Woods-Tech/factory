@@ -7,6 +7,7 @@ permissions: { contents: write }
 jobs:
   generate:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/create-github-app-token@v2
         id: app-token

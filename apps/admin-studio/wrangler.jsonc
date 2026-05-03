@@ -3,7 +3,9 @@
   "name": "admin-studio",
   "main": "src/index.ts",
   "compatibility_date": "2025-01-01",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "vars": {
     "STUDIO_ENV": "staging",
     "ALLOWED_ORIGINS": "https://studio.thefactory.dev,https://apunlimited.com,https://staging.admin-studio-ui.pages.dev"
@@ -16,8 +18,28 @@
         "ALLOWED_ORIGINS": "https://staging.admin-studio-ui.pages.dev,http://localhost:5173"
       },
       "hyperdrive": [
-        { "binding": "DB", "id": "efe957f404bb457593e6bd08b733b7c4" }
-      ]
+        {
+          "binding": "DB",
+          "id": "efe957f404bb457593e6bd08b733b7c4"
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "MONITOR_KV",
+          "id": "6579dabe32f0444ba29bfb722c1e02b1"
+        }
+      ],
+      "services": [
+        {
+          "binding": "SCHEDULE_WORKER",
+          "service": "schedule-worker"
+        }
+      ],
+      "triggers": {
+        "crons": [
+          "0 */6 * * *"
+        ]
+      }
     },
     "production": {
       "name": "admin-studio-production",
@@ -26,8 +48,28 @@
         "ALLOWED_ORIGINS": "https://studio.thefactory.dev,https://apunlimited.com"
       },
       "hyperdrive": [
-        { "binding": "DB", "id": "efe957f404bb457593e6bd08b733b7c4" }
-      ]
+        {
+          "binding": "DB",
+          "id": "efe957f404bb457593e6bd08b733b7c4"
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "MONITOR_KV",
+          "id": "6579dabe32f0444ba29bfb722c1e02b1"
+        }
+      ],
+      "services": [
+        {
+          "binding": "SCHEDULE_WORKER",
+          "service": "schedule-worker"
+        }
+      ],
+      "triggers": {
+        "crons": [
+          "0 */6 * * *"
+        ]
+      }
     }
   },
   "observability": {

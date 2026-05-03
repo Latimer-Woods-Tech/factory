@@ -138,7 +138,7 @@ Gated on SUP-4. Not yet filed.
 ## Open decisions left
 
 - **O1** Supervisor runtime: new `apps/supervisor` worker (recommended) vs extend `factory-admin` — decide Week 3
-- **O2** Memory backend default: Agent Memory primary + D1 dual-write (recommended) — decide Week 3
+- ~~**O2** Memory backend default: Agent Memory primary + D1 dual-write~~ — **RESOLVED 2026-05-02:** CF Agent Memory primary (`MEMORY_BACKEND=agent` default), D1 dual-write. [factory#111](https://github.com/Latimer-Woods-Tech/factory/issues/111)
 - **O3** Template authoring surface: YAML in factory repo (recommended) vs Notion — decide Week 3
 
 ---

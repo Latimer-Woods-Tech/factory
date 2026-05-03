@@ -12,6 +12,7 @@ import { envContextMiddleware } from './middleware/env-context.js';
 import { auditMiddleware } from './middleware/audit.js';
 
 import auth from './routes/auth.js';
+import { runAnalysisCycle } from './routes/ai.js';
 import me from './routes/me.js';
 import tests from './routes/tests.js';
 import deploy from './routes/deploy.js';
@@ -32,11 +33,11 @@ import studioSubscriptionsWebhook from './routes/webhooks-studio-subscriptions.j
 
 const app = new Hono<AppEnv>();
 
-// ── Global middleware (order matters) ─────────────────────────────────────
+// ── Global middleware (order matters) ─────────────────────────────────────────────────────
 app.use('*', requestIdMiddleware());
 app.use('*', corsMiddleware());
 
-// ── Public routes ─────────────────────────────────────────────────────────
+// ── Public routes ────────────────────────────────────────────────────────────────────────────────────
 
 /**
  * GET /health — unauthenticated. Returns env so operators can curl-verify
@@ -53,16 +54,16 @@ app.get('/health', (c) => {
 
 app.route('/auth', auth);
 
-// ── Public manifest (Phase E) ────────────────────────────────────────────
+// ── Public manifest (Phase E) ────────────────────────────────────────────────────────────────────────────────
 // Crawlable function catalog — no auth so external monitors can scrape.
 app.route('/manifest', manifest);
 
-// ── Webhooks (public, Stripe-signed) ──────────────────────────────────────
+// ── Webhooks (public, Stripe-signed) ────────────────────────────────────────────────────────────────────────
 app.route('/webhooks/stripe-connect', stripeConnectWebhooks);
 app.route('/webhooks/studio-tests', studioTestsWebhook);
 app.route('/webhooks/studio-subscriptions', studioSubscriptionsWebhook);
 
-// ── Authenticated routes (env context required) ───────────────────────────
+// ── Authenticated routes (env context required) ─────────────────────────────────────────────────────────
 app.use('/me/*', envContextMiddleware());
 app.use('/tests/*', envContextMiddleware(), auditMiddleware());
 app.use('/deploys/*', envContextMiddleware(), auditMiddleware());
@@ -94,7 +95,7 @@ app.route('/api/creator/onboarding', creatorOnboarding);
 app.route('/api/admin/creators', creators);
 app.route('/api/admin/payouts', payouts);
 
-// ── Error handler ─────────────────────────────────────────────────────────
+// ── Error handler ─────────────────────────────────────────────────────────────────────────────────────
 app.onError((err, c) => {
   console.error('[admin-studio] error:', err);
   return c.json(
@@ -114,4 +115,7 @@ app.notFound((c) =>
 
 export default {
   fetch: app.fetch,
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(runAnalysisCycle(env));
+  },
 } satisfies ExportedHandler<Env>;
