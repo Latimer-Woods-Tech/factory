@@ -12,6 +12,7 @@ const configFileNames = new Set([
   'drizzle.config.mts',
   'drizzle.config.cts',
 ]);
+const MIGRATION_PREFIX_REGEX = /^(\d+)_/;
 
 const violations = [];
 
@@ -41,7 +42,7 @@ function walk(directory, visited, drizzleConfigs) {
 function findDuplicatePrefixes(sqlFiles, foundViolations) {
   const seen = new Map();
   for (const file of sqlFiles) {
-    const prefix = file.match(/^(\d+)_/)?.[1];
+    const prefix = file.match(MIGRATION_PREFIX_REGEX)?.[1];
     if (!prefix) {
       continue;
     }
@@ -55,6 +56,12 @@ function findDuplicatePrefixes(sqlFiles, foundViolations) {
       foundViolations.push(`duplicate Drizzle migration prefix ${prefix}: ${files.join(', ')}`);
     }
   }
+}
+
+function getMigrationSortKey(name) {
+  const prefix = name.match(MIGRATION_PREFIX_REGEX)?.[1];
+  // Keep unexpected non-numeric names at the end so numbered migrations remain easy to scan.
+  return prefix ? Number(prefix) : Number.MAX_SAFE_INTEGER;
 }
 
 function readJournalEntries(journalPath, foundViolations) {
@@ -90,8 +97,8 @@ function validateMigrations(configPath, foundViolations) {
   const sqlFiles = readdirSync(migrationsDir)
     .filter((name) => /^\d+_.*\.sql$/.test(name))
     .sort((left, right) => {
-      const leftPrefix = Number(left.match(/^(\d+)_/)?.[1] ?? Number.MAX_SAFE_INTEGER);
-      const rightPrefix = Number(right.match(/^(\d+)_/)?.[1] ?? Number.MAX_SAFE_INTEGER);
+      const leftPrefix = getMigrationSortKey(left);
+      const rightPrefix = getMigrationSortKey(right);
       if (leftPrefix !== rightPrefix) {
         return leftPrefix - rightPrefix;
       }
@@ -115,7 +122,7 @@ function validateMigrations(configPath, foundViolations) {
       foundViolations.push(`${path.relative(root, journalPath)} references missing migration ${tag}.sql`);
     }
 
-    const prefix = tag.match(/^(\d+)_/)?.[1];
+    const prefix = tag.match(MIGRATION_PREFIX_REGEX)?.[1];
     if (!prefix) {
       continue;
     }

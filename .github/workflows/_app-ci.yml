@@ -90,11 +90,16 @@ jobs:
           node-version: ${{ inputs.node_version }}
           registry-url: 'https://npm.pkg.github.com'
           scope: '@latimer-woods-tech'
+      - name: Resolve factory workflow ref
+        id: factory-ref
+        run: echo "ref=${GITHUB_WORKFLOW_REF##*@}" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
       - name: Checkout factory validation scripts
         uses: actions/checkout@v6
         with:
           repository: Latimer-Woods-Tech/factory
-          ref: ${{ github.workflow_sha }}
+          ref: ${{ steps.factory-ref.outputs.ref }}
           path: .factory-workflows
           sparse-checkout: |
             scripts/check-drizzle-migration-integrity.mjs
