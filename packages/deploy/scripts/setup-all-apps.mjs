@@ -75,7 +75,7 @@ const APPS = [
     name: 'videoking',
     workerName: 'nichestream-api', // legacy Worker name preserved so api.itsjusus.com deployments keep targeting the live service
     envKey: 'VIDEOKING',
-    extraSecrets: ['STRIPE_SECRET_KEY'],
+    extraSecrets: ['STRIPE_SECRET_KEY', 'BETTER_AUTH_SECRET', 'STRIPE_WEBHOOK_SECRET', 'EMAIL_API_KEY'],
   },
 ];
 
