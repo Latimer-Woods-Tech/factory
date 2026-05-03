@@ -378,6 +378,7 @@ Return ONLY valid JSON — no prose, no markdown fences:
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        text: `🔴 *Factory Infra Alert*\n${finding.summary}\n\nFindings:\n${finding.findings.map((f: string) => `• ${f}`).join('\n')}`
         text: `🔴 *Factory Infra Alert*
 ${finding.summary}
 
