@@ -1,0 +1,54 @@
+name: Repair HumanDesign Worker Issue Token
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    env:
+      TARGET_REPO: Latimer-Woods-Tech/HumanDesign
+      WORKER_NAME: prime-self-api
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: Latimer-Woods-Tech
+
+      - name: Verify required secrets are available
+        env:
+          GH_TOKEN_ISSUE: ${{ secrets.GH_TOKEN_ISSUE }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          [ -n "${GH_TOKEN_ISSUE:-}" ] || (echo "::error::Missing GH_TOKEN_ISSUE in Factory secrets" && exit 1)
+          [ -n "${CLOUDFLARE_API_TOKEN:-}" ] || (echo "::error::Missing CLOUDFLARE_API_TOKEN in Factory secrets" && exit 1)
+          [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] || (echo "::error::Missing CLOUDFLARE_ACCOUNT_ID in Factory secrets" && exit 1)
+
+      - name: Set HumanDesign repository secret
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN_ISSUE: ${{ secrets.GH_TOKEN_ISSUE }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GH_TOKEN_ISSUE" | gh secret set GITHUB_ISSUE_TOKEN --repo "$TARGET_REPO"
+          gh secret list --repo "$TARGET_REPO" | grep -q '^GITHUB_ISSUE_TOKEN' || (echo "::error::Failed to verify GITHUB_ISSUE_TOKEN in $TARGET_REPO" && exit 1)
+
+      - name: Install wrangler
+        run: npm install -g wrangler@latest
+
+      - name: Set Worker secret on HumanDesign API Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GH_TOKEN_ISSUE: ${{ secrets.GH_TOKEN_ISSUE }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GH_TOKEN_ISSUE" | wrangler secret put GITHUB_ISSUE_TOKEN --name "$WORKER_NAME"
+          wrangler secret list --name "$WORKER_NAME" | grep -q 'GITHUB_ISSUE_TOKEN' || (echo "::error::Worker secret GITHUB_ISSUE_TOKEN not found on $WORKER_NAME" && exit 1)
