@@ -55,6 +55,9 @@ concurrency:
   group: render-${{ github.event.inputs.job_id }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   render:
     name: Generate narration + render MP4
@@ -659,11 +662,12 @@ jobs:
     name: Mark job as failed
     needs: render
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: failure()
     steps:
       - name: Generate GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ secrets.FACTORY_APP_ID }}
           private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
