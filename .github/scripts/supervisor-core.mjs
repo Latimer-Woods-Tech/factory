@@ -105,6 +105,10 @@ function parseTemplate(raw) {
 // ─── Deterministic template matching ─────────────────────────────────────────
 
 const MATCH_RULES = {
+  'ux-regression-triage': ({ title, labels }) =>
+    /\[P[0-3]\]\[UX\]|\bUX\b|mobile|viewport|accessibility|a11y|dashboard|modal|pricing/i.test(title) ||
+    labels.includes('ux') ||
+    labels.includes('accessibility'),
   'docs-naming-convention': ({ title, labels }) =>
     /doc|naming|convention|readme|changelog/i.test(`${title} ${labels.join(' ')}`),
   'deps-bump-minor-patch': ({ title }) =>
