@@ -16,6 +16,24 @@ import { complete, stream as anthropicStream } from '@latimer-woods-tech/llm';
 import type { AIChatEvent, AIChatRequest, AIProposal, AIProposalRequest } from '@latimer-woods-tech/studio-core';
 import type { AppEnv } from '../types.js';
 import type { Env } from '../env.js';
+import { fetchFile } from '../lib/github-api.js';
+
+// ---------------------------------------------------------------------------
+// Module-level CONTEXT.md cache — fetched once per worker cold start
+// ---------------------------------------------------------------------------
+
+let _factoryContextCache: string | null = null;
+
+async function loadFactoryContext(githubToken: string): Promise<string> {
+  if (_factoryContextCache !== null) return _factoryContextCache;
+  try {
+    const file = await fetchFile(githubToken, 'docs/supervisor/CONTEXT.md', 'main');
+    _factoryContextCache = file.content ?? '';
+  } catch {
+    _factoryContextCache = ''; // fail open — don't block LLM calls if GitHub is unreachable
+  }
+  return _factoryContextCache;
+}
 
 const ai = new Hono<AppEnv>();
 
@@ -330,11 +348,18 @@ export async function runAnalysisCycle(env: Env): Promise<void> {
   // 2. Fetch latest snapshot from KV
   const latest = env.MONITOR_KV ? await env.MONITOR_KV.get('latest', 'json') : null;
 
+  // 2b. Load CONTEXT.md as immutable architectural rules prefix (cached per cold start)
+  const githubToken = (env as any).GITHUB_TOKEN ?? '';
+  const factoryCtx = githubToken ? await loadFactoryContext(githubToken) : '';
+  const ctxPrefix = factoryCtx
+    ? `[FACTORY CONTEXT — immutable architectural rules]\n${factoryCtx}\n\n`
+    : '';
+
   // 3. Call LLM — narrow, structured output only
   let finding: { severity: string; summary: string; findings: string[]; recommendations: string[]; autoFixable: boolean; targetFile?: string };
   try {
     const raw = await complete(env as any, {
-      system: `You are a production infrastructure analyst. Analyze 24h diagnostic data.
+      system: `${ctxPrefix}You are a production infrastructure analyst. Analyze 24h diagnostic data.
 Return ONLY valid JSON — no prose, no markdown fences:
 {"severity":"ok"|"warning"|"critical","summary":"one sentence","findings":["specific issue with worker name and metric"],"recommendations":["actionable fix with file/function reference"],"autoFixable":true|false,"targetFile":"path/to/file or null"}
 
@@ -372,13 +397,21 @@ ai.post('/propose-fix', async (c) => {
   if (!c.env.GITHUB_TOKEN) return c.json({ error: 'GITHUB_TOKEN not configured' }, 503);
 
   // 1. Read source file via existing github-api lib
-  const { fetchFile, createBranch, commitFile, openPullRequest } = await import('../lib/github-api.js');
+  // fetchFile is imported at module level; get remaining helpers
+  const { createBranch, commitFile, openPullRequest } = await import('../lib/github-api.js');
+
+  // Load CONTEXT.md as immutable architectural rules prefix (cached per cold start)
+  const factoryCtx = await loadFactoryContext(c.env.GITHUB_TOKEN);
+  const ctxPrefix = factoryCtx
+    ? `[FACTORY CONTEXT — immutable architectural rules]\n${factoryCtx}\n\n`
+    : '';
+
 
   const sourceFile = await fetchFile(c.env.GITHUB_TOKEN, body.filePath, 'main');
 
   // 2. Ask LLM for a minimal patch
   const raw = await complete(c.env as any, {
-    system: `You are a senior TypeScript engineer for a Cloudflare Workers monorepo.
+    system: `${ctxPrefix}You are a senior TypeScript engineer for a Cloudflare Workers monorepo.
 Given a finding and source file, generate a minimal correct patch.
 Return ONLY valid JSON — no prose, no markdown:
 {"oldCode":"exact string to replace (must exist verbatim in source)","newCode":"replacement string","explanation":"one sentence"}
