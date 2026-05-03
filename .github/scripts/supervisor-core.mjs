@@ -105,6 +105,11 @@ function parseTemplate(raw) {
 // ─── Deterministic template matching ─────────────────────────────────────────
 
 const MATCH_RULES = {
+  'syn-package-migration': ({ title, labels }) =>
+    /\bSYN-[0-9]+\b|@latimer-woods-tech\/|extract .*package|package migration|monitoring\)|realtime\)|stripe\)|publish skills|composite action/i.test(title) ||
+    labels.includes('area:packages') ||
+    labels.includes('area:realtime') ||
+    labels.includes('area:monitoring'),
   'ux-regression-triage': ({ title, labels }) =>
     /\[P[0-3]\]\[UX\]|\bUX\b|mobile|viewport|accessibility|a11y|dashboard|modal|pricing/i.test(title) ||
     labels.includes('ux') ||
