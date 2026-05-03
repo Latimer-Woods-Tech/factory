@@ -7,6 +7,7 @@ const MONITORED_REPOS = ['factory', 'HumanDesign', 'videoking', 'xico-city'];
 const DENYLIST = new Set(['wordis-bond']);
 const RUN_ID = `sup-${Date.now()}`;
 const { GH_TOKEN, ANTHROPIC_API_KEY, PUSHOVER_TOKEN, PUSHOVER_USER, TRIGGER_ISSUE } = process.env;
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-haiku-latest';
 
 // ─── GitHub API ───────────────────────────────────────────────────────────────
 
@@ -167,7 +168,7 @@ async function extractSlots(slotNames, issue, factoryContext = '') {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-3-5-haiku-20241022',
+      model: ANTHROPIC_MODEL,
       max_tokens: 500,
       system:
         contextPrefix +
