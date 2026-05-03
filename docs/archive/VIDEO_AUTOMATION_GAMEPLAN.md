@@ -220,7 +220,7 @@ Props: {
 **Verification**:
 ```bash
 # List all secrets
-gh secret list --repo adrper79-dot/Factory | Select-String -Pattern "ELEVENLABS|R2_|WORKER"
+gh secret list --repo Latimer-Woods-Tech/Factory | Select-String -Pattern "ELEVENLABS|R2_|WORKER"
 
 # Verify R2 bucket exists
 gh run list --workflow="provision-r2.yml" --limit 1

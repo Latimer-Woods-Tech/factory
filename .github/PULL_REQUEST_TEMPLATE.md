@@ -60,6 +60,24 @@
 
 ---
 
+<!-- Append this section just before the "Notes for Reviewers" line at the bottom of factory/.github/PULL_REQUEST_TEMPLATE.md -->
+
+---
+
+## ✅ Post-Merge Verification (within 60 seconds of merge)
+
+The merger is responsible for this section. Subagents do not merge — see [AGENT_PROTOCOL.md](.github/AGENT_PROTOCOL.md).
+
+- [ ] Deploy workflow(s) for the merge SHA queued (`deploy-frontend`, `deploy-workers`, or repo equivalent)
+- [ ] Both deploys completed successfully (not just queued)
+- [ ] Production smoke check returns expected response from the new SHA
+- [ ] If anything failed: triggered `deploy-recovery.yml` or rolled back; did NOT start the next merge
+
+If you skipped this section, you are inside the failure mode that broke main on May 1 2026. Don't.
+
+---
+
+
 ## Notes for Reviewers
 
 **If any box is unchecked but should be checked for this PR, request changes. Definition of Done is binary, not aspirational.**

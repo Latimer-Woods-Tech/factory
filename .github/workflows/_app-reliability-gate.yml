@@ -1,0 +1,113 @@
+# =============================================================================
+# Reusable Reliability Gate — runs CVE audit + P0-issue gate before deploy.
+#
+# WHAT IT DOES
+#   - npm audit against configurable severity threshold
+#   - Queries LatWood Operations project for open issues labeled
+#     priority:P0 + repo-matching; fails if any are open
+#   - Optional: ESLint with max-warnings threshold
+#
+# HOW TO CALL
+#   jobs:
+#     gate:
+#       uses: Latimer-Woods-Tech/factory/.github/workflows/_app-reliability-gate.yml@main
+#       with:
+#         audit_level: high
+#         p0_gate_enabled: true
+#       secrets: inherit
+#
+# REQUIRED SECRETS (via secrets: inherit)
+#   GH_PAT — to query project board
+#
+# RELATED
+#   factory#70 (SYN-2)
+# =============================================================================
+
+name: _app-reliability-gate
+
+on:
+  workflow_call:
+    inputs:
+      node_version:
+        type: string
+        default: '22'
+      working_directory:
+        type: string
+        default: '.'
+      audit_level:
+        type: string
+        default: 'high'
+      eslint_max_warnings:
+        type: number
+        default: 10
+      run_eslint:
+        type: boolean
+        default: false
+      p0_gate_enabled:
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@latimer-woods-tech'
+      - name: Configure npm auth
+        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
+      - run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: CVE audit
+        run: |
+          echo "::group::npm audit"
+          npm audit --audit-level=${{ inputs.audit_level }} || {
+            echo "::error::Found CVEs at or above ${{ inputs.audit_level }} severity. Block merge."
+            exit 1
+          }
+          echo "::endgroup::"
+
+      - name: ESLint
+        if: ${{ inputs.run_eslint }}
+        run: |
+          if [ -f .eslintrc.json ] || [ -f eslint.config.js ] || [ -f eslint.config.mjs ]; then
+            npx eslint . --max-warnings=${{ inputs.eslint_max_warnings }}
+          else
+            echo "::notice::No ESLint config found; skipping"
+          fi
+
+      - name: P0 issue gate
+        if: ${{ inputs.p0_gate_enabled }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -e
+          # Query project board for P0 issues on this repo
+          RESULT=$(gh api graphql -f query='
+            query($owner: String!, $name: String!) {
+              repository(owner: $owner, name: $name) {
+                issues(states: OPEN, labels: ["priority:P0"], first: 50) {
+                  nodes { number title url labels(first: 10) { nodes { name } } }
+                }
+              }
+            }' -F owner="${REPO%/*}" -F name="${REPO#*/}")
+          COUNT=$(echo "$RESULT" | jq '.data.repository.issues.nodes | length')
+          if [ "$COUNT" -gt 0 ]; then
+            echo "::error::$COUNT open P0 issues block this deploy:"
+            echo "$RESULT" | jq -r '.data.repository.issues.nodes[] | "  #\(.number) \(.title)\n    \(.url)"'
+            exit 1
+          fi
+          echo "✓ No open P0 issues; gate passes."

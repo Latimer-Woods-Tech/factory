@@ -9,9 +9,14 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+concurrency:
+  group: bootstrap-publish-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -50,6 +55,7 @@ jobs:
               fix(p.devDependencies);
               if (p.version !== '0.2.1') p.version = ver;
               delete p.scripts.prepublish;
+              if (p.publishConfig && p.publishConfig.registry) delete p.publishConfig.registry;
               fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
               console.log('package.json updated to v' + p.version);
             " TARGET_VERSION="${TARGET_VERSION}"
@@ -64,10 +70,10 @@ jobs:
             npm run build
 
             # Publish (skip prepublish quality gate — CI has already validated)
-            npm publish --ignore-scripts
+            npm publish --ignore-scripts --access public
 
             popd
           done
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           TARGET_VERSION: "0.2.0"

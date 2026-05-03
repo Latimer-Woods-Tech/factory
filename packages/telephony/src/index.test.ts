@@ -34,9 +34,13 @@ const baseEnv = {
   TELNYX_API_KEY: 'tnx',
   DEEPGRAM_API_KEY: 'dg',
   ELEVENLABS_API_KEY: 'el',
-  ANTHROPIC_API_KEY: 'an',
-  GROK_API_KEY: 'gk',
+  AI_GATEWAY_BASE_URL: 'https://gw.test',
+      ANTHROPIC_API_KEY: 'an',
+  
   GROQ_API_KEY: 'gq',
+      VERTEX_ACCESS_TOKEN: 'vtest',
+      VERTEX_PROJECT: 'p',
+      VERTEX_LOCATION: 'us-central1',
 } as const;
 
 const baseConfig = (): VoiceSessionConfig => ({

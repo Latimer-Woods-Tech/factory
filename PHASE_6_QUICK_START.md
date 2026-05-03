@@ -98,10 +98,10 @@ neonctl databases list --project-id $PROJECT_ID
 wrangler hyperdrive list
 
 # Verify GitHub secrets on one app
-gh secret list --repo adrper79-dot/wordis-bond
+gh secret list --repo Latimer-Woods-Tech/wordis-bond
 
 # Verify CI is green
-gh run list --repo adrper79-dot/wordis-bond --limit 1
+gh run list --repo Latimer-Woods-Tech/wordis-bond --limit 1
 ```
 
 **All checks pass?** ✅ Phase 6 is complete!
@@ -184,12 +184,12 @@ By the end of Phase 6:
 Factory Core (this repo)
 ├── 19 packages published (v0.2.0)
 └── 6 app repositories created:
-    ├── adrper79-dot/wordis-bond
-    ├── adrper79-dot/cypher-healing
-    ├── adrper79-dot/prime-self
-    ├── adrper79-dot/ijustus
-    ├── adrper79-dot/the-calling
-    └── adrper79-dot/neighbor-aid
+    ├── Latimer-Woods-Tech/wordis-bond
+    ├── Latimer-Woods-Tech/cypher-healing
+    ├── Latimer-Woods-Tech/prime-self
+    ├── Latimer-Woods-Tech/ijustus
+    ├── Latimer-Woods-Tech/the-calling
+    └── Latimer-Woods-Tech/neighbor-aid
 
 Neon Project
 ├── 7 databases:

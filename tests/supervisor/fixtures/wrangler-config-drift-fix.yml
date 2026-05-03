@@ -1,0 +1,16 @@
+fixture_for: wrangler-config-drift-fix
+issue:
+  title: "videoking worker fails on deploy — Hyperdrive binding ID is stale"
+  labels: [bug, infra]
+  body: |
+    The `videoking` worker is throwing on cold start after the last Neon branch swap.
+    wrangler.jsonc still points at the old Hyperdrive binding.
+
+    - app_name: videoking
+    - worker_name: videoking-api
+    - binding_kind: hyperdrive
+    - binding_id: a1b2c3d4e5f6071829304152637485a9
+
+    Repro: deploy `videoking-api`, watch it 500 on the first DB call. `cloudflare.listWorkers`
+    no longer lists that Hyperdrive ID under the account — it was rotated during the VK-3
+    migration. Need wrangler.jsonc updated to the current Hyperdrive mapping.

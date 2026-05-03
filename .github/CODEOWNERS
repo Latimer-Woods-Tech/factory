@@ -1,0 +1,76 @@
+# factory CODEOWNERS — path-scoped trust model (MA-4)
+# Reference: docs/architecture/FACTORY_V1.md §5.3 + docs/supervisor/FRIDGE.md
+# Closes #82
+#
+# Trust tiers (from docs/supervisor/FRIDGE.md):
+#   Green  = docs/**, *.md, session/**            → supervisor can merge on blessed template
+#   Yellow = apps/*/src/**, client/**, tests/**   → auto-PR + auto-merge on green CI + plan-approval
+#   Red    = everything below (workflows, packages, migrations, billing/admin/stripe handlers, configs)
+#
+# Any file not matched by a later pattern falls through to the default (`*`).
+# Later patterns override earlier ones.
+
+# ===========================================================================
+# DEFAULT — Red tier: Adrian reviews unless a later pattern broadens
+# ===========================================================================
+*                                       @adrper79-dot
+
+# ===========================================================================
+# GREEN tier — supervisor (via factory-cross-repo bot) can merge on blessed template
+# ===========================================================================
+docs/**                                 @adrper79-dot
+*.md                                    @adrper79-dot
+session/**                              @adrper79-dot
+documents/**                            @adrper79-dot
+.github/ISSUE_TEMPLATE/**               @adrper79-dot
+.github/PULL_REQUEST_TEMPLATE.md        @adrper79-dot
+
+# ===========================================================================
+# YELLOW tier — auto-PR + auto-merge on green CI + plan-approval
+# (Adrian remains listed so human review is always possible; bot is co-owner)
+# ===========================================================================
+apps/*/src/**                           @adrper79-dot
+client/**                               @adrper79-dot
+tests/**                                @adrper79-dot
+
+# ===========================================================================
+# RED tier — belt-and-suspenders guards (human only)
+# These override any broader Yellow/Green pattern above.
+# ===========================================================================
+
+# CI / workflows — any change here multiplies across all apps
+.github/workflows/**                    @adrper79-dot
+.github/CODEOWNERS                      @adrper79-dot
+.github/settings.yml                    @adrper79-dot
+
+# Shared packages — every consumer app is affected on bump
+packages/**                             @adrper79-dot
+
+# DB migrations — unreversible schema changes
+workers/src/db/migrations/**            @adrper79-dot
+migrations/**                           @adrper79-dot
+
+# Billing / admin / Stripe handlers — money path
+workers/src/handlers/billing*           @adrper79-dot
+workers/src/handlers/admin*             @adrper79-dot
+workers/src/handlers/stripe*            @adrper79-dot
+apps/*/workers/src/handlers/billing*    @adrper79-dot
+apps/*/workers/src/handlers/admin*      @adrper79-dot
+apps/*/workers/src/handlers/stripe*     @adrper79-dot
+
+# Deployment config
+wrangler.jsonc                          @adrper79-dot
+wrangler.toml                           @adrper79-dot
+apps/*/wrangler.jsonc                   @adrper79-dot
+
+# Capability declarations and service registry
+capabilities.yml                        @adrper79-dot
+apps/*/capabilities.yml                 @adrper79-dot
+docs/service-registry.yml               @adrper79-dot
+
+# Supervisor internals (once SUP-3.4 scaffold lands)
+apps/supervisor/**                      @adrper79-dot
+
+# Template library — supervisor plans are code that drives autonomous execution
+docs/supervisor/plans/**                @adrper79-dot
+docs/supervisor/FRIDGE.md               @adrper79-dot

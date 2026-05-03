@@ -1,0 +1,50 @@
+name: Regen Lockfile On Branch
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        required: true
+        type: string
+      branch:
+        required: true
+        type: string
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+permissions:
+  contents: read
+
+jobs:
+  regen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: Latimer-Woods-Tech
+      - uses: actions/checkout@v4
+        with:
+          repository: Latimer-Woods-Tech/${{ inputs.repo }}
+          token: ${{ steps.app-token.outputs.token }}
+          ref: ${{ inputs.branch }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Regenerate lockfile
+        run: |
+          rm -f package-lock.json
+          npm install --package-lock-only --no-audit --no-fund --legacy-peer-deps
+          ls -la package-lock.json
+      - name: Commit and push
+        run: |
+          git config user.email "factory-cross-repo[bot]@users.noreply.github.com"
+          git config user.name "factory-cross-repo[bot]"
+          git add -A package-lock.json
+          if git diff --staged --quiet; then
+            echo "No staged changes"; exit 0
+          fi
+          git commit -m "chore: regenerate package-lock.json"
+          git push origin HEAD:${{ inputs.branch }}

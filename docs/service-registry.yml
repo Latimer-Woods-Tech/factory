@@ -211,10 +211,11 @@ workers:
     health_endpoint: null
     deployment_status: not_deployed                        # VideoKing is a docs/patterns source, not a live worker
     notes: >
-      VideoKing is the Factory video monetization architecture reference.
-      Its patterns (Hyperdrive, Remotion, Stream, R2) are reused by schedule-worker
-      and video-cron. There is no `videoking.adrper79.workers.dev` endpoint.
-      Do NOT attempt to curl this URL — it returns 404 by design.
+      VideoKing production traffic is split across `itsjusus.com` (Pages),
+      `api.itsjusus.com` (Worker), and `assets.itsjusus.com` (R2 custom domain).
+      Factory owns the domain-attachment and CI/CD migration workflows for this app.
+      Use `fix-videoking-domains.yml` to re-attach the API/assets domains and
+      `push-videoking-worker-secrets.yml` plus the reusable app workflows for runtime sync.
       Hyperdrive ID for VideoKing DB: 72697ebbf0d44419850743679390acf1 (videoking-hyperdrive).
     consumers: []
 

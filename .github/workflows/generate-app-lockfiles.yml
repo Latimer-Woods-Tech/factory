@@ -5,9 +5,13 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+permissions:
+  contents: read
+
 jobs:
   generate:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       matrix:
         app: [wordis-bond, cypher-healing, prime-self, ijustus, the-calling, neighbor-aid]

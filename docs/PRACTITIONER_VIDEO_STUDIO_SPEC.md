@@ -383,7 +383,7 @@ openssl rand -hex 32 | wrangler secret put CF_STREAM_WEBHOOK_SECRET --name prime
 
 ## See Also
 
-- [VIDEO_AUTOMATION_GAMEPLAN.md](../VIDEO_AUTOMATION_GAMEPLAN.md) — Phase 1 deployment runbook
+- [VIDEO_AUTOMATION_GAMEPLAN.md](../docs/archive/VIDEO_AUTOMATION_GAMEPLAN.md) — Phase 1 deployment runbook (archived)
 - [docs/videoking/SELFPRIME_MONETIZATION_CONTRACT.md](./videoking/SELFPRIME_MONETIZATION_CONTRACT.md) — Monetization event schema
 - [docs/videoking/monetization-funnel-spec.md](./videoking/monetization-funnel-spec.md) — VideoKing reference contract
 - [docs/service-registry.yml](./service-registry.yml) — Worker URLs and deployment status

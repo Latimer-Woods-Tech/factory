@@ -10,9 +10,17 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-schedule-worker-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     name: Deploy schedule-worker to Cloudflare
     
     steps:

@@ -25,7 +25,19 @@
       ],
       "vars": {
         "ENVIRONMENT": "production"
-      }
+      },
+      "kv_namespaces": [
+        {
+          "binding": "MONITOR_KV",
+          "id": "6579dabe32f0444ba29bfb722c1e02b1"
+        }
+      ]
     }
-  }
+  },
+  "kv_namespaces": [
+    {
+      "binding": "MONITOR_KV",
+      "id": "6579dabe32f0444ba29bfb722c1e02b1"
+    }
+  ]
 }

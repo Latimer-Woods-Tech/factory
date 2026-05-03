@@ -147,7 +147,7 @@ Once Phase 6 complete:
 
 ```bash
 # Clone an app
-git clone https://github.com/adrper79-dot/wordis-bond
+git clone https://github.com/Latimer-Woods-Tech/wordis-bond
 
 # Install + verify
 npm ci
@@ -336,7 +336,7 @@ See [docs/runbooks/lessons-learned.md](./docs/runbooks/lessons-learned.md) for:
 ### Questions?
 1. Check [PHASE_6_EXECUTION_PLAYBOOK.md](./PHASE_6_EXECUTION_PLAYBOOK.md) troubleshooting section
 2. Review [docs/runbooks/CREDENTIALS_SETUP.md](./docs/runbooks/CREDENTIALS_SETUP.md)
-3. Open issue: `github.com/adrper79-dot/factory_core/issues` with label `phase-6`
+3. Open issue: `github.com/Latimer-Woods-Tech/factory_core/issues` with label `phase-6`
 
 ---
 
@@ -394,5 +394,5 @@ See [docs/runbooks/lessons-learned.md](./docs/runbooks/lessons-learned.md) for:
 
 **Prepared by:** Factory Infrastructure Team  
 **Date:** April 27, 2026  
-**Repository:** github.com/adrper79-dot/factory_core  
+**Repository:** github.com/Latimer-Woods-Tech/factory_core  
 **Branch:** main

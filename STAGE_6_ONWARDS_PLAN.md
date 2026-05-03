@@ -1,3 +1,7 @@
+> ⚠️ **SUPERSEDED 2026-05-02** by [`docs/architecture/FACTORY_V1.md`](./docs/architecture/FACTORY_V1.md). This document is retained for historical context only. Do not rely on it for current architecture or policy.
+
+---
+
 # Factory Core — Master Execution Plan: Stage 6+
 
 > **Status:** All 19 `@latimer-woods-tech/*` packages published at `v0.2.0`. `scaffold.mjs` + `setup-all-apps.mjs` live. All 6 app repos + `factory-admin` created.
@@ -16,7 +20,7 @@
                │
                ▼
 ┌─────────────────────────────┐
-│   adrper79-dot/Factory      │  ← you are here
+│   Latimer-Woods-Tech/Factory      │  ← you are here
 │   (Factory Core monorepo)   │
 │                             │
 │  packages/errors   v0.2.0   │──► GitHub Packages registry
@@ -87,9 +91,9 @@ All of the following can be done **from this repo** without entering app repos:
 
 | Operation | Command |
 |---|---|
-| Set GitHub secret on any app | `gh secret set X --repo adrper79-dot/{app} --body "$VAL"` |
+| Set GitHub secret on any app | `gh secret set X --repo Latimer-Woods-Tech/{app} --body "$VAL"` |
 | Set Wrangler secret on any Worker | `wrangler secret put X --name {worker-name}` |
-| Trigger app CI/deploy | `gh workflow run deploy.yml --repo adrper79-dot/{app} --ref main` |
+| Trigger app CI/deploy | `gh workflow run deploy.yml --repo Latimer-Woods-Tech/{app} --ref main` |
 | Scaffold a new app | `node packages/deploy/scripts/scaffold.mjs {app-name} --github` |
 | Set secrets across all apps | `node packages/deploy/scripts/setup-all-apps.mjs` |
 
@@ -158,7 +162,7 @@ Every app is designed so it can be transferred to a new owner with minimal frict
 
 | Asset | Transfer Method | Time |
 |---|---|---|
-| GitHub repo | `gh repo transfer adrper79-dot/{app} {buyer-org}` | Instant |
+| GitHub repo | `gh repo transfer Latimer-Woods-Tech/{app} {buyer-org}` | Instant |
 | Neon database | Neon project transfer or `pg_dump` / restore | < 1 hour |
 | Cloudflare Worker | Transfer to buyer's CF account | < 30 min |
 | Stripe account | Stripe account transfer or new account + data export | Varies |
@@ -365,10 +369,10 @@ Create all 6 app repos from here in one pass:
 
 ```bash
 for app in wordis-bond cypher-healing prime-self ijustus the-calling neighbor-aid; do
-  gh repo create adrper79-dot/$app \
+  gh repo create Latimer-Woods-Tech/$app \
     --private \
     --description "Factory App: $app"
-  echo "Created: adrper79-dot/$app"
+  echo "Created: Latimer-Woods-Tech/$app"
 done
 ```
 
@@ -466,7 +470,7 @@ node packages/deploy/scripts/scaffold.mjs {app-name} \
 
 ```bash
 # Clone the newly created repo
-git clone https://github.com/adrper79-dot/{app-name}
+git clone https://github.com/Latimer-Woods-Tech/{app-name}
 cd {app-name}
 
 # Wordis Bond
@@ -823,12 +827,12 @@ export const offers = pgTable('offers', {
 **Owner: Admin Agent**
 **Parallel with Phase 7**
 **URL: `admin.thefactory.dev`**
-**Repo: `adrper79-dot/factory-admin`**
+**Repo: `Latimer-Woods-Tech/factory-admin`**
 
 This is a standalone Cloudflare Worker with cross-app visibility. It is **not** the per-app `/admin` router from `@latimer-woods-tech/admin` — that is mounted inside each app.
 
 ```bash
-gh repo create adrper79-dot/factory-admin --private
+gh repo create Latimer-Woods-Tech/factory-admin --private
 ```
 
 ### 8.1 Architecture
@@ -896,7 +900,7 @@ app.use('*', async (c, next) => {
 
 ### 9.1 Mintlify Deployment
 
-1. Create Mintlify account at `mintlify.com` → connect `adrper79-dot/Factory`
+1. Create Mintlify account at `mintlify.com` → connect `Latimer-Woods-Tech/Factory`
 2. Configure domain: `docs.thefactory.dev`
 3. Ensure every `packages/*/docs/` has a `{package}.mdx` with: overview, installation, exports with typed signatures, one usage example
 
@@ -924,7 +928,7 @@ app.use('*', async (c, next) => {
 ## Transfer Steps
 
 ### 1. GitHub Repo
-gh repo transfer adrper79-dot/{app} {buyer-github-org}
+gh repo transfer Latimer-Woods-Tech/{app} {buyer-github-org}
 # Buyer accepts transfer invitation
 
 ### 2. Neon Database

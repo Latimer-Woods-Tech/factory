@@ -1,0 +1,143 @@
+# =============================================================================
+# Reusable Prod Canary — runs a canary script against live production post-deploy
+# or on cron. Posts to Pushover on failure; optional wrangler rollback.
+#
+# HOW TO CALL
+#   post-deploy:
+#     jobs:
+#       canary:
+#         needs: deploy
+#         uses: Latimer-Woods-Tech/factory/.github/workflows/_app-prod-canary.yml@main
+#         with:
+#           base_url: https://api.itsjusus.com
+#           canary_script: scripts/canary.mjs
+#           rollback_on_failure: true
+#           worker_name: nichestream-api
+#         secrets: inherit
+#
+#   scheduled:
+#     on:
+#       schedule: [{ cron: '*/30 * * * *' }]
+#     jobs:
+#       canary:
+#         uses: ...@main
+#         with: { base_url: ..., canary_script: ... }
+#
+# REQUIRED SECRETS (via secrets: inherit)
+#   PUSHOVER_USER_KEY, PUSHOVER_APP_TOKEN — alert channel
+#   CF_API_TOKEN, CLOUDFLARE_ACCOUNT_ID  — for rollback
+#
+# RELATED
+#   factory#71 (SYN-3)
+# =============================================================================
+
+name: _app-prod-canary
+
+on:
+  workflow_call:
+    inputs:
+      node_version:
+        type: string
+        default: '22'
+      base_url:
+        type: string
+        required: true
+      canary_script:
+        type: string
+        default: ''
+      health_path:
+        type: string
+        default: '/health'
+      max_attempts:
+        type: number
+        default: 3
+      sleep_seconds:
+        type: number
+        default: 15
+      rollback_on_failure:
+        type: boolean
+        default: false
+      worker_name:
+        type: string
+        default: ''
+      alert_on_failure:
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+
+      - name: Probe health
+        id: health
+        run: |
+          set -euo pipefail
+          URL="${{ inputs.base_url }}${{ inputs.health_path }}"
+          for i in $(seq 1 ${{ inputs.max_attempts }}); do
+            code=$(curl -s -o /tmp/body -w '%{http_code}' --max-time 10 "$URL")
+            echo "attempt $i: HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "healthy=true" >> "$GITHUB_OUTPUT"
+              cat /tmp/body
+              exit 0
+            fi
+            sleep ${{ inputs.sleep_seconds }}
+          done
+          echo "healthy=false" >> "$GITHUB_OUTPUT"
+          echo "::error::Health probe failed after ${{ inputs.max_attempts }} attempts"
+          cat /tmp/body || true
+          exit 1
+
+      - name: Run canary script
+        if: ${{ inputs.canary_script != '' }}
+        env:
+          BASE_URL: ${{ inputs.base_url }}
+        run: |
+          if [ -f "${{ inputs.canary_script }}" ]; then
+            node "${{ inputs.canary_script }}"
+          else
+            echo "::warning::canary script ${{ inputs.canary_script }} not found; skipping"
+          fi
+
+      - name: Alert on failure
+        if: failure() && inputs.alert_on_failure
+        env:
+          PUSHOVER_USER_KEY: ${{ secrets.PUSHOVER_USER_KEY }}
+          PUSHOVER_APP_TOKEN: ${{ secrets.PUSHOVER_APP_TOKEN }}
+        run: |
+          if [ -z "${PUSHOVER_USER_KEY:-}" ] || [ -z "${PUSHOVER_APP_TOKEN:-}" ]; then
+            echo "::warning::Pushover secrets missing; skipping alert"
+            exit 0
+          fi
+          curl -fsS -X POST https://api.pushover.net/1/messages.json \
+            --data-urlencode "token=$PUSHOVER_APP_TOKEN" \
+            --data-urlencode "user=$PUSHOVER_USER_KEY" \
+            --data-urlencode "title=🚨 Canary failed: ${{ github.repository }}" \
+            --data-urlencode "message=Canary failed against ${{ inputs.base_url }}. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --data-urlencode "priority=1"
+
+      - name: Rollback
+        if: failure() && inputs.rollback_on_failure && inputs.worker_name != ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "Rolling back Worker ${{ inputs.worker_name }} to previous version..."
+          # Fetch second-latest version
+          VERSIONS=$(npx -y wrangler@latest versions list --name "${{ inputs.worker_name }}" --json 2>/dev/null || echo '[]')
+          PREV=$(echo "$VERSIONS" | jq -r '.[1].id // empty')
+          if [ -z "$PREV" ]; then
+            echo "::error::Could not determine previous version for rollback"
+            exit 1
+          fi
+          npx -y wrangler@latest versions rollback --name "${{ inputs.worker_name }}" --version-id "$PREV" --yes
+          echo "✓ Rolled back to $PREV"

@@ -1,0 +1,41 @@
+name: Policy Drift Guard
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Verify org allowed_actions = all
+        env:
+          GH_TOKEN: ${{ secrets.ORG_ADMIN_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          state=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/orgs/Latimer-Woods-Tech/actions/permissions | jq -r '.allowed_actions // "all"')
+          enabled=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/orgs/Latimer-Woods-Tech/actions/permissions | jq -r '.enabled_repositories')
+          echo "Org allowed_actions=$state, enabled_repositories=$enabled"
+          if [ "$state" != "all" ]; then
+            echo "::error::Org allowed_actions drifted from 'all' to '$state'. Cross-repo reusable workflows are now broken. Fix at https://github.com/organizations/Latimer-Woods-Tech/settings/actions"
+            exit 1
+          fi
+          if [ "$enabled" != "all" ]; then
+            echo "::warning::enabled_repositories=$enabled (expected all)"
+          fi
+      - name: Verify factory remains public
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          vis=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/${{ github.repository }} | jq -r '.visibility')
+          echo "factory visibility=$vis"
+          if [ "$vis" != "public" ]; then
+            echo "::error::factory must remain public for cross-repo reusable workflow consumption on Team plan."
+            exit 1
+          fi

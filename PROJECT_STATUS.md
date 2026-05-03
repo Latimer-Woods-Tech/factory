@@ -58,12 +58,12 @@ All packages meet production standards:
 
 | App | Repo | Status |
 |-----|------|--------|
-| wordis-bond | `github.com/adrper79-dot/wordis-bond` | ✅ Created |
-| cypher-healing | `github.com/adrper79-dot/cypher-healing` | ✅ Created |
-| prime-self | `github.com/adrper79-dot/prime-self` | ✅ Created |
-| ijustus | `github.com/adrper79-dot/ijustus` | ✅ Created |
-| the-calling | `github.com/adrper79-dot/the-calling` | ✅ Created |
-| neighbor-aid | `github.com/adrper79-dot/neighbor-aid` | ✅ Created |
+| wordis-bond | `github.com/Latimer-Woods-Tech/wordis-bond` | ✅ Created |
+| cypher-healing | `github.com/Latimer-Woods-Tech/cypher-healing` | ✅ Created |
+| prime-self | `github.com/Latimer-Woods-Tech/prime-self` | ✅ Created |
+| ijustus | `github.com/Latimer-Woods-Tech/ijustus` | ✅ Created |
+| the-calling | `github.com/Latimer-Woods-Tech/the-calling` | ✅ Created |
+| neighbor-aid | `github.com/Latimer-Woods-Tech/neighbor-aid` | ✅ Created |
 
 All repos include:
 - Pre-scaffolded directory structure
@@ -185,7 +185,7 @@ Once Phase 6 complete:
 
 ```bash
 # Clone an app repo
-git clone https://github.com/adrper79-dot/wordis-bond
+git clone https://github.com/Latimer-Woods-Tech/wordis-bond
 
 # Install dependencies
 npm ci
