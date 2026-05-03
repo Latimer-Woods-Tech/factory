@@ -3,14 +3,14 @@
  * Secrets must be set via `wrangler secret put`, never in vars.
  */
 export interface Env {
-  // ── Vars (non-secret, in wrangler.jsonc) ────────────────────────────────
+  // ── Vars (non-secret, in wrangler.jsonc) ──────────────────────────────────────────────
   STUDIO_ENV: 'local' | 'staging' | 'production';
   ALLOWED_ORIGINS: string;
 
-  // ── Bindings ────────────────────────────────────────────────────────────
+  // ── Bindings ────────────────────────────────────────────────────────────────────────────────
   DB: Hyperdrive;
 
-  // ── Secrets (wrangler secret put) ───────────────────────────────────────
+  // ── Secrets (wrangler secret put) ───────────────────────────────────────────────────────────────────────
   /** Signing key for Studio-issued JWTs */
   JWT_SECRET: string;
   /** Bootstrap operator email allowed to obtain Studio JWTs. */
@@ -25,10 +25,18 @@ export interface Env {
   XAI_API_KEY?: string;
   /** Groq fallback */
   GROQ_API_KEY?: string;
+  /** AI Gateway base URL (optional) */
+  AI_GATEWAY_BASE_URL?: string;
+  /** Vertex AI access token */
+  VERTEX_ACCESS_TOKEN?: string;
+  /** Vertex AI project ID */
+  VERTEX_PROJECT?: string;
+  /** Vertex AI location */
+  VERTEX_LOCATION?: string;
   /** Sentry DSN for error reporting */
   SENTRY_DSN?: string;
 
-  // ── Phase B: observability proxy secrets (all optional) ─────────────────
+  // ── Phase B: observability proxy secrets (all optional) ───────────────────────────────────────────────────────
   /** Cloudflare API token (Workers Scripts:Read) for deploy-version reads */
   CLOUDFLARE_API_TOKEN?: string;
   CLOUDFLARE_ACCOUNT_ID?: string;
@@ -41,23 +49,23 @@ export interface Env {
   POSTHOG_PROJECT_ID?: string;
   POSTHOG_HOST?: string;
 
-  // ── Phase C: test runner ────────────────────────────────────────────────
+  // ── Phase C: test runner ──────────────────────────────────────────────────────────────────────────────────────
   /** Public origin of the Studio Worker — used as the GH Actions callback. */
   STUDIO_PUBLIC_URL?: string;
   /** Shared HMAC secret signed by the GH Action and verified by the Worker. */
   STUDIO_WEBHOOK_SECRET?: string;
 
-  // ── Phase E: function catalog ───────────────────────────────────────────
+  // ── Phase E: function catalog ────────────────────────────────────────────────────────────────────────────────────────
   /** Build SHA stamped at deploy time, surfaced in /manifest. */
   BUILD_SHA?: string;
 
-  // ── Self-improvement loop ───────────────────────────────────────────────
+  // ── Self-improvement loop ─────────────────────────────────────────────────────────────────────────────────────────
   /** Shared KV for monitor snapshots. */
   MONITOR_KV?: KVNamespace;
   /** Service binding to schedule-worker for /diagnostics calls. */
   SCHEDULE_WORKER?: Fetcher;
 
-  // ── T3: Creator onboarding + payout operations ──────────────────────────
+  // ── T3: Creator onboarding + payout operations ────────────────────────────────────────────────────────
   /** Stripe secret key for Connect OAuth and transfer operations. */
   STRIPE_SECRET_KEY?: string;
   /** Stripe publishable key used in front-end OAuth redirect URLs. */
