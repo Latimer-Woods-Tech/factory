@@ -1,0 +1,94 @@
+name: Decision Queue Digest
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+  issues: read
+
+jobs:
+  build-decision-queue:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build decision queue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          OUT="docs/DECISION_QUEUE.md"
+          NOW="$(date -u +%FT%TZ)"
+
+          mkdir -p docs
+
+          cat > "$OUT" <<EOF
+          # Decision Queue
+
+          Auto-generated every 30 minutes. Last update: $NOW
+
+          This page is for fast human decisions only.
+
+          ## Merge or Review Now
+          EOF
+
+          gh pr list \
+            --repo "$REPO" \
+            --state open \
+            --json number,title,url,isDraft,reviewDecision,mergeStateStatus,updatedAt,author,labels \
+            --jq '.[] | select(.isDraft == false and (.reviewDecision == "REVIEW_REQUIRED" or .mergeStateStatus == "BLOCKED")) | "- [#\(.number) \(.title)](\(.url)) | author: \(.author.login) | review: \(.reviewDecision) | merge: \(.mergeStateStatus) | updated: \(.updatedAt)"' \
+            >> "$OUT"
+
+          cat >> "$OUT" <<EOF
+
+          ## Held By needs-human Label
+          EOF
+
+          gh pr list \
+            --repo "$REPO" \
+            --state open \
+            --json number,title,url,isDraft,updatedAt,author,labels \
+            --jq '.[] | select(.isDraft == false and ((.labels | map(.name)) | index("needs-human") != null)) | "- [#\(.number) \(.title)](\(.url)) | author: \(.author.login) | updated: \(.updatedAt)"' \
+            >> "$OUT"
+
+          cat >> "$OUT" <<EOF
+
+          ## In Progress With No Linked PR
+          EOF
+
+          if gh project item-list 1 \
+            --owner Latimer-Woods-Tech \
+            --limit 200 \
+            --format json \
+            --jq '.items[] | select(.status == "In Progress" and ((."linked pull requests" // []) | length == 0) and .content.type == "Issue") | "- [#\(.content.number) \(.title)](\(.content.url)) | agent: \(.agent // "unassigned")"' \
+            >> "$OUT"; then
+            true
+          else
+            echo "- Project scope missing for GITHUB_TOKEN; board-specific queue is skipped." >> "$OUT"
+          fi
+
+          cat >> "$OUT" <<EOF
+
+          ## Open Questions
+
+          - If a card appears here for more than 6 hours, either link a PR or move it back to Todo.
+          - Use label no-automerge on any dependency PR that should never merge automatically.
+          - Use label needs-human to require a manual decision before merge.
+          EOF
+
+      - name: Commit queue updates
+        run: |
+          set -euo pipefail
+
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+
+          git add docs/DECISION_QUEUE.md
+          git diff --staged --quiet || git commit -m "chore(ops): refresh decision queue [skip ci]"
+          git push

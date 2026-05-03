@@ -1,0 +1,41 @@
+name: Validate Sentry Auth Token
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify secret is available
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
+            echo "::error::SENTRY_AUTH_TOKEN is not available to this workflow."
+            exit 1
+          fi
+
+      - name: Validate token against Sentry API
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/sentry-orgs.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${SENTRY_AUTH_TOKEN}" \
+            -H "Content-Type: application/json" \
+            https://sentry.io/api/0/organizations/)
+
+          if [ "$code" != "200" ]; then
+            echo "::error::SENTRY_AUTH_TOKEN validation failed with HTTP $code"
+            head -c 400 /tmp/sentry-orgs.json || true
+            echo
+            exit 1
+          fi
+
+          count=$(jq 'length' /tmp/sentry-orgs.json)
+          echo "Sentry API auth OK. Visible org count: $count"

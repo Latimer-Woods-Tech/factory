@@ -58,9 +58,28 @@ jobs:
             echo "- Neon databases: 10"
           } >> "$OUT"
       - name: Commit if changed
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          set -e
           git config user.email "factory-cross-repo[bot]@users.noreply.github.com"
           git config user.name "factory-cross-repo[bot]"
           git add docs/STATUS.md
-          git diff --staged --quiet || git commit -m "chore(status): hourly status update [skip ci]"
-          git push
+
+          if git diff --staged --quiet; then
+            echo "No status changes to commit."
+            exit 0
+          fi
+
+          git commit -m "chore(status): hourly status update [skip ci]"
+
+          if ! git push; then
+            echo "::warning::Status commit push blocked by branch protection. STATUS.md is still available as a workflow artifact."
+          fi
+
+      - name: Upload status artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: factory-status-dashboard
+          path: docs/STATUS.md
+          if-no-files-found: error
