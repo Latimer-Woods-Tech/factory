@@ -41,6 +41,10 @@ jobs:
           printf '%s' "$GH_TOKEN_ISSUE" | gh secret set GH_ISSUE_TOKEN --repo "$TARGET_REPO"
           gh secret list --repo "$TARGET_REPO" | grep -q '^GH_ISSUE_TOKEN' || (echo "::error::Failed to verify GH_ISSUE_TOKEN in $TARGET_REPO" && exit 1)
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Install wrangler
         run: npm install -g wrangler@latest
 
