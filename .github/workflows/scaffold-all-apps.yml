@@ -51,7 +51,7 @@ jobs:
     steps:
       - name: Generate GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.FACTORY_APP_ID }}
           private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
@@ -60,10 +60,10 @@ jobs:
         if: ${{ github.event.inputs.app != '' && github.event.inputs.app != matrix.app }}
         run: echo "Skipping ${{ matrix.app }} — filter is '${{ github.event.inputs.app }}'"
 
-      - uses: actions/checkout@v4  # checks out Factory (this repo)
+      - uses: actions/checkout@v6  # checks out Factory (this repo)
         if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         if: ${{ github.event.inputs.app == '' || github.event.inputs.app == matrix.app }}
         with:
           node-version: '22'
