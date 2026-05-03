@@ -1,0 +1,37 @@
+name: Sentry to GitHub Issues
+
+on:
+  schedule:
+    # Every 4h offset from supervisor-loop (which runs at :00)
+    - cron: '0 2,6,10,14,18,22 * * *'
+  workflow_dispatch:
+    inputs:
+      lookback_hours:
+        description: 'Hours to look back for new Sentry issues'
+        default: '5'
+        required: false
+        type: string
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  sync:
+    name: Sync new Sentry issues to GitHub
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: Latimer-Woods-Tech
+      - name: Poll Sentry and create GitHub issues
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SENTRY_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          LOOKBACK_HOURS: ${{ inputs.lookback_hours || '5' }}
+        run: node .github/scripts/sentry-to-github.mjs
