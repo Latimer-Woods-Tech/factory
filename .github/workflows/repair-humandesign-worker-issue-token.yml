@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TARGET_REPO: Latimer-Woods-Tech/HumanDesign
-      WORKER_NAME: prime-self-api
     steps:
       - uses: actions/create-github-app-token@v2
         id: app-token
@@ -23,13 +22,9 @@ jobs:
       - name: Verify required secrets are available
         env:
           GH_TOKEN_ISSUE: ${{ secrets.GH_TOKEN_ISSUE }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
           [ -n "${GH_TOKEN_ISSUE:-}" ] || (echo "::error::Missing GH_TOKEN_ISSUE in Factory secrets" && exit 1)
-          [ -n "${CLOUDFLARE_API_TOKEN:-}" ] || (echo "::error::Missing CLOUDFLARE_API_TOKEN in Factory secrets" && exit 1)
-          [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] || (echo "::error::Missing CLOUDFLARE_ACCOUNT_ID in Factory secrets" && exit 1)
 
       - name: Set HumanDesign repository secret
         env:
@@ -40,21 +35,7 @@ jobs:
           # GitHub rejects secret names starting with GITHUB_; use GH_ISSUE_TOKEN instead
           printf '%s' "$GH_TOKEN_ISSUE" | gh secret set GH_ISSUE_TOKEN --repo "$TARGET_REPO"
           gh secret list --repo "$TARGET_REPO" | grep -q '^GH_ISSUE_TOKEN' || (echo "::error::Failed to verify GH_ISSUE_TOKEN in $TARGET_REPO" && exit 1)
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install wrangler
-        run: npm install -g wrangler@latest
-
-      - name: Set Worker secret on HumanDesign API Worker
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          GH_TOKEN_ISSUE: ${{ secrets.GH_TOKEN_ISSUE }}
-        run: |
-          set -euo pipefail
-          # Use GH_TOKEN_ISSUE as the Worker secret name (matches Cloudflare dashboard entry)
-          printf '%s' "$GH_TOKEN_ISSUE" | wrangler secret put GH_TOKEN_ISSUE --name "$WORKER_NAME"
-          wrangler secret list --name "$WORKER_NAME" | grep -q 'GH_TOKEN_ISSUE' || (echo "::warning::Worker secret GH_TOKEN_ISSUE not visible in list (may already exist from manual add)" && true)
+          echo "✓ GH_ISSUE_TOKEN set in $TARGET_REPO"
+          # Note: Cloudflare Worker secrets for HumanDesign must be set manually via the
+          # Cloudflare dashboard or HumanDesign's own sync-worker-secrets.yml workflow,
+          # as Factory's CF token does not have access to the HumanDesign CF account.
