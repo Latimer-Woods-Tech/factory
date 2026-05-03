@@ -115,7 +115,7 @@ app.notFound((c) =>
 
 export default {
   fetch: app.fetch,
-  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext<Env>): Promise<void> {
     ctx.waitUntil(runAnalysisCycle(env));
   },
 } satisfies ExportedHandler<Env>;
