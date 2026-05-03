@@ -8,7 +8,7 @@ Decisions that block forward progress. Closed either via CODEOWNER ✅ reaction 
 
 | # | Decision | Issue | Blocks | Recommendation |
 |---|---|---|---|---|
-| O1 | Supervisor runtime location: new `apps/supervisor` worker vs extend `factory-admin` | [factory#110](https://github.com/Latimer-Woods-Tech/factory/issues/110) | SUP-3.4 scaffold (factory#107) | New `apps/supervisor` |
+
 
 ## How to resolve
 
@@ -25,6 +25,7 @@ OR open a PR updating this file directly, linking to the discussion in the PR bo
 | D3 | Lock primitive | **`LockDO` Durable Object singleton per app, D1 as audit log** | 2026-05-02 | `ARCHITECTURE.md` §5.8 |
 | D4 | Capability mutation flag | **Graded `side_effects` levels (none/read-external/write-app/write-external)**, not boolean `mutating` | 2026-05-02 | `ARCHITECTURE.md` §7 |
 | O2 | Memory backend default | **CF Agent Memory primary + D1 dual-write.** `MEMORY_BACKEND=agent` default; flip to `d1` on beta flakiness. Monthly reconciliation workflow checks drift. | 2026-05-02 | [factory#111](https://github.com/Latimer-Woods-Tech/factory/issues/111) |
+| O1 | Supervisor runtime location | **New `apps/supervisor` worker — keep `factory-admin` read-only.** Independent deploy/rollback; no coupling of dashboard with mutator operations. | 2026-05-02 | [factory#110](https://github.com/Latimer-Woods-Tech/factory/issues/110) |
 | O3 | Template authoring surface | **YAML in `docs/supervisor/plans/`, versioned with code; code-review applies; test harness on PR.** Notion option rejected. | 2026-05-02 | `ARCHITECTURE.md` §12 |
 
 ---
