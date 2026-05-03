@@ -19,6 +19,7 @@ const configFileNames = new Set([
   'drizzle.config.cts',
 ]);
 const MIGRATION_PREFIX_REGEX = /^(\d+)_/;
+const DRIZZLE_MIGRATION_FILE_REGEX = /^\d+_.*\.sql$/;
 
 const violations = [];
 
@@ -76,7 +77,7 @@ function readJournalEntries(journalPath, foundViolations) {
     return Array.isArray(journal.entries) ? journal.entries : [];
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown parse error';
-    foundViolations.push(`${path.relative(root, journalPath)} is not valid JSON: ${message}`);
+    foundViolations.push(`Failed to parse ${path.relative(root, journalPath)} as JSON: ${message}`);
     return [];
   }
 }
@@ -101,7 +102,7 @@ function validateMigrations(configPath, foundViolations) {
   }
 
   const migrationEntries = readdirSync(migrationsDir);
-  const skippedSqlFiles = migrationEntries.filter((name) => name.endsWith('.sql') && !/^\d+_.*\.sql$/.test(name));
+  const skippedSqlFiles = migrationEntries.filter((name) => name.endsWith('.sql') && !DRIZZLE_MIGRATION_FILE_REGEX.test(name));
   if (skippedSqlFiles.length > 0) {
     console.log(
       `Skipping ${skippedSqlFiles.length} non-Drizzle SQL file(s) in ${path.relative(root, migrationsDir)}: ${skippedSqlFiles.join(', ')}`,
@@ -109,7 +110,7 @@ function validateMigrations(configPath, foundViolations) {
   }
 
   const sqlFiles = migrationEntries
-    .filter((name) => /^\d+_.*\.sql$/.test(name))
+    .filter((name) => DRIZZLE_MIGRATION_FILE_REGEX.test(name))
     .sort((left, right) => {
       const leftPrefix = getMigrationSortKey(left);
       const rightPrefix = getMigrationSortKey(right);
