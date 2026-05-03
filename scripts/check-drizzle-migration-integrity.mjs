@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 
+/**
+ * Tooling-only CI guard for GitHub Actions.
+ *
+ * This script intentionally runs under Node.js in CI and is not shipped to,
+ * imported by, or executed inside Cloudflare Workers runtime code.
+ */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
