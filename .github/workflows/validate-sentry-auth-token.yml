@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Verify secret is available
         env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN || secrets.FACTORY_SENTRY_API }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.FACTORY_SENTRY_API || secrets.SENTRY_AUTH_TOKEN }}
         run: |
           set -euo pipefail
           if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
@@ -22,7 +22,7 @@ jobs:
 
       - name: Validate token against Sentry API
         env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN || secrets.FACTORY_SENTRY_API }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.FACTORY_SENTRY_API || secrets.SENTRY_AUTH_TOKEN }}
         run: |
           set -euo pipefail
           code=$(curl -sS -o /tmp/sentry-orgs.json -w "%{http_code}" \
