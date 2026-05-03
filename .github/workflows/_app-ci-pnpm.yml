@@ -102,6 +102,7 @@ jobs:
           # Expected format: owner/repo/.github/workflows/name.yml@ref
           case "$GITHUB_WORKFLOW_REF" in
             *@*)
+              # Extract ref after the last @ using bash parameter expansion.
               echo "ref=${GITHUB_WORKFLOW_REF##*@}" >> "$GITHUB_OUTPUT"
               ;;
             *)

@@ -68,7 +68,11 @@ function findDuplicatePrefixes(sqlFiles, foundViolations) {
 function getMigrationSortKey(name) {
   const prefix = name.match(MIGRATION_PREFIX_REGEX)?.[1];
   // Keep unexpected non-numeric names at the end so numbered migrations remain easy to scan.
-  return prefix ? Number(prefix) : Number.MAX_SAFE_INTEGER;
+  return prefix ? Number(prefix) : Number.POSITIVE_INFINITY;
+}
+
+function isDrizzleMigration(name) {
+  return DRIZZLE_MIGRATION_FILE_REGEX.test(name);
 }
 
 function readJournalEntries(journalPath, foundViolations) {
@@ -84,6 +88,7 @@ function readJournalEntries(journalPath, foundViolations) {
 
 function validateMigrations(configPath, foundViolations) {
   const config = readFileSync(configPath, 'utf8');
+  // This intentionally validates only configs where `out` is assigned directly to a string literal.
   const outMatch = config.match(/\bout\s*:\s*['"]([^'"]+)['"]/);
 
   if (!outMatch) {
@@ -102,7 +107,7 @@ function validateMigrations(configPath, foundViolations) {
   }
 
   const migrationEntries = readdirSync(migrationsDir);
-  const skippedSqlFiles = migrationEntries.filter((name) => name.endsWith('.sql') && !DRIZZLE_MIGRATION_FILE_REGEX.test(name));
+  const skippedSqlFiles = migrationEntries.filter((name) => name.endsWith('.sql') && !isDrizzleMigration(name));
   if (skippedSqlFiles.length > 0) {
     console.log(
       `Skipping ${skippedSqlFiles.length} non-Drizzle SQL file(s) in ${path.relative(root, migrationsDir)}: ${skippedSqlFiles.join(', ')}`,
@@ -110,7 +115,7 @@ function validateMigrations(configPath, foundViolations) {
   }
 
   const sqlFiles = migrationEntries
-    .filter((name) => DRIZZLE_MIGRATION_FILE_REGEX.test(name))
+    .filter((name) => isDrizzleMigration(name))
     .sort((left, right) => {
       const leftPrefix = getMigrationSortKey(left);
       const rightPrefix = getMigrationSortKey(right);
