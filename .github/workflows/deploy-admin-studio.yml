@@ -47,7 +47,7 @@ jobs:
           done
 
       - name: Install admin-studio
-        run: npm ci
+        run: npm install --legacy-peer-deps
         working-directory: apps/admin-studio
 
       - name: Typecheck
@@ -78,6 +78,19 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
 
+
+      - name: Push self-improvement secrets
+        run: |
+          target_env="${{ github.event.inputs.env || 'staging' }}"
+          echo "${{ secrets.ANTHROPIC_API_KEY }}" | npx wrangler secret put ANTHROPIC_API_KEY --env "$target_env"
+          echo "${{ secrets.GH_PAT }}" | npx wrangler secret put GITHUB_TOKEN --env "$target_env"
+          if [ -n "${{ secrets.WORKER_API_TOKEN }}" ]; then
+            echo "${{ secrets.WORKER_API_TOKEN }}" | npx wrangler secret put WORKER_API_TOKEN --env "$target_env"
+          fi
+        working-directory: apps/admin-studio
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
       - name: Deploy
         run: npx wrangler deploy --env ${{ github.event.inputs.env || 'staging' }}
         working-directory: apps/admin-studio
