@@ -13,11 +13,9 @@ const configFileNames = new Set([
   'drizzle.config.cts',
 ]);
 
-const visited = new Set();
-const drizzleConfigs = [];
 const violations = [];
 
-function walk(directory) {
+function walk(directory, visited, drizzleConfigs) {
   if (visited.has(directory)) {
     return;
   }
@@ -30,7 +28,7 @@ function walk(directory) {
 
     const fullPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      walk(fullPath);
+      walk(fullPath, visited, drizzleConfigs);
       continue;
     }
 
@@ -40,7 +38,7 @@ function walk(directory) {
   }
 }
 
-function findDuplicatePrefixes(sqlFiles) {
+function findDuplicatePrefixes(sqlFiles, foundViolations) {
   const seen = new Map();
   for (const file of sqlFiles) {
     const prefix = file.match(/^(\d+)_/)?.[1];
@@ -54,23 +52,23 @@ function findDuplicatePrefixes(sqlFiles) {
 
   for (const [prefix, files] of seen.entries()) {
     if (files.length > 1) {
-      violations.push(`duplicate Drizzle migration prefix ${prefix}: ${files.join(', ')}`);
+      foundViolations.push(`duplicate Drizzle migration prefix ${prefix}: ${files.join(', ')}`);
     }
   }
 }
 
-function readJournalEntries(journalPath) {
+function readJournalEntries(journalPath, foundViolations) {
   try {
     const journal = JSON.parse(readFileSync(journalPath, 'utf8'));
     return Array.isArray(journal.entries) ? journal.entries : [];
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown parse error';
-    violations.push(`${path.relative(root, journalPath)} is not valid JSON: ${message}`);
+    foundViolations.push(`${path.relative(root, journalPath)} is not valid JSON: ${message}`);
     return [];
   }
 }
 
-function validateMigrations(configPath) {
+function validateMigrations(configPath, foundViolations) {
   const config = readFileSync(configPath, 'utf8');
   const outMatch = config.match(/\bout\s*:\s*['"]([^'"]+)['"]/);
 
@@ -91,7 +89,7 @@ function validateMigrations(configPath) {
     .filter((name) => /^\d+_.*\.sql$/.test(name))
     .sort();
 
-  findDuplicatePrefixes(sqlFiles);
+  findDuplicatePrefixes(sqlFiles, foundViolations);
 
   const metaDir = path.join(migrationsDir, 'meta');
   const journalPath = path.join(metaDir, '_journal.json');
@@ -99,13 +97,13 @@ function validateMigrations(configPath) {
     return;
   }
 
-  const entries = readJournalEntries(journalPath);
+  const entries = readJournalEntries(journalPath, foundViolations);
   const sqlBasenames = new Set(sqlFiles.map((name) => name.replace(/\.sql$/, '')));
   const journalTags = new Set(entries.map((entry) => entry.tag).filter(Boolean));
 
   for (const tag of journalTags) {
     if (!sqlBasenames.has(tag)) {
-      violations.push(`${path.relative(root, journalPath)} references missing migration ${tag}.sql`);
+      foundViolations.push(`${path.relative(root, journalPath)} references missing migration ${tag}.sql`);
     }
 
     const prefix = tag.match(/^(\d+)_/)?.[1];
@@ -115,7 +113,7 @@ function validateMigrations(configPath) {
 
     const snapshotPath = path.join(metaDir, `${prefix}_snapshot.json`);
     if (!existsSync(snapshotPath)) {
-      violations.push(
+      foundViolations.push(
         `${path.relative(root, journalPath)} is missing snapshot ${path.relative(root, snapshotPath)}`,
       );
     }
@@ -123,14 +121,17 @@ function validateMigrations(configPath) {
 
   for (const sqlBase of sqlBasenames) {
     if (!journalTags.has(sqlBase)) {
-      violations.push(
+      foundViolations.push(
         `${path.relative(root, configPath)} has migration ${sqlBase}.sql without a matching meta/_journal.json entry`,
       );
     }
   }
 }
 
-walk(root);
+const visited = new Set();
+const drizzleConfigs = [];
+
+walk(root, visited, drizzleConfigs);
 
 if (drizzleConfigs.length === 0) {
   console.log('No Drizzle config files found.');
@@ -138,7 +139,7 @@ if (drizzleConfigs.length === 0) {
 }
 
 for (const configPath of drizzleConfigs) {
-  validateMigrations(configPath);
+  validateMigrations(configPath, violations);
 }
 
 if (violations.length > 0) {

@@ -100,7 +100,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: Latimer-Woods-Tech/factory
-          ref: main
+          ref: ${{ github.workflow_sha }}
           path: .factory-workflows
           sparse-checkout: |
             scripts/check-drizzle-migration-integrity.mjs
