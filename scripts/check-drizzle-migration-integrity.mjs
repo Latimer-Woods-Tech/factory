@@ -73,7 +73,9 @@ function validateMigrations(configPath, foundViolations) {
   const outMatch = config.match(/\bout\s*:\s*['"]([^'"]+)['"]/);
 
   if (!outMatch) {
-    console.log(`Skipping ${path.relative(root, configPath)} (no static out directory found).`);
+    console.log(
+      `Skipping ${path.relative(root, configPath)} (no statically parseable string literal found for out; dynamic Drizzle config paths are not validated by this guard).`,
+    );
     return;
   }
 
@@ -87,7 +89,14 @@ function validateMigrations(configPath, foundViolations) {
 
   const sqlFiles = readdirSync(migrationsDir)
     .filter((name) => /^\d+_.*\.sql$/.test(name))
-    .sort();
+    .sort((left, right) => {
+      const leftPrefix = Number(left.match(/^(\d+)_/)?.[1] ?? Number.MAX_SAFE_INTEGER);
+      const rightPrefix = Number(right.match(/^(\d+)_/)?.[1] ?? Number.MAX_SAFE_INTEGER);
+      if (leftPrefix !== rightPrefix) {
+        return leftPrefix - rightPrefix;
+      }
+      return left.localeCompare(right);
+    });
 
   findDuplicatePrefixes(sqlFiles, foundViolations);
 
