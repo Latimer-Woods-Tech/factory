@@ -35,7 +35,10 @@ jobs:
           PRIME_SELF_CONN: ${{ secrets.SELFPRIME_CONNECTION_STRING }}
           IJUSTUS_CONN: ${{ secrets.KAIROSCOUNCIL_CONNECTION_STRING }}
           THE_CALLING_CONN: ${{ secrets.THECALLING_CONNECTION_STRING }}
-          NEIGHBOR_AID_CONN: ${{ secrets.NICHESTREAM_CONNECTION_STRING }}
+          # neighbor-aid falls back to NICHESTREAM only until it has a dedicated Neon secret.
+          NEIGHBOR_AID_CONN: ${{ secrets.NEIGHBOR_AID_CONNECTION_STRING || secrets.NICHESTREAM_CONNECTION_STRING }}
+          # videoking prefers its own secret, but still falls back to the legacy NICHESTREAM name during migration.
+          VIDEOKING_CONN: ${{ secrets.VIDEOKING_CONNECTION_STRING || secrets.NICHESTREAM_CONNECTION_STRING }}
           XPELEVATOR_CONN: ${{ secrets.MEXXICO_CITY_CONNECTION_STRING }}
           XICO_CITY_CONN: ${{ secrets.MEXXICO_CITY_CONNECTION_STRING }}
         run: node packages/deploy/scripts/create-hyperdrive.mjs
@@ -60,6 +63,7 @@ jobs:
           store HYPERDRIVE_IJUSTUS "${{ steps.hyperdrive.outputs.IJUSTUS_ID }}"
           store HYPERDRIVE_THE_CALLING "${{ steps.hyperdrive.outputs.THE_CALLING_ID }}"
           store HYPERDRIVE_NEIGHBOR_AID "${{ steps.hyperdrive.outputs.NEIGHBOR_AID_ID }}"
+          store HYPERDRIVE_VIDEOKING "${{ steps.hyperdrive.outputs.VIDEOKING_ID }}"
           store HYPERDRIVE_XPELEVATOR "${{ steps.hyperdrive.outputs.XPELEVATOR_ID }}"
           store HYPERDRIVE_XICO_CITY "${{ steps.hyperdrive.outputs.XICO_CITY_ID }}"
           echo "All Hyperdrive IDs stored."
