@@ -93,6 +93,7 @@ jobs:
       - name: Resolve factory workflow ref
         id: factory-ref
         run: |
+          # Expected format: owner/repo/.github/workflows/name.yml@ref
           case "$GITHUB_WORKFLOW_REF" in
             *@*)
               echo "ref=${GITHUB_WORKFLOW_REF##*@}" >> "$GITHUB_OUTPUT"

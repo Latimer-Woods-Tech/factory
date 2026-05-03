@@ -87,7 +87,7 @@ function validateMigrations(configPath, foundViolations) {
 
   if (!outMatch) {
     console.log(
-      `Skipping ${path.relative(root, configPath)} (no statically parseable string literal found for out; dynamic Drizzle config paths are not validated by this guard).`,
+      `Skipping ${path.relative(root, configPath)} (no statically parseable string literal found for out; multi-line, commented, template-literal, or otherwise dynamic Drizzle config paths require manual validation).`,
     );
     return;
   }
@@ -100,7 +100,15 @@ function validateMigrations(configPath, foundViolations) {
     return;
   }
 
-  const sqlFiles = readdirSync(migrationsDir)
+  const migrationEntries = readdirSync(migrationsDir);
+  const skippedSqlFiles = migrationEntries.filter((name) => name.endsWith('.sql') && !/^\d+_.*\.sql$/.test(name));
+  if (skippedSqlFiles.length > 0) {
+    console.log(
+      `Skipping ${skippedSqlFiles.length} non-Drizzle SQL file(s) in ${path.relative(root, migrationsDir)}: ${skippedSqlFiles.join(', ')}`,
+    );
+  }
+
+  const sqlFiles = migrationEntries
     .filter((name) => /^\d+_.*\.sql$/.test(name))
     .sort((left, right) => {
       const leftPrefix = getMigrationSortKey(left);
