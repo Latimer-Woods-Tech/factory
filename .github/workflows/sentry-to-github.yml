@@ -32,6 +32,6 @@ jobs:
       - name: Poll Sentry and create GitHub issues
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          SENTRY_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN || secrets.FACTORY_SENTRY_API }}
+          SENTRY_TOKEN: ${{ secrets.FACTORY_SENTRY_API || secrets.SENTRY_AUTH_TOKEN }}
           LOOKBACK_HOURS: ${{ inputs.lookback_hours || '5' }}
         run: node .github/scripts/sentry-to-github.mjs
