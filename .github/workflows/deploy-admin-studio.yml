@@ -17,7 +17,7 @@ on:
         options: [staging, production]
 
 concurrency:
-  group: admin-studio-${{ github.event.inputs.env || 'staging' }}
+  group: admin-studio-${{ (github.event.inputs.env == 'production' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'production' || 'staging' }}
   cancel-in-progress: false
 
 env:
@@ -26,7 +26,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    environment: ${{ github.event.inputs.env || 'staging' }}
+    environment: ${{ (github.event.inputs.env == 'production' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'production' || 'staging' }}
     permissions:
       contents: read
     steps:
@@ -61,13 +61,13 @@ jobs:
 
       - name: Verify health pre-deploy (sanity)
         run: |
-          target_env="${{ github.event.inputs.env || 'staging' }}"
+          target_env="${{ (github.event.inputs.env == 'production' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'production' || 'staging' }}"
           echo "Deploying admin-studio to $target_env"
           test -n "${{ secrets.CF_API_TOKEN }}" || (echo "::error::CF_API_TOKEN missing" && exit 1)
 
       - name: Provision webhook secret
         run: |
-          target_env="${{ github.event.inputs.env || 'staging' }}"
+          target_env="${{ (github.event.inputs.env == 'production' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'production' || 'staging' }}"
           if [ -z "${{ secrets.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET }}" ]; then
             echo "::warning::STRIPE_SUBSCRIPTION_WEBHOOK_SECRET missing; webhook endpoint will return 503 until configured"
             exit 0
@@ -82,7 +82,7 @@ jobs:
 
       - name: Push self-improvement secrets
         run: |
-          target_env="${{ github.event.inputs.env || 'staging' }}"
+          target_env="${{ (github.event.inputs.env == 'production' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'production' || 'staging' }}"
           echo "${{ secrets.ANTHROPIC_API_KEY }}" | npx wrangler secret put ANTHROPIC_API_KEY --env "$target_env"
           echo "${{ secrets.GH_PAT }}" | npx wrangler secret put GITHUB_TOKEN --env "$target_env"
           if [ -n "${{ secrets.WORKER_API_TOKEN }}" ]; then
@@ -93,7 +93,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
       - name: Deploy
-        run: npx wrangler deploy --env ${{ github.event.inputs.env || 'staging' }}
+        run: npx wrangler deploy --env ${{ (github.event.inputs.env == 'production' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'production' || 'staging' }}
         working-directory: apps/admin-studio
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
@@ -101,7 +101,7 @@ jobs:
 
       - name: Verify post-deploy endpoints
         run: |
-          target_env="${{ github.event.inputs.env || 'staging' }}"
+          target_env="${{ (github.event.inputs.env == 'production' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'production' || 'staging' }}"
           if [ "$target_env" = "production" ]; then
             base_url="https://api.apunlimited.com"
           else
