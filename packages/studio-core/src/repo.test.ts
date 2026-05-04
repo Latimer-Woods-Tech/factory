@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type {
   AIChatEvent,
+  AIModelStrategy,
   AIChatRequest,
   AIChatTurn,
   AIProposal,
@@ -40,10 +41,16 @@ describe('repo types', () => {
 });
 
 describe('AI chat types', () => {
+  it('AIModelStrategy supports execution/planning/drafting', () => {
+    const strategy: AIModelStrategy = 'planning';
+    expect(strategy).toBe('planning');
+  });
+
   it('AIChatRequest carries history + optional context', () => {
     const turn: AIChatTurn = { role: 'user', content: 'hi', at: new Date().toISOString() };
     const req: AIChatRequest = {
       mode: 'explain',
+      modelStrategy: 'planning',
       history: [turn],
       prompt: 'what does this do?',
       context: { path: 'src/x.ts', snippet: 'export const a = 1', language: 'ts' },
@@ -55,7 +62,7 @@ describe('AI chat types', () => {
   it('AIChatEvent discriminated union has token | error | done', () => {
     const tok: AIChatEvent = { type: 'token', delta: 'x' };
     const err: AIChatEvent = { type: 'error', message: 'boom' };
-    const done: AIChatEvent = { type: 'done', provider: 'anthropic', tokens: { input: 1, output: 2 } };
+    const done: AIChatEvent = { type: 'done', provider: 'gemini', tokens: { input: 1, output: 2 } };
     expect(tok.type).toBe('token');
     expect(err.type).toBe('error');
     expect(done.type).toBe('done');
@@ -95,6 +102,7 @@ describe('Phase D.2 commit + PR + proposal types', () => {
   it('AIProposalRequest + AIProposal pair carries before/after', () => {
     const req: AIProposalRequest = {
       path: 'a.ts',
+      modelStrategy: 'drafting',
       before: 'export const a = 1;\n',
       instruction: 'rename a to b',
     };
