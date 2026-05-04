@@ -93,8 +93,8 @@ describe('recordCall', () => {
     };
     await recordCall(db, row, { now: () => 1_700_000_000_000 });
     expect(inserts).toHaveLength(1);
-    expect(inserts[0][0]).toBe('p1');
-    expect(inserts[0][1]).toBe('worker');
+    expect(inserts[0]?.[0]).toBe('p1');
+    expect(inserts[0]?.[1]).toBe('worker');
   });
 
   it('swallows db errors and logs', async () => {
