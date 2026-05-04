@@ -54,9 +54,9 @@ Split ownership: Adrian for UI-only (App install, Vertex enable), Sauna for ever
 
 Sauna drafts all PRs. Adrian reviews Red-tier (these all are — revenue code).
 
-- [x] `SUP-2.1` (factory#101) — `@latimer-woods-tech/llm@0.3.0` (AI Gateway mandatory, workload-split routing, Gemini fallback, prompt caching, `AbortController`, 3-attempt backoff, deps fix) — **Published May 4, 2026**
-- [x] `SUP-2.2` (factory#102) — `@latimer-woods-tech/llm-meter@0.1.0` (D1 ledger, per-run $5 cap, BUDGET_EXCEEDED). Supersedes factory#49. — **Publishing May 4, 2026**
-- [ ] `SUP-2.3` (HumanDesign#68) — Consume `@latimer-woods-tech/llm`, delete `workers/src/lib/llm.js`, validate on 20 historical syntheses. Supersedes HumanDesign#39. — **Blocked awaiting package availability; now unblocked.**
+- [x] `SUP-2.1` (factory#101) — `@latimer-woods-tech/llm@0.3.1` (AI Gateway mandatory, workload-split routing, Gemini fallback, prompt caching, `AbortController`, 3-attempt backoff, deps fix) — **Published to npm.pkg.github.com May 4, 2026 ✅**
+- [⏳] `SUP-2.2` (factory#102) — `@latimer-woods-tech/llm-meter@0.1.0` (D1 ledger, per-run $5 cap, BUDGET_EXCEEDED). Supersedes factory#49. — **Code complete, publish workflow fixed (PR #250), tag created — republishing May 4, 2026**
+- [ ] `SUP-2.3` (HumanDesign#68) — Consume `@latimer-woods-tech/llm`, delete `workers/src/lib/llm.js`, validate on 20 historical syntheses. Supersedes HumanDesign#39. — **SUP-2.1 ✅ published; SUP-2.2 publishing; implementation roadmap & documentation complete (PR #248, #249)**
 
 **Exit gate:** every LLM call org-wide metered + gateway-routed + 20 historical syntheses validated without regression.
 
