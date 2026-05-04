@@ -29,7 +29,7 @@ export function OverviewTab() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    apiFetch<Me>('/me/').then(setMe).catch((e) => setErr((e as Error).message));
+    apiFetch<Me>('/me').then(setMe).catch((e) => setErr((e as Error).message));
   }, []);
 
   useEffect(() => {
