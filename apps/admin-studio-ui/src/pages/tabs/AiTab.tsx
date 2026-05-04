@@ -14,6 +14,7 @@ import type { ReactNode } from 'react';
 import type {
   AIChatEvent,
   AIChatMode,
+  AIModelStrategy,
   AIChatTurn,
   AIProposal,
 } from '@latimer-woods-tech/studio-core';
@@ -29,6 +30,12 @@ const MODES: ReadonlyArray<{ id: AIChatMode; label: string; hint: string }> = [
   { id: 'refactor', label: 'Refactor', hint: 'Improve existing code' },
 ];
 
+const STRATEGIES: ReadonlyArray<{ id: AIModelStrategy; label: string; hint: string }> = [
+  { id: 'execution', label: 'Execution', hint: 'Claude-oriented deterministic implementation' },
+  { id: 'planning', label: 'Planning', hint: 'Gemini-oriented planning/scoping synthesis' },
+  { id: 'drafting', label: 'Drafting', hint: 'Grok-oriented fast first-pass drafting' },
+];
+
 function turn(role: 'user' | 'assistant', content: string): AIChatTurn {
   return { role, content, at: new Date().toISOString() };
 }
@@ -38,6 +45,7 @@ export function AiTab() {
   const [history, setHistory] = useState<AIChatTurn[]>([]);
   const [prompt, setPrompt] = useState('');
   const [mode, setMode] = useState<AIChatMode>('generate');
+  const [modelStrategy, setModelStrategy] = useState<AIModelStrategy>('execution');
   const [streaming, setStreaming] = useState(false);
   const [partial, setPartial] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +72,9 @@ export function AiTab() {
     const { token } = useSession.getState();
     const body = {
       mode,
+      modelStrategy,
       history: nextHistory,
+      prompt: userTurn.content,
       context: active.path
         ? {
             path: active.path,
@@ -165,6 +175,7 @@ export function AiTab() {
         method: 'POST',
         body: JSON.stringify({
           path: active.path,
+          modelStrategy,
           before: active.draftText,
           instruction: prompt.trim(),
           language: active.language,
@@ -205,6 +216,22 @@ export function AiTab() {
               </button>
             ))}
           </div>
+          <div className="ml-3 flex gap-1">
+            {STRATEGIES.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setModelStrategy(s.id)}
+                title={s.hint}
+                className={`text-xs px-2 py-1 rounded border ${
+                  modelStrategy === s.id
+                    ? 'bg-indigo-700 border-indigo-600 text-white'
+                    : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
           <div className="ml-auto flex gap-2">
             <button
               onClick={reset}
@@ -227,8 +254,8 @@ export function AiTab() {
         <div className="flex-1 overflow-auto p-3 space-y-3 text-sm">
           {history.length === 0 && !partial && (
             <p className="text-slate-500">
-              Ask Claude to generate, explain, or refactor Factory code. The system prompt enforces
-              Workers/Hono/Drizzle/Web-Crypto standing orders.
+              Choose a strategy, then ask AI to generate, explain, or refactor Factory code.
+              The system prompt enforces Workers/Hono/Drizzle/Web-Crypto standing orders.
             </p>
           )}
           {history.map((t, i) => (

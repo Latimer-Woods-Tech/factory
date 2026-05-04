@@ -77,6 +77,15 @@ export interface RepoPullRequest {
 export type AIChatMode = 'generate' | 'explain' | 'refactor';
 
 /**
+ * High-level routing strategy for model/provider selection.
+ *
+ *  - `execution`: deterministic implementation work (Claude default)
+ *  - `planning`: architecture/scoping synthesis (Gemini default)
+ *  - `drafting`: fast first-pass drafting (Grok default)
+ */
+export type AIModelStrategy = 'execution' | 'planning' | 'drafting';
+
+/**
  * One turn in a Studio AI conversation. The thread is stored client-side;
  * the Worker is stateless and re-receives the full thread each request.
  */
@@ -92,6 +101,8 @@ export interface AIChatTurn {
  */
 export interface AIChatRequest {
   mode: AIChatMode;
+  /** Optional model strategy hint for provider routing. */
+  modelStrategy?: AIModelStrategy;
   /** Whole prior conversation, oldest first. */
   history: readonly AIChatTurn[];
   /** Latest user prompt (also appended to history server-side). */
@@ -119,7 +130,7 @@ export type AIChatEvent =
   | { type: 'error'; message: string }
   | {
       type: 'done';
-      provider: 'anthropic' | 'grok' | 'groq';
+      provider: 'anthropic' | 'gemini' | 'grok' | 'groq';
       tokens?: { input: number; output: number };
     };
 
@@ -182,6 +193,8 @@ export interface RepoCreateBranchRequest {
  */
 export interface AIProposalRequest {
   path: string;
+  /** Optional model strategy hint for provider routing. */
+  modelStrategy?: AIModelStrategy;
   /** Original file content the model must diff against. */
   before: string;
   /** What the user wants done — usually a chat turn. */
