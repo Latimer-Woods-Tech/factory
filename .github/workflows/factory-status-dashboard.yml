@@ -3,20 +3,31 @@ on:
   schedule:
     - cron: '0 * * * *'  # every hour
   workflow_dispatch:
-permissions: { contents: write }
+permissions:
+  contents: write
 jobs:
   generate:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v3
         id: app-token
         with:
           app-id: ${{ secrets.FACTORY_APP_ID }}
           private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
           owner: Latimer-Woods-Tech
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           token: ${{ steps.app-token.outputs.token }}
+          ref: status-dashboard
+          fetch-depth: 0
+      - name: Ensure status-dashboard branch tracks main
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          git fetch origin main
+          # If status-dashboard diverged, reset to main (we only store STATUS.md here)
+          git reset --hard origin/main || true
       - name: Generate status
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -27,17 +38,16 @@ jobs:
           {
             echo "# Factory Ecosystem Status"
             echo
-            echo "Auto-generated hourly. Last update: $(date -u +%FT%TZ)"
+            echo "_Auto-generated hourly by \`factory-status-dashboard.yml\`. Last update: $(date -u +%FT%TZ)_"
+            echo "_Written to the \`status-dashboard\` branch. View raw:_ [status-dashboard/docs/STATUS.md](https://github.com/Latimer-Woods-Tech/factory/blob/status-dashboard/docs/STATUS.md)"
             echo
             echo "| Repo | Latest CI | Last commit | Open PRs |"
             echo "|---|---|---|---|"
           } > "$OUT"
           for repo in factory wordis-bond cypher-healing ijustus the-calling neighbor-aid xico-city factory-admin xpelevator videoking HumanDesign; do
-            CI=$(gh api "/repos/Latimer-Woods-Tech/$repo/actions/runs?per_page=1" --jq '.workflow_runs[0] | "\(.status) \(.conclusion // "-")"\(.html_url)""' 2>/dev/null || echo "-")
-            STATUS=$(echo "$CI" | awk '{print $1, $2}')
-            URL=$(echo "$CI" | grep -o 'https[^"]*' | head -1)
+            CI=$(gh api "/repos/Latimer-Woods-Tech/$repo/actions/runs?per_page=1" --jq '.workflow_runs[0] | "\(.status) \(.conclusion // "-")"' 2>/dev/null || echo "-")
             ICON="❔"
-            case "$STATUS" in
+            case "$CI" in
               "completed success") ICON="✅" ;;
               "completed failure") ICON="❌" ;;
               "in_progress "*) ICON="🟡" ;;
@@ -45,7 +55,7 @@ jobs:
             esac
             COMMIT=$(gh api "/repos/Latimer-Woods-Tech/$repo/commits/main" --jq '.commit.committer.date' 2>/dev/null | cut -dT -f1)
             PRS=$(gh api "/repos/Latimer-Woods-Tech/$repo/pulls?state=open" --jq 'length' 2>/dev/null || echo 0)
-            echo "| [$repo](https://github.com/Latimer-Woods-Tech/$repo) | $ICON [$STATUS]($URL) | $COMMIT | $PRS |" >> "$OUT"
+            echo "| [$repo](https://github.com/Latimer-Woods-Tech/$repo) | $ICON $CI | $COMMIT | $PRS |" >> "$OUT"
           done
           {
             echo
@@ -57,10 +67,10 @@ jobs:
             echo "- Hyperdrive configs: 10"
             echo "- Neon databases: 10"
           } >> "$OUT"
-      - name: Commit if changed
+      - name: Commit to status-dashboard branch
         run: |
           git config user.email "factory-cross-repo[bot]@users.noreply.github.com"
           git config user.name "factory-cross-repo[bot]"
           git add docs/STATUS.md
           git diff --staged --quiet || git commit -m "chore(status): hourly status update [skip ci]"
-          git push
+          git push origin HEAD:status-dashboard --force

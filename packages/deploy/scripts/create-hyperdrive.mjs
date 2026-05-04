@@ -7,7 +7,8 @@
  * Required env vars:
  *   CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN
  *   FACTORY_CORE_CONN, WORDIS_BOND_CONN, CYPHER_HEALING_CONN,
- *   PRIME_SELF_CONN, IJUSTUS_CONN, THE_CALLING_CONN, NEIGHBOR_AID_CONN
+ *   PRIME_SELF_CONN, IJUSTUS_CONN, THE_CALLING_CONN, NEIGHBOR_AID_CONN,
+ *   VIDEOKING_CONN
  *   GITHUB_OUTPUT (written by GH Actions runner)
  */
 import { execSync } from 'child_process';
@@ -24,6 +25,7 @@ const configs = [
   { envKey: 'IJUSTUS_ID',        name: 'ijustus-db',        conn: process.env.IJUSTUS_CONN },
   { envKey: 'THE_CALLING_ID',    name: 'the-calling-db',    conn: process.env.THE_CALLING_CONN },
   { envKey: 'NEIGHBOR_AID_ID',   name: 'neighbor-aid-db',   conn: process.env.NEIGHBOR_AID_CONN },
+  { envKey: 'VIDEOKING_ID',      name: 'videoking-hyperdrive', conn: process.env.VIDEOKING_CONN }, // preserves the legacy VideoKing Hyperdrive name used in docs/registry
   { envKey: 'XPELEVATOR_ID',      name: 'xpelevator-db',     conn: process.env.XPELEVATOR_CONN },
   { envKey: 'XICO_CITY_ID',       name: 'xico-city-db',      conn: process.env.XICO_CITY_CONN },
 ];

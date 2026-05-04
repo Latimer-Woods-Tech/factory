@@ -310,6 +310,51 @@ app.post('/migrate', async (c) => {
   return c.json({ data: { migrated: true, statements: VIDEO_CALENDAR_MIGRATION_STATEMENTS.length } });
 });
 
+
+// ---------------------------------------------------------------------------
+// GET /diagnostics  — 24 h SLO summary from monitor KV snapshots
+// ---------------------------------------------------------------------------
+
+app.get('/diagnostics', async (c) => {
+  requireApiToken(c.env, c.req.header('authorization'));
+
+  if (!c.env.MONITOR_KV) return c.json({ error: 'MONITOR_KV not bound' }, 503);
+
+  const { keys } = await c.env.MONITOR_KV.list({ prefix: 'snapshots:', limit: 48 });
+  const snapshots = (await Promise.all(
+    keys.map(k => c.env.MONITOR_KV!.get(k.name, 'json') as Promise<any>)
+  )).filter(Boolean);
+
+  const byEndpoint: Record<string, number[]> = {};
+  let totalChecks = 0, totalFailed = 0;
+
+  for (const snap of snapshots) {
+    if (!snap?.latencies) continue;
+    totalChecks += Object.keys(snap.latencies).length;
+    totalFailed += (snap.failed?.length ?? 0);
+    for (const [id, ms] of Object.entries(snap.latencies as Record<string, number>)) {
+      (byEndpoint[id] ??= []).push(ms);
+    }
+  }
+
+  const slo = Object.entries(byEndpoint).map(([id, vals]) => {
+    vals.sort((a, b) => a - b);
+    return {
+      id,
+      p50: vals[Math.floor(vals.length * 0.5)] ?? 0,
+      p95: vals[Math.floor(vals.length * 0.95)] ?? 0,
+      breaches: vals.filter(v => v > 2000).length,
+    };
+  });
+
+  return c.json({
+    errorRate: totalChecks > 0 ? totalFailed / totalChecks : 0,
+    slo,
+    windowSnapshots: snapshots.length,
+    windowHours: 24,
+    computedAt: new Date().toISOString(),
+  });
+});
 // ---------------------------------------------------------------------------
 // Global error handler
 // ---------------------------------------------------------------------------

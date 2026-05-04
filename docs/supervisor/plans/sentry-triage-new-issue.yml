@@ -1,0 +1,98 @@
+id: sentry-triage-new-issue
+version: 1
+tier: yellow
+triggers:
+  labels_any_of: [bug, sentry]
+  title_pattern: "^Sentry:"
+  body_patterns:
+    - "sentry\\.io/.*/issues/"
+preconditions:
+  - capability_exists: sentry.getIssue
+  - capability_exists: github.readFile
+  - capability_exists: github.comment
+  - capability_exists: github.openPR
+  - capability_exists: github.addLabel
+slots:
+  - name: sentry_short_id
+    type: string
+    validator: "^[A-Z][A-Z0-9\\-]+-\\d+$"
+    referential_check: sentry.getIssue
+    source: issue_body
+  - name: repo_name
+    type: string
+    validator: "^[a-z0-9][a-z0-9\\-_]*\\/[a-zA-Z0-9][a-zA-Z0-9\\-_.]*$"
+    referential_check: factory_admin.repo.health
+    source: issue_body
+  - name: severity
+    type: enum
+    values: [low, medium, high, critical]
+    source: issue_labels
+    default: medium
+  - name: fix_mode
+    type: enum
+    values: [auto_patch, comment_only, escalate_red]
+    source: issue_body
+    default: comment_only
+steps:
+  - id: s1
+    tool: sentry.getIssue
+    depends_on: null
+    params:
+      short_id: "$slots.sentry_short_id"
+    intent: "Fetch the Sentry issue detail including stacktrace, breadcrumbs, and culprit frame."
+    requires_human_review: false
+  - id: s2
+    tool: github.readFile
+    depends_on: s1
+    params:
+      repo: "$slots.repo_name"
+      path: "$s1.culprit_file"
+      ref: "$s1.release_sha"
+    intent: "Read the implicated source file at the top stack frame to localize the defect line."
+    requires_human_review: false
+  - id: s3
+    tool: github.comment
+    depends_on: s2
+    params:
+      issue_ref: "$triggers.issue_number"
+      body: "Supervisor diagnosis for $slots.sentry_short_id\n\nCulprit: $s1.culprit\nTop frame: $s1.top_frame\nFile excerpt:\n$s2.excerpt\n\nProposed remediation mode: $slots.fix_mode"
+    intent: "Post a structured diagnosis comment on the originating GitHub issue linking Sentry evidence to the source line."
+    requires_human_review: false
+  - id: s4
+    tool: github.addLabel
+    depends_on: s3
+    params:
+      issue_ref: "$triggers.issue_number"
+      label: "supervisor/triaged"
+    intent: "Mark the issue as triaged so downstream automation does not re-enter this template."
+    requires_human_review: false
+  - id: s5
+    tool: github.openPR
+    depends_on: s4
+    params:
+      repo: "$slots.repo_name"
+      base: "main"
+      head: "supervisor/sentry-$slots.sentry_short_id"
+      title: "fix: $s1.culprit (Sentry $slots.sentry_short_id)"
+      body: "Automated small-patch proposal for Sentry $slots.sentry_short_id.\n\nDiagnosis: see issue comment $s3.comment_url\nPatch size constraint: <5 lines.\nMode: $slots.fix_mode\n\nRequires human review before merge."
+      draft: true
+    intent: "Open a draft PR only when fix_mode=auto_patch and a <5 line patch is derivable from the diagnosis; otherwise the orchestrator skips this step and escalates to Red."
+    requires_human_review: true
+acceptance_gate:
+  description: "The Sentry issue is either resolved, or the supervisor has posted a diagnosis comment on the originating GitHub issue and applied the supervisor/triaged label."
+  verifier_query:
+    tool: sentry.getIssue
+    query: "short_id=$slots.sentry_short_id fields=status,annotations,activity"
+    assert: "status == 'resolved' || activity.any(a => a.type == 'note' && a.author == 'supervisor-bot')"
+rollback:
+  - on_step: s5
+    action: github.closePR
+    params:
+      repo: "$slots.repo_name"
+      pr_number: "$s5.pr_number"
+      comment: "Rolling back auto-proposed patch for Sentry $slots.sentry_short_id; escalating to human review."
+  - on_step: s4
+    action: github.removeLabel
+    params:
+      issue_ref: "$triggers.issue_number"
+      label: "supervisor/triaged"

@@ -55,6 +55,9 @@ concurrency:
   group: render-${{ github.event.inputs.job_id }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   render:
     name: Generate narration + render MP4
@@ -72,13 +75,13 @@ jobs:
       # 1. Checkout
       # -----------------------------------------------------------------------
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # -----------------------------------------------------------------------
       # 2. Node.js + npm auth
       # -----------------------------------------------------------------------
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           registry-url: 'https://npm.pkg.github.com'
@@ -659,11 +662,12 @@ jobs:
     name: Mark job as failed
     needs: render
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: failure()
     steps:
       - name: Generate GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.FACTORY_APP_ID }}
           private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}

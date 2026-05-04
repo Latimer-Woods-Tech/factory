@@ -21,13 +21,14 @@ assert.equal(errors.ErrorCodes.LLM_ALL_PROVIDERS_FAILED, 'LLM_ALL_PROVIDERS_FAIL
 assert.equal(new errors.InternalError('integration').retryable, true);
 
 await assert.rejects(
-  () => llm.complete([], { ANTHROPIC_API_KEY: 'test', GROK_API_KEY: 'test', GROQ_API_KEY: 'test' }),
+  () => llm.complete([], { AI_GATEWAY_BASE_URL: 'https://gw.test', ANTHROPIC_API_KEY: 'test', GROQ_API_KEY: 'test', VERTEX_ACCESS_TOKEN: 't', VERTEX_PROJECT: 'p', VERTEX_LOCATION: 'us-central1' }),
   (error) => error.name === 'ValidationError'
     && error.code === errors.ErrorCodes.VALIDATION_ERROR
     && error.status === 422,
 );
 
-assert.equal(typeof llm.withSystem('system prompt'), 'function');
+assert.equal(typeof llm.complete, 'function');
+assert.ok(llm.MODELS.anthropic.balanced.startsWith('claude-sonnet'));
 assert.equal(video.getStreamEmbedUrl('abc123'), 'https://iframe.videodelivery.net/abc123');
 assert.equal(video.getStreamThumbnailUrl('abc123'), 'https://videodelivery.net/abc123/thumbnails/thumbnail.jpg?time=1s');
 

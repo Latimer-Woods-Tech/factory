@@ -22,4 +22,6 @@ export interface Env {
   APP_SERVICE_TOKENS?: string;
   /** Worker environment label (development | staging | production). */
   ENVIRONMENT: string;
+  /** KV namespace for reading monitor snapshots (written by synthetic-monitor). */
+  MONITOR_KV?: KVNamespace;
 }

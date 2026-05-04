@@ -1,3 +1,5 @@
+> 📘 **Canonical architecture:** [`docs/architecture/FACTORY_V1.md`](../docs/architecture/FACTORY_V1.md). [`docs/supervisor/FRIDGE.md`](./supervisor/FRIDGE.md) is your step 0. Then this file for agent-specific rules.
+
 # AGENTS.md
 
 You are an AI agent landing in this repository. **Read this file first.** It tells you the rules of engagement so you don't break things or duplicate work.

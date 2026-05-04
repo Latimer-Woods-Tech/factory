@@ -20,19 +20,18 @@
     "@latimer-woods-tech/monitoring": "file:../../packages/monitoring",
     "@latimer-woods-tech/neon": "file:../../packages/neon",
     "@latimer-woods-tech/studio-core": "file:../../packages/studio-core",
-    "@neondatabase/serverless": "^0.9.0",
+    "@neondatabase/serverless": "^0.10.4",
     "drizzle-orm": "^0.45.0",
     "hono": "^4.12.14",
     "stripe": "^17.0.0"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.15.0",
     "@cloudflare/workers-types": "^4.20240502.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^8.57.1",
     "typescript": "^5.4.0",
-    "vitest": "^1.4.0",
+    "vitest": "^1.6.0",
     "wrangler": "^3.60.0"
   }
 }

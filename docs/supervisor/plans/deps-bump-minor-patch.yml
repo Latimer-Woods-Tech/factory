@@ -1,0 +1,104 @@
+id: deps-bump-minor-patch
+version: 1
+tier: green
+triggers:
+  labels_any_of: [dependencies]
+  title_pattern: "^(chore\\(deps\\):|Bump)"
+  body_patterns:
+    - "(?i)bumps?\\s+\\[?[@A-Za-z0-9._/-]+\\]?\\s+from\\s+v?\\d+\\.\\d+\\.\\d+\\s+to\\s+v?\\d+\\.\\d+\\.\\d+"
+preconditions:
+  - capability_exists: github.readFile
+  - capability_exists: github.comment
+  - capability_exists: github.addLabel
+  - capability_exists: github.mergePR
+  - capability_exists: factory_admin.repo.health
+slots:
+  - name: package_name
+    type: string
+    validator: "^(@[a-z0-9][a-z0-9._-]*\\/)?[a-z0-9][a-z0-9._-]*$"
+    source: issue_title
+  - name: from_version
+    type: string
+    validator: "^v?\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+    source: issue_title
+  - name: to_version
+    type: string
+    validator: "^v?\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+    source: issue_title
+  - name: bump_kind
+    type: enum
+    values: [patch, minor]
+    source: issue_body
+  - name: repo_name
+    type: string
+    validator: "^[A-Za-z0-9._-]+\\/[A-Za-z0-9._-]+$"
+    referential_check: factory_admin.repo.health
+    source: issue_labels
+  - name: ci_status
+    type: enum
+    values: [success]
+    source: issue_body
+  - name: security_advisory
+    type: enum
+    values: [none]
+    source: issue_labels
+    default: none
+steps:
+  - id: s1
+    tool: github.readFile
+    depends_on: null
+    params:
+      repo: "$slots.repo_name"
+      path: "package.json"
+    intent: "Confirm the PR only touches package.json (and lockfile) and that the bumped package matches the slot."
+  - id: s2
+    tool: github.readFile
+    depends_on: s1
+    params:
+      repo: "$slots.repo_name"
+      path: "package-lock.json"
+    intent: "Sanity-check the lockfile resolves $slots.package_name to $slots.to_version."
+  - id: s3
+    tool: github.addLabel
+    depends_on: s2
+    params:
+      repo: "$slots.repo_name"
+      label: "auto-merge-green"
+    intent: "Mark the PR as approved by the green-tier supervisor for audit."
+  - id: s4
+    tool: github.comment
+    depends_on: s3
+    params:
+      repo: "$slots.repo_name"
+      body: "Green-tier supervisor approving $slots.bump_kind bump of $slots.package_name from $slots.from_version to $slots.to_version. CI is green and no security advisory blocks."
+    intent: "Leave a human-readable rationale on the PR before merging."
+  - id: s5
+    tool: github.mergePR
+    depends_on: s4
+    params:
+      repo: "$slots.repo_name"
+      merge_method: "squash"
+    intent: "Squash-merge the dependency bump now that all preconditions hold."
+    requires_human_review: false
+acceptance_gate:
+  description: "PR is merged and the repo's CI remained green for at least 5 minutes after the merge."
+  verifier_query:
+    tool: factory_admin.repo.health
+    query: "repo=$slots.repo_name window=5m since_merge=true include=ci_status,merge_state"
+    assert: "merge_state == 'merged' and ci_status == 'green'"
+rollback:
+  - on_step: s5
+    action: github.comment
+    params:
+      repo: "$slots.repo_name"
+      body: "Auto-merge of $slots.package_name $slots.from_version -> $slots.to_version triggered post-merge CI failure. Escalating to human review."
+  - on_step: s5
+    action: github.addLabel
+    params:
+      repo: "$slots.repo_name"
+      label: "needs-human-review"
+  - on_step: s3
+    action: github.removeLabel
+    params:
+      repo: "$slots.repo_name"
+      label: "auto-merge-green"
