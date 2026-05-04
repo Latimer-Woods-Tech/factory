@@ -315,10 +315,12 @@ async function main() {
     }
   }
 
-  // Filter already-processed
+  // Filter already-processed or explicitly opted out of template matching
   candidates = candidates.filter((i) => {
     const lbls = i.labels.map((l) => l.name);
-    return !lbls.includes('agent:claimed:sauna') && !lbls.includes('status:done');
+    return !lbls.includes('agent:claimed:sauna') &&
+           !lbls.includes('status:done') &&
+           !lbls.includes('supervisor:no-template');
   });
   console.log(`[INFO] ${candidates.length} candidate issue(s) to process`);
 
