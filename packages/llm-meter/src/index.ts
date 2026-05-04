@@ -43,9 +43,9 @@ export interface BudgetConfig {
  */
 export interface LedgerContext {
   project: string;
-  actor: 'human' | 'sauna' | 'copilot' | 'supervisor-future' | 'worker' | string;
+  actor: 'human' | 'sauna' | 'copilot' | 'supervisor-future' | 'worker' | (string & {});
   runId?: string;
-  workload?: 'synthesis' | 'planner' | 'verifier' | 'small' | string;
+  workload?: 'synthesis' | 'planner' | 'verifier' | 'small' | (string & {});
 }
 
 /**
