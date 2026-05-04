@@ -182,7 +182,9 @@ deploy.post(
     const body = await c.req.json<{ app: string; versionId?: string; reason?: string; idempotencyKey?: string }>();
     const ctx = c.var.envContext;
 
-    // Production rollbacks require owner role.
+    // Production rollbacks require owner role. The confirmation middleware
+    // allows 'admin' so that staging rollbacks can be initiated by admins,
+    // but production is intentionally restricted to 'owner' for extra safety.
     if (ctx.env === 'production' && ctx.role !== 'owner') {
       return c.json({ error: 'Production rollbacks require owner role' }, 403);
     }

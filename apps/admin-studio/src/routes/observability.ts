@@ -122,7 +122,7 @@ observability.get('/sentry/issues', async (c) => {
     if (!res.ok) {
       return c.json(
         { configured: true, degraded: true, error: `sentry-${res.status}`, issues: [] },
-        res.status === 401 || res.status === 403 ? 502 : 502,
+        502,
       );
     }
 
@@ -398,9 +398,11 @@ observability.get('/slo', async (c) => {
     }
   }
 
-  // Fallback: use a synthetic baseline if PostHog is not available
+  // Fallback: use a synthetic baseline of 1 M events/month (≈33k/day, a
+  // conservative floor for a small SaaS) so the error-rate math stays
+  // meaningful when PostHog is unconfigured or unavailable.
   if (totalEvents === 0 && errorCount > 0) {
-    totalEvents = 1_000_000; // synthetic baseline for error-rate math
+    totalEvents = 1_000_000;
   } else if (totalEvents === 0) {
     totalEvents = 1; // avoid division by zero
   }
@@ -409,9 +411,12 @@ observability.get('/slo', async (c) => {
   const availability_pct = Math.round((100 - error_rate_pct) * 10000) / 10000;
   const budget_used_pct = Math.min((error_rate_pct / SLO_ERROR_BUDGET_PCT) * 100, 100);
 
-  // Burn rate: if budget_used_pct is consumed in fewer than PERIOD_DAYS, burn_rate > 1
-  const daysElapsed = PERIOD_DAYS; // We look at rolling 30d, so all days are elapsed
-  const burn_rate = Math.round((budget_used_pct / 100) * (30 / daysElapsed) * 100) / 100;
+  // Burn rate: fraction of error budget consumed relative to a full 30-day
+  // period. Formula: (budget_fraction) * (30 / elapsed_days). Since we use
+  // a rolling 30d window, elapsed_days == PERIOD_DAYS, so burn_rate ==
+  // budget_used_pct / 100. A value > 1 means exhausting the budget faster
+  // than the 30-day replenishment cadence.
+  const burn_rate = Math.round((budget_used_pct / 100) * (30 / PERIOD_DAYS) * 100) / 100;
 
   let slo_status: SloStatus;
   if (availability_pct < SLO_TARGET_AVAILABILITY) slo_status = 'red';
@@ -684,6 +689,9 @@ const REQUIRED_FIELDS = [
   'uptime_pct',
 ] as const;
 
+/** Timeout for each conformance fan-out probe. */
+const CONFORMANCE_TIMEOUT_MS = 8_000;
+
 async function checkConformance(
   appId: string,
   label: string,
@@ -694,7 +702,7 @@ async function checkConformance(
   const checkedAt = new Date().toISOString();
   const start = Date.now();
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8_000);
+  const timer = setTimeout(() => controller.abort(), CONFORMANCE_TIMEOUT_MS);
   try {
     const res = await fetch(url, { signal: controller.signal });
     const latencyMs = Date.now() - start;
