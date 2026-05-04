@@ -41,11 +41,19 @@ export interface BudgetConfig {
 /**
  * Provenance stamped on every ledger row.
  */
+/** Known actor values for {@link LedgerContext.actor}. */
+export const KNOWN_ACTORS = ['human', 'sauna', 'copilot', 'supervisor-future', 'worker'] as const;
+
+/** Known workload values for {@link LedgerContext.workload}. */
+export const KNOWN_WORKLOADS = ['synthesis', 'planner', 'verifier', 'small'] as const;
+
 export interface LedgerContext {
   project: string;
-  actor: 'human' | 'sauna' | 'copilot' | 'supervisor-future' | 'worker' | (string & {});
+  /** One of {@link KNOWN_ACTORS}, or any custom string. */
+  actor: string;
   runId?: string;
-  workload?: 'synthesis' | 'planner' | 'verifier' | 'small' | (string & {});
+  /** One of {@link KNOWN_WORKLOADS}, or any custom string. */
+  workload?: string;
 }
 
 /**
