@@ -28,9 +28,9 @@
     "prepublish": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
-    "@latimer-woods-tech/errors": "^0.2.0",
-    "@latimer-woods-tech/llm": "^0.3.0",
-    "@latimer-woods-tech/logger": "^0.2.0"
+    "@latimer-woods-tech/errors": "file:../errors",
+    "@latimer-woods-tech/llm": "file:../llm",
+    "@latimer-woods-tech/logger": "file:../logger"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
