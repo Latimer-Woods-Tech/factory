@@ -19,6 +19,8 @@ const {
   GH_TOKEN,
   ANTHROPIC_API_KEY,
   ANTHROPIC_MODEL = 'claude-sonnet-4-20250514',
+  GROK_API_KEY,
+  GROK_MODEL = 'grok-3',
   PR_NUMBER,
   REPO,
   PR_SHA,
@@ -265,6 +267,76 @@ async function callClaude(prTitle, tier, files, deterministicWarnings) {
   }
 }
 
+// ─── Grok fallback (xAI OpenAI-compatible API) ──────────────────────────────
+
+async function callGrok(prTitle, tier, files, deterministicWarnings) {
+  const filesSummary = files.map(f => `  ${f.status ?? 'modified'}: ${f.filename}`).join('\n');
+  const diffText = files
+    .filter(f => f.patch)
+    .map(f => `### ${f.filename}\n\`\`\`diff\n${f.patch}\n\`\`\``)
+    .join('\n\n');
+
+  const truncatedDiff = diffText.length > MAX_DIFF_CHARS
+    ? diffText.slice(0, MAX_DIFF_CHARS) + '\n\n[... diff truncated at 28k chars — review remaining files manually]'
+    : diffText;
+
+  const deterministicNote = deterministicWarnings.length > 0
+    ? `\nDeterministic warnings already flagged (do not re-check):\n${deterministicWarnings.map(w => `- ${w.detail}`).join('\n')}\n`
+    : '';
+
+  const res = await fetch('https://api.x.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${GROK_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: GROK_MODEL,
+      max_tokens: 1024,
+      messages: [
+        { role: 'system', content: `${CONSTRAINT_BLOCK}\n\n${REVIEW_SCHEMA}` },
+        {
+          role: 'user',
+          content:
+            `PR: "${prTitle}"\n` +
+            `Tier: ${tier.toUpperCase()}\n` +
+            `Files changed:\n${filesSummary}\n` +
+            deterministicNote +
+            `\n---\n${truncatedDiff}`,
+        },
+      ],
+    }),
+  });
+
+  if (!res.ok) throw new Error(`Grok ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const data = await res.json();
+  const raw = data.choices?.[0]?.message?.content ?? '{}';
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  try {
+    return jsonMatch ? JSON.parse(jsonMatch[0]) : { architectural_concerns: [], warnings: [], summary: raw, lgtm: false };
+  } catch {
+    return { architectural_concerns: [], warnings: [], summary: raw, lgtm: false };
+  }
+}
+
+// ─── LLM orchestration (Anthropic → Grok fallback) ───────────────────────────
+
+async function callLLM(prTitle, tier, files, deterministicWarnings) {
+  if (ANTHROPIC_API_KEY) {
+    try {
+      return await callClaude(prTitle, tier, files, deterministicWarnings);
+    } catch (err) {
+      console.warn(`[WARN] Anthropic failed (${err.message.slice(0, 80)}) — falling back to Grok`);
+      if (!GROK_API_KEY) throw err;
+    }
+  }
+  if (GROK_API_KEY) {
+    console.log('[INFO] Using Grok for architectural review...');
+    return await callGrok(prTitle, tier, files, deterministicWarnings);
+  }
+  throw new Error('No LLM API key available — set ANTHROPIC_API_KEY or GROK_API_KEY');
+}
+
 // ─── Build review body ────────────────────────────────────────────────────────
 
 function tierEmoji(tier) {
@@ -434,8 +506,8 @@ async function main() {
     console.log('[INFO] Green tier + no violations — skipping LLM call');
     llmResult = { architectural_concerns: [], warnings: [], summary: 'Green-tier change (docs/markdown only) — no architectural review required.', lgtm: true };
   } else {
-    console.log('[INFO] Calling Claude for architectural review...');
-    llmResult = await callClaude(pr.title, tier, files, deterministicResult.warnings);
+    console.log('[INFO] Calling LLM for architectural review...');
+    llmResult = await callLLM(pr.title, tier, files, deterministicResult.warnings);
     console.log(`[INFO] LLM: lgtm=${llmResult.lgtm} | concerns=${llmResult.architectural_concerns?.length ?? 0}`);
   }
 
