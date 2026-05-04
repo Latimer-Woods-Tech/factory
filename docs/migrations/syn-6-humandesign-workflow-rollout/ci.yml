@@ -1,0 +1,45 @@
+# CI — Deterministic Gate
+#
+# Required status check for branch protection. Runs on every PR and push to main.
+# Delegates to factory's reusable CI for the worker package and for the root
+# (frontend) package separately. Migration drift guard is exercised via the
+# workers test suite (npm test --prefix workers runs verify:migrations:dry).
+#
+# Reusable source: Latimer-Woods-Tech/factory/.github/workflows/_app-ci.yml@main
+
+name: CI
+
+concurrency:
+  group: ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+# ----------------------------------------------------------------------------
+# Root (frontend + shared scripts)
+# Runs lint, test, and build for the client bundle and shared test helpers.
+# run_typecheck is false — HumanDesign workers use plain JavaScript.
+# ----------------------------------------------------------------------------
+jobs:
+  ci-root:
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_app-ci.yml@main
+    with:
+      run_typecheck: false
+    secrets: inherit
+
+  # --------------------------------------------------------------------------
+  # Workers (Cloudflare Worker API)
+  # Runs test and build for the workers/ npm workspace.
+  # --------------------------------------------------------------------------
+  ci-workers:
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_app-ci.yml@main
+    with:
+      working_directory: workers
+      run_typecheck: false
+    secrets: inherit

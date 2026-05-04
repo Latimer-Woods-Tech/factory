@@ -20,6 +20,7 @@ This document is the canonical reference for how CI/CD works in the Latimer-Wood
    │  .github/workflows/                              │
    │    _app-ci.yml             ←── consumed by ──┐   │
    │    _app-deploy.yml         ←── consumed by ──┤   │
+   │    _app-deploy-pages.yml   ←── consumed by ──┤   │
    │    _post-deploy-verify.yml ←── consumed by ──┤   │
    └──────────────────────────────────────────────│───┘
                                                   │
@@ -48,7 +49,7 @@ GitHub Team plan rule: **a private repo's reusable workflows are accessible only
 
 ---
 
-## The three reusable workflows
+## The reusable workflows
 
 ### `_app-ci.yml`
 Run on every push and PR. Authenticates to GitHub Packages so private `@latimer-woods-tech/*` deps install. Runs `typecheck`, `lint`, `test`, `build` from the app's package.json (skipping any that don't exist). If the repo contains `drizzle.config.*`, CI also fails fast on duplicate migration numbers or broken `meta/_journal.json` / snapshot references before install/build work starts.
@@ -87,6 +88,22 @@ jobs:
     uses: Latimer-Woods-Tech/factory/.github/workflows/_app-ci-pnpm.yml@main
     secrets: inherit
 ```
+
+### `_app-deploy-pages.yml`
+Deploys a compiled frontend to Cloudflare Pages via `wrangler pages deploy`. Optionally runs a build step first and probes a health URL post-deploy. Use this for apps with a Pages frontend (e.g. HumanDesign / selfprime.net).
+
+**Caller:**
+```yaml
+jobs:
+  deploy-pages:
+    uses: Latimer-Woods-Tech/factory/.github/workflows/_app-deploy-pages.yml@main
+    with:
+      project_name: prime-self-ui
+      health_url: https://selfprime.net
+    secrets: inherit
+```
+
+Full input/secret reference is in the workflow's header comment.
 
 ### `_app-deploy-pnpm.yml`
 Identical to `_app-deploy.yml` but uses **pnpm** instead of npm. Passes `packageManager: pnpm` to `wrangler-action` so Wrangler resolves scripts through pnpm.
@@ -150,17 +167,12 @@ No long-lived PATs in CI. The GitHub App is the source of truth.
 These live at https://github.com/organizations/Latimer-Woods-Tech/settings/secrets/actions, visibility `all repositories`:
 
 | Name | Source | Used by |
-|---|---|---|
-| `FACTORY_APP_ID` | GitHub App `factory-cross-repo` | Every CI/deploy workflow |
-| `FACTORY_APP_PRIVATE_KEY` | GitHub App PEM | Every CI/deploy workflow |
-| `FACTORY_APP_INSTALLATION_ID` | GitHub App install on org | Maintenance scripts |
-| `FACTORY_APP_CLIENT_ID` | GitHub App OAuth ID | Reserved |
-| `CLOUDFLARE_API_TOKEN` | CF dashboard | Deploy workflows |
+    ### `_app-ci-pnpm.yml`
+    Identical to `_app-ci.yml` but uses **pnpm** instead of npm. Use this for apps that commit a `pnpm-lock.yaml` (currently: videoking). Enforces `--frozen-lockfile` and applies the same Drizzle migration integrity guard.
 | `CLOUDFLARE_ACCOUNT_ID` | CF dashboard | Deploy workflows |
 | `CF_API_TOKEN` | Legacy alias of above | Deprecated, will be removed |
 | `STRIPE_SECRET_KEY` | Stripe dashboard | HumanDesign + payment-touching apps |
 | `STRIPE_WEBHOOK_SECRET` | Stripe dashboard | Same |
-| `STRIPE_PRICE_*` | Stripe price objects | HumanDesign (10 prices) |
 | `NPM_TOKEN` | npm.com automation token | Future public publishes |
 | `SENTRY_DSN_*` | Sentry project DSNs | Per-app observability |
 | `HYPERDRIVE_*` | CF Hyperdrive config IDs | Per-app DB connection |
@@ -186,17 +198,22 @@ If any of these are missing on a repo, run `factory/.github/workflows/setup-app-
 
 ---
 
-## Verifying cross-repo access
 
-If `uses: Latimer-Woods-Tech/factory/...` returns `workflow was not found` from a consumer:
+    ### `_app-deploy-pages.yml`
+    Deploys a compiled frontend to Cloudflare Pages via `wrangler pages deploy`. Optionally runs a build step first and probes a health URL post-deploy. Use this for apps with a Pages frontend (e.g. HumanDesign / selfprime.net).
 
-1. Check factory's repo Settings → Actions → General → "Access" is set to **"Accessible from repositories in the 'Latimer-Woods-Tech' organization."** (Public→public works automatically; private→private needs this toggle.)
-2. Check the org's Actions policy at https://github.com/organizations/Latimer-Woods-Tech/settings/actions allows external actions (set to "Allow all actions and reusable workflows" by default).
-3. If both are correct and it still fails: the consumer is private and the source is private — that combination requires the source to flip the access toggle in the UI even when the API says it's set. Toggle to "Not accessible" → Save → toggle back → Save.
+    **Caller:**
+    ```yaml
+    jobs:
+      deploy-pages:
+        uses: Latimer-Woods-Tech/factory/.github/workflows/_app-deploy-pages.yml@main
+        with:
+          project_name: prime-self-ui
+          health_url: https://selfprime.net
+        secrets: inherit
+    ```
 
-Quick programmatic check:
-```bash
-gh api /repos/Latimer-Woods-Tech/factory/actions/permissions/access
+    Full input/secret reference is in the workflow's header comment.
 # expected: {"access_level":"organization"}
 ```
 
@@ -271,3 +288,4 @@ The `factory-status-dashboard.yml` cron job checks every consumer repo's CI is u
 - ❌ Skipping `_post-deploy-verify.yml` for production deploys with money or user data
 - ❌ Pushing to `main` without going through CI; rulesets should prevent this anyway
 - ❌ Adding workflow files to factory that aren't documented in this file or `README.md`
+- ❌ Building and deploying Cloudflare Pages with custom inline YAML instead of `_app-deploy-pages.yml`

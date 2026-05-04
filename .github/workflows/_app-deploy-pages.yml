@@ -1,0 +1,144 @@
+# =============================================================================
+# Reusable Cloudflare Pages deploy workflow for Latimer-Woods-Tech apps.
+#
+# WHAT IT DOES
+#   Optionally builds the frontend (if build_command is set), then deploys
+#   the compiled output to Cloudflare Pages via `wrangler pages deploy`.
+#   Optionally probes a health URL post-deploy with retry.
+#
+# WHO CALLS IT
+#   App repos that have a Cloudflare Pages frontend (e.g. HumanDesign /
+#   selfprime.net, videoking / capricast.com).
+#
+# HOW TO CALL
+#   jobs:
+#     deploy-pages:
+#       uses: Latimer-Woods-Tech/factory/.github/workflows/_app-deploy-pages.yml@main
+#       with:
+#         project_name: prime-self-ui
+#         health_url: https://selfprime.net
+#       secrets: inherit
+#
+# REQUIRED SECRETS (passed via `secrets: inherit` from org-level vault)
+#   CLOUDFLARE_API_TOKEN      - Token with Cloudflare Pages:Edit permission
+#   CLOUDFLARE_ACCOUNT_ID     - Cloudflare account ID
+#
+# OPTIONAL INPUTS
+#   node_version       - Node.js major version (default '22')
+#   working_directory  - Subdir to run npm and wrangler in (default '.')
+#   environment        - GitHub Environment name (default 'production')
+#   build_command      - npm script to run before deploy; empty string skips
+#                        build (default 'build:frontend')
+#   dist_dir           - Compiled output directory passed to wrangler pages
+#                        deploy (default 'dist')
+#   branch             - Cloudflare Pages branch to target (default 'main')
+#   health_url         - URL to probe post-deploy. Empty string skips check.
+#   health_attempts    - Number of probe attempts before failing (default 5)
+#
+# OUTPUT
+#   No outputs. Failure exits non-zero.
+#
+# RELATED
+#   _app-ci.yml              - Pre-deploy CI (typecheck, lint, test, build)
+#   _app-deploy.yml          - Cloudflare Workers deploy
+#   _post-deploy-verify.yml  - Stronger verify with auto-rollback for Workers
+#   docs/CI_CD.md            - Full architecture reference
+# =============================================================================
+
+name: _app-deploy-pages
+
+concurrency:
+  group: deploy-pages-${{ inputs.environment }}-${{ github.repository }}
+  cancel-in-progress: false
+
+on:
+  workflow_call:
+    inputs:
+      node_version:
+        type: string
+        default: '22'
+      working_directory:
+        type: string
+        default: '.'
+      environment:
+        type: string
+        default: 'production'
+      build_command:
+        type: string
+        default: 'build:frontend'
+      dist_dir:
+        type: string
+        default: 'dist'
+      project_name:
+        type: string
+        required: true
+      branch:
+        type: string
+        default: 'main'
+      health_url:
+        type: string
+        default: ''
+      health_attempts:
+        type: number
+        default: 5
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy-pages:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@latimer-woods-tech'
+      - name: Configure npm auth
+        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
+      - run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build frontend
+        if: ${{ inputs.build_command != '' }}
+        run: npm run ${{ inputs.build_command }} --if-present
+      - name: Deploy to Cloudflare Pages
+        run: |
+          set -euo pipefail
+          attempts=3
+          delay=20
+          for attempt in $(seq 1 "$attempts"); do
+            if npx wrangler pages deploy "${{ inputs.dist_dir }}" \
+                --project-name="${{ inputs.project_name }}" \
+                --branch="${{ inputs.branch }}"; then
+              exit 0
+            fi
+            if [ "$attempt" -eq "$attempts" ]; then
+              echo "::error::Cloudflare Pages deploy failed after ${attempts} attempts."
+              exit 1
+            fi
+            echo "Transient failure. Retrying in ${delay}s (attempt ${attempt}/${attempts})..."
+            sleep "$delay"
+          done
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Post-deploy health check
+        if: ${{ inputs.health_url != '' }}
+        run: |
+          for i in $(seq 1 ${{ inputs.health_attempts }}); do
+            if curl -fsSL --max-time 10 "${{ inputs.health_url }}" > /dev/null; then
+              echo "Health check passed on attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "::error::Health check failed after ${{ inputs.health_attempts }} attempts"
+          exit 1
