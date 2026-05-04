@@ -99,22 +99,12 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
 
-      - name: Verify health post-deploy
+      - name: Verify post-deploy endpoints
         run: |
           target_env="${{ github.event.inputs.env || 'staging' }}"
           if [ "$target_env" = "production" ]; then
-            url="https://admin-studio-production.adrper79.workers.dev/health"
+            base_url="https://api.apunlimited.com"
           else
-            url="https://admin-studio-staging.adrper79.workers.dev/health"
+            base_url="https://api-staging.apunlimited.com"
           fi
-          node scripts/verify-http-endpoint.mjs \
-            --service admin-studio \
-            --environment "$target_env" \
-            --url "$url" \
-            --status 200 \
-            --json-field env \
-            --json-equals "$target_env" \
-            --run-id "${{ github.run_id }}" \
-            --rollback-ref ".github/workflows/deploy-admin-studio.yml" \
-            --retries 8 \
-            --delay-ms 5000
+          node apps/admin-studio/scripts/verify-deployment.mjs "$target_env" --base-url "$base_url"
