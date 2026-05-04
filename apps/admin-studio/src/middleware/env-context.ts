@@ -78,7 +78,7 @@ export function envContextMiddleware(): MiddlewareHandler<AppEnv> {
       token = queryToken;
     }
     if (!token) {
-      return c.json({ error: 'Missing bearer token' }, 401);
+      return c.json({ error: 'Missing bearer token', requestId: c.var.requestId }, 401);
     }
 
     let payload: EnvJWTPayload;
@@ -86,7 +86,11 @@ export function envContextMiddleware(): MiddlewareHandler<AppEnv> {
       payload = await verifyJwt(token, c.env.JWT_SECRET);
     } catch (err) {
       return c.json(
-        { error: 'Invalid token', detail: (err as Error).message },
+        {
+          error: 'Invalid token',
+          detail: (err as Error).message,
+          requestId: c.var.requestId,
+        },
         401,
       );
     }
@@ -99,6 +103,7 @@ export function envContextMiddleware(): MiddlewareHandler<AppEnv> {
           error: 'Environment mismatch',
           tokenEnv: payload.env,
           workerEnv: c.env.STUDIO_ENV,
+          requestId: c.var.requestId,
         },
         403,
       );
@@ -115,7 +120,7 @@ export function envContextMiddleware(): MiddlewareHandler<AppEnv> {
     };
 
     if (isSessionExpired(ctx)) {
-      return c.json({ error: 'Session expired — re-authenticate' }, 401);
+      return c.json({ error: 'Session expired — re-authenticate', requestId: c.var.requestId }, 401);
     }
 
     c.set('envContext', ctx);
