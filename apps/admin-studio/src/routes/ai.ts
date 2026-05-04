@@ -14,6 +14,8 @@
 import { Hono } from 'hono';
 import { complete } from '@latimer-woods-tech/llm';
 import type { AIChatEvent, AIChatRequest, AIProposal, AIProposalRequest } from '@latimer-woods-tech/studio-core';
+import type { AIModelStrategy } from '@latimer-woods-tech/studio-core';
+import type { LLMOptions } from '@latimer-woods-tech/llm';
 import type { AppEnv } from '../types.js';
 import type { Env } from '../env.js';
 import { fetchFile } from '../lib/github-api.js';
@@ -72,6 +74,49 @@ function getMissingCompleteLlmConfig(
   if (!env.VERTEX_PROJECT) missing.push('VERTEX_PROJECT');
   if (!env.VERTEX_LOCATION) missing.push('VERTEX_LOCATION');
   return missing;
+}
+
+function getMissingStrategyConfig(
+  strategy: AIModelStrategy,
+  env: Pick<
+    Env,
+    'AI_GATEWAY_BASE_URL' | 'ANTHROPIC_API_KEY' | 'VERTEX_ACCESS_TOKEN' | 'VERTEX_PROJECT' | 'VERTEX_LOCATION' | 'XAI_API_KEY'
+  >,
+): string[] {
+  const missing = getMissingCompleteLlmConfig(env);
+  if (strategy === 'drafting' && !env.XAI_API_KEY) missing.push('XAI_API_KEY');
+  return missing;
+}
+
+function isModelStrategy(value: unknown): value is AIModelStrategy {
+  return value === 'execution' || value === 'planning' || value === 'drafting';
+}
+
+function resolveLlmOptions(strategy: AIModelStrategy, mode: AIChatRequest['mode'], system: string): LLMOptions {
+  if (strategy === 'planning') {
+    return {
+      system,
+      model: 'gemini-2.5-pro',
+      tier: 'smart',
+      maxTokens: 2048,
+      temperature: mode === 'refactor' ? 0.2 : 0.35,
+    };
+  }
+  if (strategy === 'drafting') {
+    return {
+      system,
+      model: 'grok-4-fast',
+      tier: 'fast',
+      maxTokens: 2048,
+      temperature: mode === 'refactor' ? 0.3 : 0.65,
+    };
+  }
+  return {
+    system,
+    tier: 'balanced',
+    maxTokens: 2048,
+    temperature: mode === 'refactor' ? 0.2 : 0.5,
+  };
 }
 
 const ai = new Hono<AppEnv>();
@@ -260,8 +305,49 @@ ai.post('/chat', async (c) => {
     return c.json({ error: 'ANTHROPIC_API_KEY not configured' }, 503);
   }
 
+  const strategy: AIModelStrategy = isModelStrategy(body.modelStrategy)
+    ? body.modelStrategy
+    : 'execution';
+
   const system = buildSystem(body);
   const messages = body.history.map((t) => ({ role: t.role, content: t.content }));
+
+  if (strategy !== 'execution') {
+    const missingStrategyConfig = getMissingStrategyConfig(strategy, c.env);
+    if (missingStrategyConfig.length > 0) {
+      return c.json({ error: 'LLM configuration incomplete', missing: missingStrategyConfig }, 503);
+    }
+
+    const result = await complete(messages, toLlmEnv(c.env), resolveLlmOptions(strategy, body.mode, system));
+    if (result.error || !result.data) {
+      return c.json({ error: 'llm failed', detail: result.error?.message }, 502);
+    }
+    const data = result.data;
+
+    const encoder = new TextEncoder();
+    const merged = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const token: AIChatEvent = { type: 'token', delta: data.content };
+        const done: AIChatEvent = {
+          type: 'done',
+          provider: data.provider,
+          tokens: { input: data.tokens.input, output: data.tokens.output },
+        };
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(token)}\n\n`));
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(done)}\n\n`));
+        controller.close();
+      },
+    });
+
+    return new Response(merged, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+    });
+  }
 
   const apiKey = c.env.ANTHROPIC_API_KEY;
   const baseUrl = c.env.AI_GATEWAY_BASE_URL ? `${c.env.AI_GATEWAY_BASE_URL}/anthropic` : 'https://api.anthropic.com';
@@ -318,7 +404,10 @@ ai.post('/proposals', async (c) => {
   if (!c.env.ANTHROPIC_API_KEY) {
     return c.json({ error: 'ANTHROPIC_API_KEY not configured' }, 503);
   }
-  const missingLlmConfig = getMissingCompleteLlmConfig(c.env);
+  const strategy: AIModelStrategy = isModelStrategy(body.modelStrategy)
+    ? body.modelStrategy
+    : 'execution';
+  const missingLlmConfig = getMissingStrategyConfig(strategy, c.env);
   if (missingLlmConfig.length > 0) {
     return c.json({ error: 'LLM configuration incomplete', missing: missingLlmConfig }, 503);
   }
@@ -354,7 +443,11 @@ ai.post('/proposals', async (c) => {
   const result = await complete(
     [{ role: 'user', content: userPrompt }],
     toLlmEnv(c.env),
-    { system, maxTokens: 4096, temperature: 0.2 },
+    resolveLlmOptions(
+      strategy,
+      'refactor',
+      system,
+    ),
   );
 
   if (result.error || !result.data) {
