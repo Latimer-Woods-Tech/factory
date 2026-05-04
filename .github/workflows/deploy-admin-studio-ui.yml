@@ -25,6 +25,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment: ${{ github.event.inputs.env || 'staging' }}
     permissions:
       contents: read
