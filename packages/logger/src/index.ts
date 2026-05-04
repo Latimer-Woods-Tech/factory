@@ -135,3 +135,46 @@ export {
   createQueryContext,
   type QueryContext,
 } from './correlation';
+
+/**
+ * Generates a short, URL-safe request-correlation ID.
+ *
+ * 12 hex characters = 48 bits of entropy — sufficient for per-request
+ * deduplication. Useful in vanilla Cloudflare Workers and cron handlers where
+ * the Hono {@link withRequestId} middleware is not available.
+ *
+ * @returns A 12-character lowercase hex string, e.g. `"a3f1c9e20b4d"`.
+ *
+ * @example
+ * const requestId = generateRequestId();
+ * const log = createLogger({ workerId: 'prime-self-api', requestId });
+ */
+export function generateRequestId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Truncates an opaque ID to its first 8 characters for inclusion in log fields.
+ *
+ * Per policy CTO-012 / CISO-008: user IDs and subscription IDs must not appear
+ * in full in Cloudflare Tail Workers or Logpush output because log retention
+ * creates a GDPR-adjacent audit trail. Eight characters of a UUID provide
+ * sufficient log correlation without enabling PII re-identification.
+ *
+ * Full IDs remain in the database and must never appear in log lines.
+ *
+ * @param id - UUID, Stripe ID, or similar opaque identifier.
+ * @returns First 8 characters followed by `"…"`, or the original string when
+ *   it is 8 characters or shorter. Returns an empty string for `null` or
+ *   `undefined` inputs.
+ *
+ * @example
+ * sanitizeId('a3b4c5d6-1234-5678-abcd-ef0123456789') // 'a3b4c5d6…'
+ * sanitizeId('short')                                  // 'short'
+ * sanitizeId(null)                                     // ''
+ */
+export function sanitizeId(id: string | null | undefined): string {
+  if (!id || typeof id !== 'string') return '';
+  return id.length > 8 ? id.slice(0, 8) + '\u2026' : id;
+}

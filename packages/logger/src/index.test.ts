@@ -7,7 +7,7 @@ vi.mock('@latimer-woods-tech/monitoring', () => ({
 }));
 
 import { captureError } from '@latimer-woods-tech/monitoring';
-import { createLogger, withRequestId } from './index.js';
+import { createLogger, generateRequestId, sanitizeId, withRequestId } from './index.js';
 
 // ---------------------------------------------------------------------------
 // createLogger
@@ -177,5 +177,48 @@ describe('withRequestId', () => {
     await app.request('/log', { headers: { 'x-worker-id': 'api-gateway' } });
     const emitted = JSON.parse(consoleSpy.mock.calls[0]![0] as string) as Record<string, unknown>;
     expect(emitted.workerId).toBe('api-gateway');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// generateRequestId
+// ---------------------------------------------------------------------------
+
+describe('generateRequestId', () => {
+  it('returns a 12-character lowercase hex string', () => {
+    const id = generateRequestId();
+    expect(id).toMatch(/^[0-9a-f]{12}$/);
+  });
+
+  it('returns unique values on successive calls', () => {
+    const ids = new Set(Array.from({ length: 20 }, () => generateRequestId()));
+    expect(ids.size).toBe(20);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sanitizeId
+// ---------------------------------------------------------------------------
+
+describe('sanitizeId', () => {
+  it('truncates IDs longer than 8 characters and appends an ellipsis', () => {
+    expect(sanitizeId('a3b4c5d6-1234-5678-abcd-ef0123456789')).toBe('a3b4c5d6\u2026');
+  });
+
+  it('returns short IDs unchanged (8 chars or fewer)', () => {
+    expect(sanitizeId('abcd1234')).toBe('abcd1234');
+    expect(sanitizeId('short')).toBe('short');
+  });
+
+  it('returns an empty string for null', () => {
+    expect(sanitizeId(null)).toBe('');
+  });
+
+  it('returns an empty string for undefined', () => {
+    expect(sanitizeId(undefined)).toBe('');
+  });
+
+  it('returns an empty string for an empty string', () => {
+    expect(sanitizeId('')).toBe('');
   });
 });

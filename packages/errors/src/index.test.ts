@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
 import {
   AuthError,
+  BadRequestError,
   ErrorCodes,
   FactoryBaseError,
   ForbiddenError,
@@ -108,6 +109,26 @@ describe('InternalError', () => {
     expect(err.status).toBe(500);
     expect(err.retryable).toBe(true);
     expect(err.code).toBe(ErrorCodes.INTERNAL_ERROR);
+  });
+});
+
+describe('BadRequestError', () => {
+  it('has correct code, status, and default message', () => {
+    const err = new BadRequestError();
+    expect(err.code).toBe(ErrorCodes.BAD_REQUEST);
+    expect(err.status).toBe(400);
+    expect(err.message).toBe('Bad request');
+    expect(err.retryable).toBe(false);
+  });
+
+  it('accepts custom message and context', () => {
+    const err = new BadRequestError('Missing required field', { field: 'email' });
+    expect(err.message).toBe('Missing required field');
+    expect(err.context).toEqual({ field: 'email' });
+  });
+
+  it('is instanceof FactoryBaseError', () => {
+    expect(new BadRequestError()).toBeInstanceOf(FactoryBaseError);
   });
 });
 
@@ -302,6 +323,7 @@ describe('ErrorCodes', () => {
       'STRIPE_WEBHOOK_INVALID',
       'STRIPE_PAYMENT_FAILED',
       'VALIDATION_ERROR',
+      'BAD_REQUEST',
       'INTERNAL_ERROR',
       'NOT_FOUND',
       'RATE_LIMITED',

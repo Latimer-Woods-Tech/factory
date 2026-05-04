@@ -9,3 +9,4 @@ apps/*/*.tsbuildinfo
 .env.*.local
 _external_reviews/
 
+package-lock.json
