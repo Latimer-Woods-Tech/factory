@@ -21,7 +21,7 @@
     "@latimer-woods-tech/neon": "file:../../packages/neon",
     "@latimer-woods-tech/studio-core": "file:../../packages/studio-core",
     "@neondatabase/serverless": "^0.10.4",
-    "drizzle-orm": "^0.45.0",
+    "drizzle-orm": "^0.45.2",
     "hono": "^4.12.14",
     "stripe": "^17.0.0"
   },
