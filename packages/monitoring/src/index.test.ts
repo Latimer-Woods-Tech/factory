@@ -45,6 +45,7 @@ import {
   captureMessage,
   createSentryCloudflareConfig,
   initMonitoring,
+  initPostHog,
   sentryMiddleware,
   setUserContext,
   withPerformance,
@@ -285,5 +286,105 @@ describe('sentryMiddleware', () => {
     app.get('/rid', (c) => c.json({}));
     await app.request('/rid');
     expect(mockSetTag).toHaveBeenCalledWith('requestId', 'set-req-id');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// initPostHog
+// ---------------------------------------------------------------------------
+
+describe('initPostHog', () => {
+  const API_KEY = 'phc_test1234';
+  const HOST = 'https://us.i.posthog.com';
+
+  it('capture sends a POST to /capture/ with the correct payload', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true } as Response);
+    const client = initPostHog({ apiKey: API_KEY }, { fetch: mockFetch });
+
+    await client.capture('button_clicked', 'user-1', { button: 'cta' });
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${HOST}/capture/`);
+    expect(init.method).toBe('POST');
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body.api_key).toBe(API_KEY);
+    expect(body.event).toBe('button_clicked');
+    expect(body.distinct_id).toBe('user-1');
+    expect((body.properties as Record<string, unknown>).button).toBe('cta');
+    expect(typeof body.timestamp).toBe('string');
+  });
+
+  it('identify sends a $identify event with $set properties', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true } as Response);
+    const client = initPostHog({ apiKey: API_KEY }, { fetch: mockFetch });
+
+    await client.identify('user-2', { email: 'user@example.com', plan: 'pro' });
+
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body.event).toBe('$identify');
+    expect(body.distinct_id).toBe('user-2');
+    expect((body.properties as Record<string, unknown>).$set).toEqual({
+      email: 'user@example.com',
+      plan: 'pro',
+    });
+  });
+
+  it('capture uses custom host when provided', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true } as Response);
+    const client = initPostHog(
+      { apiKey: API_KEY, host: 'https://eu.i.posthog.com' },
+      { fetch: mockFetch },
+    );
+
+    await client.capture('test', 'anon');
+
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://eu.i.posthog.com/capture/');
+  });
+
+  it('capture does not throw when PostHog returns a non-2xx status', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: false, status: 400 } as Response);
+    const client = initPostHog({ apiKey: API_KEY }, { fetch: mockFetch });
+
+    await expect(client.capture('test', 'anon')).resolves.toBeUndefined();
+    expect(mockCaptureMessage).toHaveBeenCalledWith(
+      expect.stringContaining('400'),
+      'warning',
+    );
+    expect(mockSetContext).toHaveBeenCalledWith('messageContext', { host: HOST });
+  });
+
+  it('capture does not throw when the fetch call itself rejects', async () => {
+    const mockFetch = vi.fn().mockRejectedValue(new Error('network error'));
+    const client = initPostHog({ apiKey: API_KEY }, { fetch: mockFetch });
+
+    await expect(client.capture('test', 'anon')).resolves.toBeUndefined();
+    expect(mockCaptureMessage).toHaveBeenCalledWith(
+      expect.stringContaining('network error'),
+      'warning',
+    );
+    expect(mockSetContext).toHaveBeenCalledWith('messageContext', { host: HOST });
+  });
+
+  it('capture works without optional properties', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true } as Response);
+    const client = initPostHog({ apiKey: API_KEY }, { fetch: mockFetch });
+
+    await expect(client.capture('page_view', 'anon')).resolves.toBeUndefined();
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body.properties).toEqual({});
+  });
+
+  it('identify works without optional properties', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true } as Response);
+    const client = initPostHog({ apiKey: API_KEY }, { fetch: mockFetch });
+
+    await expect(client.identify('user-3')).resolves.toBeUndefined();
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect((body.properties as Record<string, unknown>).$set).toEqual({});
   });
 });

@@ -1,6 +1,121 @@
 import * as Sentry from '@sentry/cloudflare';
 import type { MiddlewareHandler } from 'hono';
 
+// ---------------------------------------------------------------------------
+// PostHog — lightweight HTTP wrapper for Cloudflare Workers
+// ---------------------------------------------------------------------------
+
+const DEFAULT_POSTHOG_HOST = 'https://us.i.posthog.com';
+
+/** @internal Looser fetch signature compatible with vi.fn mocks. */
+type FetchFn = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
+/**
+ * Initialization settings for the PostHog client.
+ */
+export interface PostHogConfig {
+  /** PostHog project API key (e.g. `phc_...`). Never hardcode; read from `env.POSTHOG_KEY`. */
+  apiKey: string;
+  /**
+   * PostHog ingest host. Defaults to `https://us.i.posthog.com`.
+   * Override for EU region (`https://eu.i.posthog.com`) or self-hosted deployments.
+   */
+  host?: string;
+}
+
+/**
+ * Injected dependencies for {@link initPostHog} — primarily for testing.
+ */
+export interface PostHogDeps {
+  fetch?: FetchFn;
+}
+
+/**
+ * Lightweight PostHog client returned by {@link initPostHog}.
+ * All methods are fire-and-forget safe: failures are captured as Sentry
+ * warnings rather than thrown, so monitoring never crashes the application.
+ */
+export interface PostHogClient {
+  /**
+   * Captures a custom event.
+   *
+   * @param event - Event name (e.g. `'page_view'`, `'button_clicked'`).
+   * @param distinctId - User or session identifier. Use `'anonymous'` when unknown.
+   * @param properties - Arbitrary key/value properties attached to the event.
+   */
+  capture(event: string, distinctId: string, properties?: Record<string, unknown>): Promise<void>;
+  /**
+   * Identifies a user and attaches profile properties.
+   *
+   * @param distinctId - The user's stable identifier.
+   * @param properties - Profile traits to set (e.g. `{ email, plan }`).
+   */
+  identify(distinctId: string, properties?: Record<string, unknown>): Promise<void>;
+}
+
+/**
+ * Initialises a PostHog HTTP client compatible with Cloudflare Workers.
+ * Uses the PostHog `/capture/` HTTP endpoint; no Node.js SDK dependency.
+ *
+ * Failures are logged as Sentry warnings so they never crash the host app.
+ *
+ * @example
+ * ```typescript
+ * import { initPostHog } from '@latimer-woods-tech/monitoring';
+ *
+ * const posthog = initPostHog({ apiKey: env.POSTHOG_KEY });
+ * await posthog.capture('video.watched', userId, { videoId, durationMs });
+ * ```
+ */
+export function initPostHog(config: PostHogConfig, deps: PostHogDeps = {}): PostHogClient {
+  const host = config.host ?? DEFAULT_POSTHOG_HOST;
+  const fetchImpl: FetchFn = deps.fetch ?? fetch;
+
+  async function send(payload: Record<string, unknown>): Promise<void> {
+    let res: Response;
+    try {
+      res = await fetchImpl(`${host}/capture/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      captureMessage(
+        `PostHog request failed: ${err instanceof Error ? err.message : String(err)}`,
+        'warning',
+        { host },
+      );
+      return;
+    }
+
+    if (!res.ok) {
+      captureMessage(`PostHog capture returned ${String(res.status)}`, 'warning', { host });
+    }
+  }
+
+  return {
+    async capture(event, distinctId, properties = {}): Promise<void> {
+      await send({
+        api_key: config.apiKey,
+        event,
+        distinct_id: distinctId,
+        properties,
+        timestamp: new Date().toISOString(),
+      });
+    },
+
+    async identify(distinctId, properties = {}): Promise<void> {
+      await send({
+        api_key: config.apiKey,
+        event: '$identify',
+        distinct_id: distinctId,
+        properties: { $set: properties },
+        timestamp: new Date().toISOString(),
+      });
+    },
+  };
+}
+
 declare module 'hono' {
   interface ContextVariableMap {
     requestId: string;
