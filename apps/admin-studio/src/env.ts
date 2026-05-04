@@ -35,6 +35,8 @@ export interface Env {
   VERTEX_LOCATION?: string;
   /** Sentry DSN for error reporting */
   SENTRY_DSN?: string;
+  /** Slack webhook used by self-improvement loop critical alerts. */
+  SLACK_WEBHOOK?: string;
 
   // ── Phase B: observability proxy secrets (all optional) ───────────────────────────────────────────────────────
   /** Cloudflare API token (Workers Scripts:Read) for deploy-version reads */
