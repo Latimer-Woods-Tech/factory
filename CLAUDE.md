@@ -56,25 +56,26 @@ CI green = code compiled. `curl` 200 = it actually works. These are not the same
 1. `@latimer-woods-tech/errors` (no deps)
 2. `@latimer-woods-tech/monitoring` (deps: errors)
 3. `@latimer-woods-tech/logger` (deps: errors, monitoring)
-4. `@latimer-woods-tech/auth` (deps: errors, logger)
-5. `@latimer-woods-tech/neon` (deps: errors, logger)
-6. `@latimer-woods-tech/stripe` (deps: errors, logger, neon)
-7. `@latimer-woods-tech/llm` (deps: errors, logger)
-8. `@latimer-woods-tech/telephony` (deps: errors, logger, llm)
-9. `@latimer-woods-tech/analytics` (deps: errors, neon)
-10. `@latimer-woods-tech/deploy` (no deps; scripts only)
-11. `@latimer-woods-tech/testing` (no deps; mock factories)
-12. `@latimer-woods-tech/email` (deps: errors, logger)
-13. `@latimer-woods-tech/copy` (deps: llm)
-14. `@latimer-woods-tech/content` (deps: neon, copy)
-15. `@latimer-woods-tech/social` (deps: content)
-16. `@latimer-woods-tech/seo` (no deps)
-17. `@latimer-woods-tech/crm` (deps: neon, analytics)
-18. `@latimer-woods-tech/compliance` (deps: neon)
-19. `@latimer-woods-tech/admin` (deps: auth, analytics)
-20. `@latimer-woods-tech/video` (deps: errors) — Cloudflare Stream + R2 wrappers
-21. `@latimer-woods-tech/schedule` (deps: errors, neon, video) — video production calendar + priority scoring
-22. `@latimer-woods-tech/validation` (no deps; deterministic output quality gates)
+4. `@latimer-woods-tech/realtime` (deps: errors) — Cloudflare Durable Object WebSocket Hibernation API base class
+5. `@latimer-woods-tech/auth` (deps: errors, logger)
+6. `@latimer-woods-tech/neon` (deps: errors, logger)
+7. `@latimer-woods-tech/stripe` (deps: errors, logger, neon)
+8. `@latimer-woods-tech/llm` (deps: errors, logger)
+9. `@latimer-woods-tech/telephony` (deps: errors, logger, llm)
+10. `@latimer-woods-tech/analytics` (deps: errors, neon)
+11. `@latimer-woods-tech/deploy` (no deps; scripts only)
+12. `@latimer-woods-tech/testing` (no deps; mock factories)
+13. `@latimer-woods-tech/email` (deps: errors, logger)
+14. `@latimer-woods-tech/copy` (deps: llm)
+15. `@latimer-woods-tech/content` (deps: neon, copy)
+16. `@latimer-woods-tech/social` (deps: content)
+17. `@latimer-woods-tech/seo` (no deps)
+18. `@latimer-woods-tech/crm` (deps: neon, analytics)
+19. `@latimer-woods-tech/compliance` (deps: neon)
+20. `@latimer-woods-tech/admin` (deps: auth, analytics)
+21. `@latimer-woods-tech/video` (deps: errors) — Cloudflare Stream + R2 wrappers
+22. `@latimer-woods-tech/schedule` (deps: errors, neon, video) — video production calendar + priority scoring
+23. `@latimer-woods-tech/validation` (no deps; deterministic output quality gates)
 
 ## Video Production Pipeline
 The automated video engine runs **outside Workers** (needs real Chromium + ffmpeg):

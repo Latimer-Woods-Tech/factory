@@ -28,6 +28,7 @@ jobs:
             errors
             monitoring
             logger
+            realtime
             design-tokens
             ui
             auth
