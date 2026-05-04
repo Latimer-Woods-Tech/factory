@@ -25,14 +25,13 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     environment: ${{ github.event.inputs.env || 'staging' }}
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v4
         with:
           node-version: '24'
 
@@ -52,19 +51,22 @@ jobs:
         run: npm run build
         working-directory: apps/admin-studio-ui
         env:
-          VITE_API_BASE: ${{ github.event.inputs.env == 'production' && 'https://admin-studio-production.adrper79.workers.dev' || 'https://admin-studio-staging.adrper79.workers.dev' }}
+          # On push to main (no workflow_dispatch input) treat as production.
+          # On workflow_dispatch: use the selected env input.
+          VITE_API_BASE: ${{ (github.event.inputs.env == 'production' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'https://api.apunlimited.com' || 'https://api-staging.apunlimited.com' }}
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: pages deploy apps/admin-studio-ui/dist --project-name=admin-studio-ui --branch=${{ github.event.inputs.env == 'production' && 'main' || 'staging' }}
+          command: pages deploy apps/admin-studio-ui/dist --project-name=admin-studio-ui --branch=${{ (github.event.inputs.env == 'production' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'main' || 'staging' }}
 
       - name: Verify Pages deployment
         run: |
+          is_prod="${{ github.event.inputs.env == 'production' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}"
           target_env="${{ github.event.inputs.env || 'staging' }}"
-          if [ "$target_env" = "production" ]; then
+          if [ "$is_prod" = "true" ] || [ "$target_env" = "production" ]; then
             url="https://apunlimited.com"
           else
             url="https://staging.admin-studio-ui.pages.dev"
