@@ -22,6 +22,20 @@ First action on receiving an issue is to add the label `agent:claimed:<your-name
 
 Claim labels expire if the agent goes idle >30 minutes without a status comment. The coordinator (or a human) may release a stale claim by removing the label.
 
+### 2a. Label semantics
+
+The repo seeds and maintains these labels via `.github/agent-labels.json` and `.github/workflows/sync-agent-labels.yml`:
+
+| Label | Meaning | Used by |
+|---|---|---|
+| `agent:claimed:*` | Issue is actively claimed by the named agent. Only one claim label should be present at a time. | Claim protocol, project board Agent field, PR digest |
+| `status:in_progress` | Work started and agent is actively implementing or validating. | Project board status, coordinator filtering |
+| `status:blocked` | Work is paused on a dependency, failing test, secret, or human decision. | PR digest, coordinator triage |
+| `status:done` | Agent completed implementation and posted the final `/status state:done` update. | Merge triage |
+| `status:abandoned` | Agent stopped without handing off a mergeable result. | Coordinator reassignment |
+
+Status labels are optional mirrors of the required `/status` audit trail. If they drift, update the `/status` comment first, then reconcile or remove the stale label before relying on project-board filters.
+
 ### 3. Branch naming
 
 `agent/<your-name>/<issue-number>` — e.g. `agent/claude-code/127`. No exceptions. This makes branches grep-able, sortable, and trivially garbage-collectable.
