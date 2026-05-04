@@ -20,12 +20,12 @@ function makeDb(): { db: D1Like; inserts: unknown[][]; queries: Array<{ sql: str
         bind(...binds: unknown[]) {
           queries.push({ sql, binds });
           return {
-            first: async <T>() => firstResult as T | null,
-            run: async () => {
+            first: <T>() => Promise.resolve(firstResult as T | null),
+            run: () => {
               inserts.push(binds);
-              return { success: true };
+              return Promise.resolve({ success: true });
             },
-            all: async <T>() => ({ results: [] as T[] }),
+            all: <T>() => Promise.resolve({ results: [] as T[] }),
           };
         },
       };
@@ -102,9 +102,9 @@ describe('recordCall', () => {
     const db: D1Like = {
       prepare: () => ({
         bind: () => ({
-          first: async () => null,
-          run: async () => { throw new Error('boom'); },
-          all: async () => ({ results: [] }),
+          first: () => Promise.resolve(null),
+          run: () => Promise.reject(new Error('boom')),
+          all: () => Promise.resolve({ results: [] }),
         }),
       }),
     };
