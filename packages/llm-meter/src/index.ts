@@ -61,6 +61,10 @@ export interface LedgerContext {
  * ledger + budget fields.
  */
 export interface MeteredOptions extends LLMOptions, LedgerContext {
+  /** Required: overrides the optional `actor` in LLMOptions. */
+  actor: string;
+  /** Required: overrides the optional `project` in LLMOptions. */
+  project: string;
   budget?: BudgetConfig;
 }
 
