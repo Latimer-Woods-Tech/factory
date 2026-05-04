@@ -1,0 +1,20 @@
+fixture_for: sentry-triage-new-issue
+issue:
+  title: "Sentry: TypeError in selfprime/api/chart.ts bind-message handler"
+  labels: [bug, sentry]
+  body: |
+    A new Sentry error class has been detected by the webhook worker.
+
+    Sentry issue: https://sentry.io/organizations/factory/issues/SELFPRIME-4821/
+    Short ID: SELFPRIME-4821
+    Repo: factory/selfprime
+    Environment: production
+    First seen: 2026-05-02T16:42:11Z
+    Occurrences: 37 across 12 users
+
+    Culprit (from Sentry): `bindMessage` in `apps/selfprime/api/chart.ts:142`
+    Message: `TypeError: Cannot read properties of undefined (reading 'channel')`
+
+    Please triage: fetch the Sentry event detail, read the implicated source
+    file, post a diagnosis, and propose a fix PR if the patch is under 5 lines.
+    Otherwise escalate to Red for human investigation.

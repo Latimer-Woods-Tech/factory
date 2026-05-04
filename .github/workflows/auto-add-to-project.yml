@@ -13,8 +13,9 @@ jobs:
   add-to-project:
     name: Add to project
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/create-github-app-token@v1
+      - uses: actions/create-github-app-token@v3
         id: app-token
         with:
           app-id: ${{ secrets.FACTORY_APP_ID }}

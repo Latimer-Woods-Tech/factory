@@ -1,0 +1,46 @@
+id: ux-regression-triage
+version: 1
+tier: yellow
+triggers:
+  labels_any_of: [ux, accessibility, bug]
+  title_pattern: "^(\\[P[0-3]\\]\\[UX\\]|ux|bug)"
+  body_patterns:
+    - "(?is)(repro|steps|expected|actual|viewport|mobile|a11y|accessibility)"
+preconditions:
+  - capability_exists: github.comment
+  - capability_exists: github.addLabel
+slots:
+  - name: severity
+    type: enum
+    values: [P0, P1, P2, P3, unknown]
+    source: issue_title
+    default: unknown
+  - name: component
+    type: string
+    validator: "(?s)^.{0,200}$"
+    source: issue_title
+steps:
+  - id: s1
+    tool: github.comment
+    depends_on: null
+    params:
+      issue: "$issue.number"
+      body: |
+        Supervisor triage plan for UX regression.
+        - Confirm reproducibility (device + viewport)
+        - Capture expected vs actual behavior
+        - Propose minimal-risk fix path
+        - Escalate P0/P1 for immediate assignment
+    intent: "Post a structured triage plan comment and request human approval for execution."
+acceptance_gate:
+  description: "Issue has supervisor triage comment and status labels applied."
+  verifier_query:
+    tool: github.comment
+    query: "issue:$issue.number body contains 'Supervisor triage plan for UX regression'"
+    assert: "count >= 1"
+rollback:
+  - on_step: s1
+    action: github.removeLabel
+    params:
+      issue: "$issue.number"
+      label: "status:wip"

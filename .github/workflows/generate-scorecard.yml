@@ -7,11 +7,15 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+permissions:
+  contents: read
+
 jobs:
   scorecard:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Run scorecard generator
         run: node scripts/generate-scorecard.mjs
         env:

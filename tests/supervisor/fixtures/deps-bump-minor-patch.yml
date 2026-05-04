@@ -1,0 +1,24 @@
+fixture_for: deps-bump-minor-patch
+issue:
+  title: "chore(deps): bump drizzle-orm from 0.36.1 to 0.36.4"
+  labels: [dependencies, javascript, repo:factory/factory]
+  body: |
+    Bumps [drizzle-orm](https://github.com/drizzle-team/drizzle-orm) from 0.36.1 to 0.36.4.
+
+    semver: patch
+    bump_kind: patch
+    ci_status: success
+    security_advisory: none
+
+    Release notes
+    -------------
+    - 0.36.4: bugfixes for pg array types
+    - 0.36.3: perf improvement in query builder
+    - 0.36.2: fix typing regression
+
+    Files changed:
+    - package.json
+    - package-lock.json
+
+    ---
+    Dependabot will resolve any conflicts with this PR as long as you don't alter it yourself.

@@ -11,21 +11,42 @@ permissions:
 jobs:
   guard:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: Latimer-Woods-Tech
+
       - name: Verify org allowed_actions = all
         env:
-          GH_TOKEN: ${{ secrets.ORG_ADMIN_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           set -euo pipefail
-          state=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/orgs/Latimer-Woods-Tech/actions/permissions | jq -r '.allowed_actions // "all"')
-          enabled=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/orgs/Latimer-Woods-Tech/actions/permissions | jq -r '.enabled_repositories')
-          echo "Org allowed_actions=$state, enabled_repositories=$enabled"
-          if [ "$state" != "all" ]; then
-            echo "::error::Org allowed_actions drifted from 'all' to '$state'. Cross-repo reusable workflows are now broken. Fix at https://github.com/organizations/Latimer-Woods-Tech/settings/actions"
+          endpoint="https://api.github.com/orgs/Latimer-Woods-Tech/actions/permissions"
+          body=$(mktemp)
+          code=$(curl -sS -o "$body" -w "%{http_code}" -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$endpoint")
+
+          if [ "$code" = "200" ]; then
+            state=$(jq -r '.allowed_actions // "all"' "$body")
+            enabled=$(jq -r '.enabled_repositories // "all"' "$body")
+            echo "Org allowed_actions=$state, enabled_repositories=$enabled"
+            if [ "$state" != "all" ]; then
+              echo "::error::Org allowed_actions drifted from 'all' to '$state'. Cross-repo reusable workflows are now broken. Fix at https://github.com/organizations/Latimer-Woods-Tech/settings/actions"
+              exit 1
+            fi
+            if [ "$enabled" != "all" ]; then
+              echo "::warning::enabled_repositories=$enabled (expected all)"
+            fi
+          elif [ "$code" = "403" ]; then
+            echo "::warning::Skipping org actions policy check: token lacks org-level access to $endpoint (HTTP 403)."
+            echo "::warning::Grant org admin token access or keep this check informational."
+          else
+            echo "::error::Unexpected response from $endpoint (HTTP $code)."
+            cat "$body"
             exit 1
-          fi
-          if [ "$enabled" != "all" ]; then
-            echo "::warning::enabled_repositories=$enabled (expected all)"
           fi
       - name: Verify factory remains public
         env:

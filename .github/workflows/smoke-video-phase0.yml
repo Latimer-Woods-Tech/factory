@@ -11,6 +11,7 @@ env:
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     name: Smoke schedule-worker and video-cron
     env:
       SCHEDULE_WORKER_URL: https://schedule-worker.adrper79.workers.dev

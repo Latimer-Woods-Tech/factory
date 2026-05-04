@@ -1,231 +1,224 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { Hono } from 'hono';
-import { createAdminRouter } from './index';
-import type { FactoryDb } from '@latimer-woods-tech/neon';
-import type { Analytics } from '@latimer-woods-tech/analytics';
+import {
+  verifyJwt,
+  scopeMatches,
+  validateSlots,
+  createCapabilityMiddleware,
+  type AuditRecord,
+  type AuditSink,
+  type JwtPayload,
+  type RouteCapability,
+} from './index.js';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+// ---- helpers ---------------------------------------------------------------
+const SECRET = 'test-secret-longer-than-32-chars-please';
 
-function makeAnalytics(): Analytics {
-  return {
-    track: vi.fn(),
-    identify: vi.fn(),
-    businessEvent: vi.fn(),
-    page: vi.fn(),
-  } as unknown as Analytics;
+function b64url(buf: Uint8Array | string): string {
+  const bytes = typeof buf === 'string' ? new TextEncoder().encode(buf) : buf;
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]!);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function makeDb(execute: unknown): FactoryDb {
-  return { execute } as unknown as FactoryDb;
+async function mintHs256(payload: Record<string, unknown>, secret = SECRET): Promise<string> {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const h = b64url(JSON.stringify(header));
+  const p = b64url(JSON.stringify(payload));
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  );
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${h}.${p}`)));
+  return `${h}.${p}.${b64url(sig)}`;
 }
 
-function mountRouter(db: FactoryDb): Hono {
-  const analytics = makeAnalytics();
-  const router = createAdminRouter({ db, analytics, appId: 'test-app' });
-  const app = new Hono();
-  app.route('/admin', router);
-  return app;
-}
+describe('verifyJwt', () => {
+  it('verifies a valid HS256 token', async () => {
+    const tok = await mintHs256({ sub: 'alice', scope: 'admin:read', exp: Math.floor(Date.now() / 1000) + 60 });
+    const p = await verifyJwt(tok, { secret: SECRET });
+    expect(p.sub).toBe('alice');
+  });
 
-async function req(
-  app: Hono,
-  method: string,
-  path: string,
-  body?: unknown,
-): Promise<Response> {
-  const init: RequestInit = { method };
-  if (body !== undefined) {
-    init.body = JSON.stringify(body);
-    init.headers = { 'Content-Type': 'application/json' };
+  it('rejects expired tokens', async () => {
+    const tok = await mintHs256({ sub: 'alice', exp: Math.floor(Date.now() / 1000) - 10 });
+    await expect(verifyJwt(tok, { secret: SECRET })).rejects.toThrow(/expired/);
+  });
+
+  it('rejects bad signature', async () => {
+    const tok = await mintHs256({ sub: 'alice' });
+    await expect(verifyJwt(tok, { secret: 'wrong-secret' })).rejects.toThrow(/bad signature/);
+  });
+
+  it('rejects malformed token', async () => {
+    await expect(verifyJwt('not.a.jwt.too.many', { secret: SECRET })).rejects.toThrow(/malformed/);
+  });
+
+  it('rejects non-HS256 alg', async () => {
+    const h = b64url(JSON.stringify({ alg: 'none', typ: 'JWT' }));
+    const p = b64url(JSON.stringify({ sub: 'a' }));
+    await expect(verifyJwt(`${h}.${p}.`, { secret: SECRET })).rejects.toThrow(/unsupported alg/);
+  });
+
+  it('enforces audience when requested', async () => {
+    const tok = await mintHs256({ sub: 'a', aud: 'other-app' });
+    await expect(verifyJwt(tok, { secret: SECRET, audience: 'my-app' })).rejects.toThrow(/audience/);
+  });
+
+  it('enforces issuer when requested', async () => {
+    const tok = await mintHs256({ sub: 'a', iss: 'other' });
+    await expect(verifyJwt(tok, { secret: SECRET, issuer: 'mine' })).rejects.toThrow(/issuer/);
+  });
+});
+
+describe('scopeMatches', () => {
+  it('matches exact scope', () => {
+    expect(scopeMatches({ scope: 'admin:read users:list' }, 'admin:read')).toBe(true);
+  });
+  it('matches wildcard namespace', () => {
+    expect(scopeMatches({ scope: 'admin:*' }, 'admin:write')).toBe(true);
+  });
+  it('matches root wildcard', () => {
+    expect(scopeMatches({ scope: '*' }, 'admin:anything')).toBe(true);
+  });
+  it('handles array form', () => {
+    expect(scopeMatches({ scopes: ['admin:read'] } as JwtPayload, 'admin:read')).toBe(true);
+  });
+  it('denies missing', () => {
+    expect(scopeMatches({ scope: 'users:read' }, 'admin:write')).toBe(false);
+  });
+});
+
+describe('validateSlots', () => {
+  it('validates strings with regex', async () => {
+    await expect(validateSlots({ id: { type: 'string', regex: '^u_' } }, { id: 'u_123' })).resolves.toBeUndefined();
+    await expect(validateSlots({ id: { type: 'string', regex: '^u_' } }, { id: 'bad' })).rejects.toThrow(/regex/);
+  });
+  it('validates numbers with bounds', async () => {
+    await expect(validateSlots({ n: { type: 'number', min: 1, max: 10 } }, { n: 5 })).resolves.toBeUndefined();
+    await expect(validateSlots({ n: { type: 'number', min: 1 } }, { n: 0 })).rejects.toThrow(/below min/);
+    await expect(validateSlots({ n: { type: 'number', integer: true } }, { n: 1.5 })).rejects.toThrow(/integer/);
+  });
+  it('validates enums', async () => {
+    await expect(validateSlots({ s: { type: 'enum', values: ['a','b'] } }, { s: 'a' })).resolves.toBeUndefined();
+    await expect(validateSlots({ s: { type: 'enum', values: ['a','b'] } }, { s: 'c' })).rejects.toThrow(/enum/);
+  });
+  it('validates booleans', async () => {
+    await expect(validateSlots({ b: { type: 'boolean' } }, { b: true })).resolves.toBeUndefined();
+    await expect(validateSlots({ b: { type: 'boolean' } }, { b: 'yes' })).rejects.toThrow(/boolean/);
+  });
+  it('referential_check via async callback', async () => {
+    const check = vi.fn((v: string) => Promise.resolve(v === 'known'));
+    await expect(validateSlots({ r: { type: 'referential', check, kind: 'user' } }, { r: 'known' })).resolves.toBeUndefined();
+    await expect(validateSlots({ r: { type: 'referential', check, kind: 'user' } }, { r: 'unknown' })).rejects.toThrow(/not found/);
+  });
+  it('throws on missing slot', async () => {
+    await expect(validateSlots({ x: { type: 'string' } }, {})).rejects.toThrow(/missing slot/);
+  });
+});
+
+describe('createCapabilityMiddleware', () => {
+  function makeAudit(): { sink: AuditSink; records: AuditRecord[] } {
+    const records: AuditRecord[] = [];
+    return { sink: { write: (r) => { records.push(r); } }, records };
   }
-  return app.fetch(new Request(`http://localhost${path}`, init));
-}
 
-// ---------------------------------------------------------------------------
-// GET /admin — dashboard
-// ---------------------------------------------------------------------------
-describe('GET /admin', () => {
-  it('returns dashboard summary', async () => {
-    const execute = vi.fn()
-      .mockResolvedValueOnce({ rows: [{ count: '42' }] })  // totalUsers
-      .mockResolvedValueOnce({ rows: [{ count: '30' }] })  // activeUsers
-      .mockResolvedValueOnce({ rows: [{ count: '5' }] });  // recentEvents
-    const app = mountRouter(makeDb(execute));
-    const res = await req(app, 'GET', '/admin');
-    expect(res.status).toBe(200);
-    const body = await res.json() as Record<string, unknown>;
-    expect(body['appId']).toBe('test-app');
-    expect(body['totalUsers']).toBe(42);
-    expect(body['activeUsers']).toBe(30);
-    expect(body['recentEvents']).toBe(5);
+  const cap: RouteCapability = {
+    route: 'POST /admin/users/:id/suspend',
+    side_effects: 'write-app',
+    required_scope: 'admin:write',
+    slots: {
+      id: { type: 'string', regex: '^u_' },
+      reason: { type: 'enum', values: ['spam','fraud','other'] },
+    },
+    extra_guard: 'requires_codeowner_approval',
+  };
+
+  async function request(app: Hono, path: string, init: RequestInit): Promise<Response> {
+    return app.request(`http://test${path}`, init);
+  }
+
+  it('allows when token + scope + slots + approval all pass', async () => {
+    const audit = makeAudit();
+    const tok = await mintHs256({ sub: 'admin', scope: 'admin:write', exp: Math.floor(Date.now()/1000) + 60 });
+    const app = new Hono();
+    app.post('/admin/users/:id/suspend', createCapabilityMiddleware({
+      capability: cap, jwt: { secret: SECRET }, audit: audit.sink,
+      checkCodeownerApproval: () => Promise.resolve({ approved: true }),
+    }), (c) => c.json({ ok: true }));
+    const r = await request(app, '/admin/users/u_123/suspend', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${tok}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ reason: 'spam' }),
+    });
+    expect(r.status).toBe(200);
+    expect(audit.records[0]!.status).toBe('allowed');
+    expect(audit.records[0]!.slots).toMatchObject({ id: 'u_123', reason: 'spam' });
   });
 
-  it('defaults counts to zero when rows are empty', async () => {
-    const execute = vi.fn().mockResolvedValue({ rows: [] });
-    const app = mountRouter(makeDb(execute));
-    const res = await req(app, 'GET', '/admin');
-    expect(res.status).toBe(200);
-    const body = await res.json() as Record<string, unknown>;
-    expect(body['totalUsers']).toBe(0);
-    expect(body['activeUsers']).toBe(0);
-    expect(body['recentEvents']).toBe(0);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// GET /admin/users
-// ---------------------------------------------------------------------------
-describe('GET /admin/users', () => {
-  it('returns user list with default pagination', async () => {
-    const userRow = { id: 'u1', email: 'a@b.com', status: 'active', created_at: '2026-01-01' };
-    const execute = vi.fn().mockResolvedValue({ rows: [userRow] });
-    const app = mountRouter(makeDb(execute));
-    const res = await req(app, 'GET', '/admin/users');
-    expect(res.status).toBe(200);
-    const body = await res.json() as Record<string, unknown>;
-    expect(body['page']).toBe(1);
-    expect(body['limit']).toBe(20);
-    expect(Array.isArray(body['users'])).toBe(true);
+  it('denies when scope is missing', async () => {
+    const audit = makeAudit();
+    const tok = await mintHs256({ sub: 'reader', scope: 'admin:read' });
+    const app = new Hono();
+    app.post('/admin/users/:id/suspend', createCapabilityMiddleware({
+      capability: cap, jwt: { secret: SECRET }, audit: audit.sink,
+      checkCodeownerApproval: () => Promise.resolve({ approved: true }),
+    }), (c) => c.json({ ok: true }));
+    app.onError((err, c) => c.json({ error: err.message }, 'status' in err ? ((err as { status: number }).status as 403) : 500));
+    const r = await request(app, '/admin/users/u_1/suspend', {
+      method: 'POST', headers: { authorization: `Bearer ${tok}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ reason: 'spam' }),
+    });
+    expect(r.status).toBe(403);
+    expect(audit.records[0]!.status).toBe('denied');
   });
 
-  it('respects page and limit query params', async () => {
-    const execute = vi.fn().mockResolvedValue({ rows: [] });
-    const app = mountRouter(makeDb(execute));
-    const res = await req(app, 'GET', '/admin/users?page=2&limit=10');
-    expect(res.status).toBe(200);
-    const body = await res.json() as Record<string, unknown>;
-    expect(body['page']).toBe(2);
-    expect(body['limit']).toBe(10);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// GET /admin/users/:id
-// ---------------------------------------------------------------------------
-describe('GET /admin/users/:id', () => {
-  it('returns user with subscriptions', async () => {
-    const userRow = { id: 'u1', email: 'a@b.com', status: 'active', created_at: '2026-01-01' };
-    const subRow = { plan: 'pro', mrr: 2900, status: 'active' };
-    const execute = vi.fn()
-      .mockResolvedValueOnce({ rows: [userRow] })
-      .mockResolvedValueOnce({ rows: [subRow] });
-    const app = mountRouter(makeDb(execute));
-    const res = await req(app, 'GET', '/admin/users/u1');
-    expect(res.status).toBe(200);
-    const body = await res.json() as Record<string, unknown>;
-    expect((body['user'] as Record<string, unknown>)['id']).toBe('u1');
-    expect(Array.isArray(body['subscriptions'])).toBe(true);
+  it('denies when codeowner approval rejected', async () => {
+    const audit = makeAudit();
+    const tok = await mintHs256({ sub: 'bot', scope: 'admin:write' });
+    const app = new Hono();
+    app.post('/admin/users/:id/suspend', createCapabilityMiddleware({
+      capability: cap, jwt: { secret: SECRET }, audit: audit.sink,
+      checkCodeownerApproval: () => Promise.resolve({ approved: false, reason: 'agent, not codeowner' }),
+    }), (c) => c.json({ ok: true }));
+    app.onError((err, c) => c.json({ error: err.message }, 403));
+    const r = await request(app, '/admin/users/u_1/suspend', {
+      method: 'POST', headers: { authorization: `Bearer ${tok}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ reason: 'spam' }),
+    });
+    expect(r.status).toBe(403);
+    expect(audit.records[0]!.reason).toContain('codeowner');
   });
 
-  it('returns 404 when user not found', async () => {
-    const execute = vi.fn().mockResolvedValue({ rows: [] });
-    const app = mountRouter(makeDb(execute));
-    const res = await req(app, 'GET', '/admin/users/missing');
-    expect(res.status).toBe(404);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// POST /admin/users/:id/suspend
-// ---------------------------------------------------------------------------
-describe('POST /admin/users/:id/suspend', () => {
-  it('suspends a user and returns success', async () => {
-    const execute = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
-    const app = mountRouter(makeDb(execute));
-    const res = await req(app, 'POST', '/admin/users/u1/suspend');
-    expect(res.status).toBe(200);
-    const body = await res.json() as Record<string, unknown>;
-    expect(body['success']).toBe(true);
-    expect(body['status']).toBe('suspended');
+  it('denies when slot validation fails', async () => {
+    const audit = makeAudit();
+    const tok = await mintHs256({ sub: 'admin', scope: 'admin:write' });
+    const app = new Hono();
+    app.post('/admin/users/:id/suspend', createCapabilityMiddleware({
+      capability: cap, jwt: { secret: SECRET }, audit: audit.sink,
+      checkCodeownerApproval: () => Promise.resolve({ approved: true }),
+    }), (c) => c.json({ ok: true }));
+    app.onError((err, c) => c.json({ error: err.message }, 422));
+    const r = await request(app, '/admin/users/bad-id/suspend', {
+      method: 'POST', headers: { authorization: `Bearer ${tok}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ reason: 'spam' }),
+    });
+    expect(r.status).toBe(422);
+    expect(audit.records[0]!.reason).toMatch(/regex/);
   });
 
-  it('returns 404 when user not found', async () => {
-    const execute = vi.fn().mockResolvedValue({ rows: [], rowCount: 0 });
-    const app = mountRouter(makeDb(execute));
-    const res = await req(app, 'POST', '/admin/users/missing/suspend');
-    expect(res.status).toBe(404);
-  });
-
-  it('returns 404 when rowCount is null (driver returns null for rowCount)', async () => {
-    const execute = vi.fn().mockResolvedValue({ rows: [], rowCount: null });
-    const app = mountRouter(makeDb(execute));
-    const res = await req(app, 'POST', '/admin/users/missing/suspend');
-    expect(res.status).toBe(404);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// GET /admin/events
-// ---------------------------------------------------------------------------
-describe('GET /admin/events', () => {
-  it('returns recent events with parsed properties (string)', async () => {
-    const evtRow = {
-      event: 'page.view',
-      user_id: 'u1',
-      occurred_at: '2026-01-01T00:00:00Z',
-      properties: '{"page":"/home"}',
-    };
-    const execute = vi.fn().mockResolvedValue({ rows: [evtRow] });
-    const app = mountRouter(makeDb(execute));
-    const res = await req(app, 'GET', '/admin/events');
-    expect(res.status).toBe(200);
-    const body = await res.json() as { events: Array<Record<string, unknown>> };
-    expect(body.events).toHaveLength(1);
-    expect(body.events[0]?.['properties']).toEqual({ page: '/home' });
-  });
-
-  it('returns recent events with pre-parsed properties (object)', async () => {
-    const evtRow = {
-      event: 'user.signup',
-      user_id: 'u2',
-      occurred_at: '2026-01-02T00:00:00Z',
-      properties: { source: 'organic' },
-    };
-    const execute = vi.fn().mockResolvedValue({ rows: [evtRow] });
-    const app = mountRouter(makeDb(execute));
-    const res = await req(app, 'GET', '/admin/events');
-    expect(res.status).toBe(200);
-    const body = await res.json() as { events: Array<Record<string, unknown>> };
-    expect(body.events[0]?.['properties']).toEqual({ source: 'organic' });
-  });
-});
-
-// ---------------------------------------------------------------------------
-// onError — non-FactoryBaseError handler
-// ---------------------------------------------------------------------------
-describe('onError fallback', () => {
-  it('returns 500 for unexpected non-FactoryBaseError exceptions', async () => {
-    // Reject with a plain Error, which is not a FactoryBaseError
-    const execute = vi.fn().mockRejectedValue(new Error('unexpected'));
-    const app = mountRouter(makeDb(execute));
-    // dashboard route will throw since execute rejects
-    const res = await req(app, 'GET', '/admin');
-    expect(res.status).toBe(500);
-    const body = await res.json() as Record<string, unknown>;
-    expect(body['error']).toBe('Internal server error');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// GET /admin/health
-// ---------------------------------------------------------------------------
-describe('GET /admin/health', () => {
-  it('returns ok when db is healthy', async () => {
-    const execute = vi.fn().mockResolvedValue({ rows: [{ '?column?': 1 }] });
-    const app = mountRouter(makeDb(execute));
-    const res = await req(app, 'GET', '/admin/health');
-    expect(res.status).toBe(200);
-    const body = await res.json() as Record<string, unknown>;
-    expect(body['status']).toBe('ok');
-    expect(body['db']).toBe('connected');
-  });
-
-  it('returns 500 when db connectivity fails', async () => {
-    const execute = vi.fn().mockRejectedValue(new Error('connection refused'));
-    const app = mountRouter(makeDb(execute));
-    const res = await req(app, 'GET', '/admin/health');
-    expect(res.status).toBe(500);
+  it('denies when bearer token missing', async () => {
+    const audit = makeAudit();
+    const app = new Hono();
+    app.post('/admin/users/:id/suspend', createCapabilityMiddleware({
+      capability: cap, jwt: { secret: SECRET }, audit: audit.sink,
+    }), (c) => c.json({ ok: true }));
+    app.onError((err, c) => c.json({ error: err.message }, 401));
+    const r = await request(app, '/admin/users/u_1/suspend', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ reason: 'spam' }),
+    });
+    expect(r.status).toBe(401);
+    expect(audit.records[0]!.status).toBe('denied');
   });
 });
