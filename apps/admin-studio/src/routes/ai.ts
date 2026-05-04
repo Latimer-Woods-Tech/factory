@@ -36,12 +36,42 @@ async function loadFactoryContext(githubToken: string): Promise<string> {
   return _factoryContextCache ?? '';
 }
 
-function toLlmEnv(env: Pick<Env, 'ANTHROPIC_API_KEY' | 'XAI_API_KEY' | 'GROQ_API_KEY'>): LLMEnv {
+function toLlmEnv(
+  env: Pick<
+    Env,
+    | 'AI_GATEWAY_BASE_URL'
+    | 'ANTHROPIC_API_KEY'
+    | 'XAI_API_KEY'
+    | 'GROQ_API_KEY'
+    | 'VERTEX_ACCESS_TOKEN'
+    | 'VERTEX_PROJECT'
+    | 'VERTEX_LOCATION'
+  >,
+): LLMEnv {
   return {
+    AI_GATEWAY_BASE_URL: env.AI_GATEWAY_BASE_URL ?? '',
     ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY,
     GROK_API_KEY: env.XAI_API_KEY ?? '',
     GROQ_API_KEY: env.GROQ_API_KEY ?? '',
+    VERTEX_ACCESS_TOKEN: env.VERTEX_ACCESS_TOKEN ?? '',
+    VERTEX_PROJECT: env.VERTEX_PROJECT ?? '',
+    VERTEX_LOCATION: env.VERTEX_LOCATION ?? '',
   };
+}
+
+function getMissingCompleteLlmConfig(
+  env: Pick<
+    Env,
+    'AI_GATEWAY_BASE_URL' | 'ANTHROPIC_API_KEY' | 'VERTEX_ACCESS_TOKEN' | 'VERTEX_PROJECT' | 'VERTEX_LOCATION'
+  >,
+): string[] {
+  const missing: string[] = [];
+  if (!env.AI_GATEWAY_BASE_URL) missing.push('AI_GATEWAY_BASE_URL');
+  if (!env.ANTHROPIC_API_KEY) missing.push('ANTHROPIC_API_KEY');
+  if (!env.VERTEX_ACCESS_TOKEN) missing.push('VERTEX_ACCESS_TOKEN');
+  if (!env.VERTEX_PROJECT) missing.push('VERTEX_PROJECT');
+  if (!env.VERTEX_LOCATION) missing.push('VERTEX_LOCATION');
+  return missing;
 }
 
 const ai = new Hono<AppEnv>();
@@ -288,6 +318,10 @@ ai.post('/proposals', async (c) => {
   if (!c.env.ANTHROPIC_API_KEY) {
     return c.json({ error: 'ANTHROPIC_API_KEY not configured' }, 503);
   }
+  const missingLlmConfig = getMissingCompleteLlmConfig(c.env);
+  if (missingLlmConfig.length > 0) {
+    return c.json({ error: 'LLM configuration incomplete', missing: missingLlmConfig }, 503);
+  }
 
   const language = body.language ?? guessLanguage(body.path);
   const system = [
@@ -383,6 +417,7 @@ function guessLanguage(path: string): string {
 export async function runAnalysisCycle(env: Env): Promise<void> {
   // 1. Fetch diagnostics from schedule-worker via service binding
   if (!env.SCHEDULE_WORKER) return;
+  if (getMissingCompleteLlmConfig(env).length > 0) return;
 
   let diag: unknown;
   try {
@@ -447,6 +482,10 @@ ai.post('/propose-fix', async (c) => {
     return c.json({ error: 'filePath and finding required' }, 400);
   }
   if (!c.env.GITHUB_TOKEN) return c.json({ error: 'GITHUB_TOKEN not configured' }, 503);
+  const missingLlmConfig = getMissingCompleteLlmConfig(c.env);
+  if (missingLlmConfig.length > 0) {
+    return c.json({ error: 'LLM configuration incomplete', missing: missingLlmConfig }, 503);
+  }
 
   // 1. Read source file via existing github-api lib
   // fetchFile is imported at module level; get remaining helpers
