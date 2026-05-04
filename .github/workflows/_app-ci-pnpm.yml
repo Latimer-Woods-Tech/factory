@@ -103,6 +103,32 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@latimer-woods-tech'
           cache: 'pnpm'
+      - name: Resolve factory workflow ref
+        id: factory-ref
+        run: |
+          # Expected format: owner/repo/.github/workflows/name.yml@ref
+          case "$GITHUB_WORKFLOW_REF" in
+            *@*)
+              # Extract ref after the last @ using bash parameter expansion.
+              echo "ref=${GITHUB_WORKFLOW_REF##*@}" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unexpected github.workflow_ref: $GITHUB_WORKFLOW_REF" >&2
+              exit 1
+              ;;
+          esac
+        env:
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+      - name: Checkout factory validation scripts
+        uses: actions/checkout@v6
+        with:
+          repository: Latimer-Woods-Tech/factory
+          ref: ${{ steps.factory-ref.outputs.ref }}
+          path: .factory-workflows
+          sparse-checkout: |
+            scripts/check-drizzle-migration-integrity.mjs
+      - name: Validate Drizzle migration integrity
+        run: node "${{ github.workspace }}/.factory-workflows/scripts/check-drizzle-migration-integrity.mjs" .
       - name: Configure npm auth for GitHub Packages
         run: echo "//npm.pkg.github.com/:_authToken=${{ steps.app-token.outputs.token }}" >> .npmrc
       - run: pnpm install --frozen-lockfile
