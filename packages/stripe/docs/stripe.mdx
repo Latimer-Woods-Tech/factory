@@ -1,11 +1,11 @@
 ---
 title: "@latimer-woods-tech/stripe"
-description: Stripe webhook handling and subscription lifecycle management.
+description: Stripe webhook handling, subscription lifecycle, and Customer Portal for Cloudflare Workers.
 ---
 
 # @latimer-woods-tech/stripe
 
-Stripe webhook verification and subscription event routing for Cloudflare Workers. Depends on `@latimer-woods-tech/errors` and `@latimer-woods-tech/logger`.
+Stripe billing primitives for Cloudflare Workers. Depends on `@latimer-woods-tech/errors`.
 
 ## Installation
 
@@ -22,83 +22,155 @@ wrangler secret put STRIPE_WEBHOOK_SECRET
 
 ## API
 
-### `verifyWebhook(request, secret)`
+### `createStripeClient(secretKey)`
 
-Verifies a Stripe webhook signature. Returns the parsed event or throws `ValidationError`.
+Creates a Stripe client pre-configured with the Factory-standard API version and the Workers-native fetch HTTP client.
 
 ```typescript
-function verifyWebhook(
-  request: Request,
-  secret: string,
-): Promise<StripeEvent>;
+function createStripeClient(secretKey: string): Stripe;
 ```
 
-### `handleSubscriptionEvent(event, handlers)`
+### `validateWebhook(request, webhookSecret, stripeClient)`
 
-Routes a `customer.subscription.*` event to the appropriate handler.
+Verifies a Stripe webhook signature and returns the parsed event. Throws `ValidationError` if the signature header is missing or invalid.
 
 ```typescript
-function handleSubscriptionEvent(
-  event: StripeEvent,
-  handlers: {
-    onCreated?: (sub: StripeSubscription) => Promise<void>;
-    onUpdated?: (sub: StripeSubscription) => Promise<void>;
-    onDeleted?: (sub: StripeSubscription) => Promise<void>;
-    onTrialEnding?: (sub: StripeSubscription) => Promise<void>;
-  },
-): Promise<void>;
+function validateWebhook(
+  request: Request,
+  webhookSecret: string,
+  stripeClient: Stripe,
+): Promise<Stripe.Event>;
+```
+
+### `getSubscription(customerId, stripeClient)`
+
+Returns the current subscription status for a Stripe customer. `status` is `'none'` when no subscription exists.
+
+```typescript
+function getSubscription(
+  customerId: string,
+  stripeClient: Stripe,
+): Promise<SubscriptionStatus>;
 ```
 
 ### `createCheckoutSession(opts)`
 
-Creates a Stripe Checkout session.
+Creates a Stripe Checkout session for a subscription or one-time payment. Returns the hosted Checkout URL.
 
 ```typescript
-function createCheckoutSession(opts: {
-  secretKey: string;
+interface CreateCheckoutSessionOptions {
   priceId: string;
-  customerId?: string;
+  customerId: string;
   successUrl: string;
   cancelUrl: string;
+  stripeClient: Stripe;
+  /** Defaults to 'subscription'. Use 'payment' for one-time purchases. */
+  mode?: 'subscription' | 'payment';
+  /** Idempotency key to prevent duplicate session creation on retry. */
+  idempotencyKey?: string;
+  /** Explicitly set accepted payment method types (e.g. ['card']). */
+  paymentMethodTypes?: string[];
+  /** Metadata to attach to the session. */
   metadata?: Record<string, string>;
-}): Promise<{ url: string; sessionId: string }>;
+}
+
+function createCheckoutSession(opts: CreateCheckoutSessionOptions): Promise<string>;
 ```
 
 ### `createPortalSession(opts)`
 
-Creates a Stripe Customer Portal session for self-service subscription management.
+Creates a Stripe Customer Portal session for self-service subscription management. Returns the hosted portal URL.
 
 ```typescript
-function createPortalSession(opts: {
-  secretKey: string;
+interface CreatePortalSessionOptions {
   customerId: string;
   returnUrl: string;
-}): Promise<{ url: string }>;
+  stripeClient: Stripe;
+}
+
+function createPortalSession(opts: CreatePortalSessionOptions): Promise<string>;
 ```
 
-## Webhook example
+### `stripeWebhookHandler(options)`
+
+Hono route handler for `/webhooks/stripe`. Validates the Stripe signature, classifies the subscription event, and dispatches to the matching handler.
 
 ```typescript
-import { verifyWebhook, handleSubscriptionEvent } from '@latimer-woods-tech/stripe';
+function stripeWebhookHandler(options: StripeWebhookHandlerOptions): Handler;
+```
 
-app.post('/webhook/stripe', async (c) => {
-  const event = await verifyWebhook(c.req.raw, c.env.STRIPE_WEBHOOK_SECRET);
+### `priceToTier(priceId, tierMap)`
 
-  await handleSubscriptionEvent(event, {
-    onCreated: async (sub) => {
-      await db.execute(
-        'UPDATE users SET stripe_subscription_id = $1 WHERE stripe_customer_id = $2',
-        [sub.id, sub.customer],
-      );
-    },
-    onDeleted: async (sub) => {
-      await db.execute(
-        'UPDATE users SET subscription_status = $1 WHERE stripe_customer_id = $2',
-        ['canceled', sub.customer],
-      );
-    },
+Maps a Stripe price ID to an internal tier slug. Returns `'unknown'` for unmapped IDs.
+
+```typescript
+function priceToTier(priceId: string, tierMap: Record<string, string>): string;
+```
+
+## Full example: subscription + portal
+
+```typescript
+import {
+  createStripeClient,
+  createCheckoutSession,
+  createPortalSession,
+  stripeWebhookHandler,
+} from '@latimer-woods-tech/stripe';
+
+const stripe = createStripeClient(env.STRIPE_SECRET_KEY);
+
+// Checkout — frontend passes the appropriate priceId (monthly, annual, or one-time)
+app.post('/api/checkout', authMiddleware, async (c) => {
+  const { priceId } = await c.req.json<{ priceId: string }>();
+  const user = c.get('user');
+
+  const url = await createCheckoutSession({
+    priceId,
+    customerId: user.stripeCustomerId,
+    successUrl: `${env.APP_URL}/checkout/success`,
+    cancelUrl: `${env.APP_URL}/pricing`,
+    stripeClient: stripe,
+    idempotencyKey: `checkout_${user.id}_${priceId}`,
+    paymentMethodTypes: ['card'],
+    metadata: { userId: user.id },
   });
 
-  return c.json({ received: true });
+  return c.redirect(url);
 });
+
+// Customer Portal — self-service cancel / upgrade / payment details
+app.post('/api/billing/portal', authMiddleware, async (c) => {
+  const user = c.get('user');
+
+  const url = await createPortalSession({
+    customerId: user.stripeCustomerId,
+    returnUrl: `${env.APP_URL}/account`,
+    stripeClient: stripe,
+  });
+
+  return c.redirect(url);
+});
+
+// Webhook handler
+app.post('/webhooks/stripe', stripeWebhookHandler({
+  webhookSecret: env.STRIPE_WEBHOOK_SECRET,
+  stripeClient: stripe,
+  handlers: {
+    created: async (status) => {
+      await db.insert(subscriptions).values({
+        customerId: status.customerId,
+        status: status.status,
+        tier: status.tier,
+        currentPeriodEnd: status.currentPeriodEnd,
+      });
+    },
+    canceled: async (status) => {
+      await db.delete(subscriptions)
+        .where(eq(subscriptions.customerId, status.customerId));
+    },
+    past_due: async (status) => {
+      logger.warn('Subscription payment failed', { customerId: status.customerId });
+    },
+  },
+}));
 ```

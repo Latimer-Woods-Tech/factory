@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   createCheckoutSession,
+  createPortalSession,
   createStripeClient,
   getSubscription,
   priceToTier,
@@ -55,13 +56,15 @@ function buildStripeMock(overrides: Record<string, unknown> = {}) {
   const webhooks = { constructEventAsync: vi.fn() };
   const subscriptionsList = vi.fn();
   const checkoutCreate = vi.fn();
+  const portalCreate = vi.fn();
   const client = {
     webhooks,
     subscriptions: { list: subscriptionsList },
     checkout: { sessions: { create: checkoutCreate } },
+    billingPortal: { sessions: { create: portalCreate } },
     ...overrides,
   } as unknown as Stripe;
-  return { client, webhooks, subscriptionsList, checkoutCreate };
+  return { client, webhooks, subscriptionsList, checkoutCreate, portalCreate };
 }
 
 describe('createStripeClient', () => {
@@ -201,13 +204,16 @@ describe('createCheckoutSession', () => {
     });
 
     expect(url).toBe('https://checkout.stripe.com/sess_1');
-    expect(checkoutCreate).toHaveBeenCalledWith({
-      mode: 'subscription',
-      customer: 'cus_123',
-      success_url: 'https://app/ok',
-      cancel_url: 'https://app/cancel',
-      line_items: [{ price: 'price_pro', quantity: 1 }],
-    });
+    expect(checkoutCreate).toHaveBeenCalledWith(
+      {
+        mode: 'subscription',
+        customer: 'cus_123',
+        success_url: 'https://app/ok',
+        cancel_url: 'https://app/cancel',
+        line_items: [{ price: 'price_pro', quantity: 1 }],
+      },
+      {},
+    );
   });
 
   it('throws when Stripe does not return a URL', async () => {
@@ -223,6 +229,140 @@ describe('createCheckoutSession', () => {
         stripeClient: client,
       }),
     ).rejects.toThrow('Stripe did not return a checkout URL');
+  });
+
+  it('passes mode:"payment" for one-time purchases', async () => {
+    const { client, checkoutCreate } = buildStripeMock();
+    checkoutCreate.mockResolvedValue({ url: 'https://checkout.stripe.com/sess_2' });
+
+    const url = await createCheckoutSession({
+      priceId: 'price_once',
+      customerId: 'cus_123',
+      successUrl: 'https://app/ok',
+      cancelUrl: 'https://app/cancel',
+      stripeClient: client,
+      mode: 'payment',
+    });
+
+    expect(url).toBe('https://checkout.stripe.com/sess_2');
+    expect(checkoutCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: 'payment' }),
+      {},
+    );
+  });
+
+  it('passes idempotencyKey as a request option', async () => {
+    const { client, checkoutCreate } = buildStripeMock();
+    checkoutCreate.mockResolvedValue({ url: 'https://checkout.stripe.com/sess_3' });
+
+    await createCheckoutSession({
+      priceId: 'price_pro',
+      customerId: 'cus_123',
+      successUrl: 'https://app/ok',
+      cancelUrl: 'https://app/cancel',
+      stripeClient: client,
+      idempotencyKey: 'idem_abc123',
+    });
+
+    expect(checkoutCreate).toHaveBeenCalledWith(
+      expect.any(Object),
+      { idempotencyKey: 'idem_abc123' },
+    );
+  });
+
+  it('passes paymentMethodTypes when provided', async () => {
+    const { client, checkoutCreate } = buildStripeMock();
+    checkoutCreate.mockResolvedValue({ url: 'https://checkout.stripe.com/sess_4' });
+
+    await createCheckoutSession({
+      priceId: 'price_pro',
+      customerId: 'cus_123',
+      successUrl: 'https://app/ok',
+      cancelUrl: 'https://app/cancel',
+      stripeClient: client,
+      paymentMethodTypes: ['card'],
+    });
+
+    expect(checkoutCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ payment_method_types: ['card'] }),
+      {},
+    );
+  });
+
+  it('passes metadata when provided', async () => {
+    const { client, checkoutCreate } = buildStripeMock();
+    checkoutCreate.mockResolvedValue({ url: 'https://checkout.stripe.com/sess_5' });
+
+    await createCheckoutSession({
+      priceId: 'price_pro',
+      customerId: 'cus_123',
+      successUrl: 'https://app/ok',
+      cancelUrl: 'https://app/cancel',
+      stripeClient: client,
+      metadata: { userId: 'u_42', tier: 'pro' },
+    });
+
+    expect(checkoutCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ metadata: { userId: 'u_42', tier: 'pro' } }),
+      {},
+    );
+  });
+
+  it('omits payment_method_types and metadata when not provided', async () => {
+    const { client, checkoutCreate } = buildStripeMock();
+    checkoutCreate.mockResolvedValue({ url: 'https://checkout.stripe.com/sess_6' });
+
+    await createCheckoutSession({
+      priceId: 'price_pro',
+      customerId: 'cus_123',
+      successUrl: 'https://app/ok',
+      cancelUrl: 'https://app/cancel',
+      stripeClient: client,
+    });
+
+    // Exact match confirms neither payment_method_types nor metadata was passed
+    expect(checkoutCreate).toHaveBeenCalledWith(
+      {
+        mode: 'subscription',
+        customer: 'cus_123',
+        success_url: 'https://app/ok',
+        cancel_url: 'https://app/cancel',
+        line_items: [{ price: 'price_pro', quantity: 1 }],
+      },
+      {},
+    );
+  });
+});
+
+describe('createPortalSession', () => {
+  it('returns the portal URL', async () => {
+    const { client, portalCreate } = buildStripeMock();
+    portalCreate.mockResolvedValue({ url: 'https://billing.stripe.com/portal_1' });
+
+    const url = await createPortalSession({
+      customerId: 'cus_123',
+      returnUrl: 'https://app/account',
+      stripeClient: client,
+    });
+
+    expect(url).toBe('https://billing.stripe.com/portal_1');
+    expect(portalCreate).toHaveBeenCalledWith({
+      customer: 'cus_123',
+      return_url: 'https://app/account',
+    });
+  });
+
+  it('throws when Stripe does not return a URL', async () => {
+    const { client, portalCreate } = buildStripeMock();
+    portalCreate.mockResolvedValue({ url: null });
+
+    await expect(
+      createPortalSession({
+        customerId: 'cus_123',
+        returnUrl: 'https://app/account',
+        stripeClient: client,
+      }),
+    ).rejects.toThrow('Stripe did not return a portal URL');
   });
 });
 
