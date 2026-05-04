@@ -39,7 +39,7 @@ jobs:
       - name: Build dependency packages
         run: |
           set -euo pipefail
-          for pkg in errors monitoring logger auth neon llm studio-core; do
+          for pkg in errors monitoring logger neon llm studio-core; do
             echo "=== Installing + building packages/${pkg} ==="
             cd "packages/${pkg}"
             npm ci --ignore-scripts
