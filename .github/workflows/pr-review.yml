@@ -1,0 +1,44 @@
+name: Canonical PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+
+# Cancel in-progress review when a new push lands on the same PR
+concurrency:
+  group: pr-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    name: Factory architecture review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Skip draft PRs — re-triggers automatically when marked ready
+    if: ${{ !github.event.pull_request.draft }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          client-id: ${{ secrets.FACTORY_APP_CLIENT_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: Latimer-Woods-Tech
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Run canonical review
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: claude-sonnet-4-20250514
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .github/scripts/pr-review.mjs
