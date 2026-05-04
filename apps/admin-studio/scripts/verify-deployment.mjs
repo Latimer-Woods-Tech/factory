@@ -8,7 +8,10 @@
  *  CI green = code compiled. curl 200 = it actually works. These are not the same thing."
  * 
  * This script runs comprehensive smoke tests on deployed admin-studio workers.
- * Usage: npm run verify -- [env] [--verbose]
+ * Usage:
+ *   node scripts/verify-deployment.mjs [env]
+ *   node scripts/verify-deployment.mjs [env] --base-url https://api.example.com
+ *   VERIFY_BASE_URL=https://api.example.com node scripts/verify-deployment.mjs [env]
  */
 
 import { spawn } from 'child_process';
@@ -55,6 +58,14 @@ async function curl(url, options = {}) {
   });
 }
 
+function parseJsonSafe(text) {
+  try {
+    return { ok: true, value: JSON.parse(text) };
+  } catch {
+    return { ok: false, value: null };
+  }
+}
+
 async function test(name, fn) {
   try {
     await fn();
@@ -67,13 +78,32 @@ async function test(name, fn) {
   }
 }
 
-async function verify(env = DEFAULT_ENV) {
+function resolveBaseUrl(env, argv) {
+  const cliIdx = argv.indexOf('--base-url');
+  const cliBase = cliIdx >= 0 ? argv[cliIdx + 1] : undefined;
+  const envBase = process.env.VERIFY_BASE_URL;
+
+  if (cliBase) return cliBase.replace(/\/$/, '');
+  if (envBase) return envBase.replace(/\/$/, '');
+
   const host = ENVS[env];
   if (!host) {
     throw new Error(`Unknown env: ${env}. Must be one of: ${Object.keys(ENVS).join(', ')}`);
   }
+  return `https://${host}`;
+}
 
-  const base = `https://${host}`;
+function assertNotEdgeError(res, base) {
+  const body = res.body ?? '';
+  if (res.status === 404 && body.includes('error code: 1042')) {
+    throw new Error(
+      `Route not active for ${base} (Cloudflare 1042). Use --base-url with the active custom domain.`,
+    );
+  }
+}
+
+async function verify(env = DEFAULT_ENV, argv = process.argv.slice(2)) {
+  const base = resolveBaseUrl(env, argv);
   console.log(`\n🔍 Verifying admin-studio (${env}): ${base}\n`);
 
   const results = [];
@@ -85,8 +115,11 @@ async function verify(env = DEFAULT_ENV) {
   results.push(
     await test('/health returns 200 + env field', async () => {
       const res = await curl(`${base}/health`, { timeout: 5 });
+      assertNotEdgeError(res, base);
       if (res.status !== 200) throw new Error(`Expected 200, got ${res.status}`);
-      const json = JSON.parse(res.body);
+      const parsed = parseJsonSafe(res.body);
+      if (!parsed.ok) throw new Error('Health response was not valid JSON');
+      const json = parsed.value;
       if (!json.env) throw new Error('Missing env field');
       if (json.env !== env) throw new Error(`Expected env=${env}, got ${json.env}`);
     })
@@ -95,8 +128,11 @@ async function verify(env = DEFAULT_ENV) {
   results.push(
     await test('/manifest is public + has manifestVersion', async () => {
       const res = await curl(`${base}/manifest`, { timeout: 5 });
+      assertNotEdgeError(res, base);
       if (res.status !== 200) throw new Error(`Expected 200, got ${res.status}`);
-      const json = JSON.parse(res.body);
+      const parsed = parseJsonSafe(res.body);
+      if (!parsed.ok) throw new Error('Manifest response was not valid JSON');
+      const json = parsed.value;
       if (json.manifestVersion !== 1) throw new Error('manifestVersion not 1');
       if (json.app !== 'admin-studio') throw new Error('app field wrong');
     })
@@ -113,8 +149,11 @@ async function verify(env = DEFAULT_ENV) {
         data: { email: 'bad@example.com', password: 'wrong', env },
         timeout: 5,
       });
+      assertNotEdgeError(res, base);
       if (res.status !== 401) throw new Error(`Expected 401, got ${res.status}`);
-      const json = JSON.parse(res.body);
+      const parsed = parseJsonSafe(res.body);
+      if (!parsed.ok) throw new Error('Login response was not valid JSON');
+      const json = parsed.value;
       if (!json.error) throw new Error('Missing error field');
     })
   );
@@ -127,6 +166,7 @@ async function verify(env = DEFAULT_ENV) {
         data: { email: 'test@example.com', password: 'test', env: wrongEnv },
         timeout: 5,
       });
+      assertNotEdgeError(res, base);
       // Should reject with 400 because env doesn't match worker's env
       if (res.status !== 400) throw new Error(`Expected 400, got ${res.status}`);
     })
@@ -139,8 +179,11 @@ async function verify(env = DEFAULT_ENV) {
   results.push(
     await test('/me returns 401 without bearer token', async () => {
       const res = await curl(`${base}/me/`, { timeout: 5 });
+      assertNotEdgeError(res, base);
       if (res.status !== 401) throw new Error(`Expected 401, got ${res.status}`);
-      const json = JSON.parse(res.body);
+      const parsed = parseJsonSafe(res.body);
+      if (!parsed.ok) throw new Error('/me response was not valid JSON');
+      const json = parsed.value;
       if (!json.error) throw new Error('Missing error field');
     })
   );
@@ -151,8 +194,11 @@ async function verify(env = DEFAULT_ENV) {
         headers: { Authorization: 'Bearer invalid' },
         timeout: 5,
       });
+      assertNotEdgeError(res, base);
       if (res.status !== 401) throw new Error(`Expected 401, got ${res.status}`);
-      const json = JSON.parse(res.body);
+      const parsed = parseJsonSafe(res.body);
+      if (!parsed.ok) throw new Error('/me invalid-token response was not valid JSON');
+      const json = parsed.value;
       if (!json.error) throw new Error('Missing error field');
       if (!json.requestId) throw new Error('Missing requestId for observability');
     })
@@ -161,6 +207,7 @@ async function verify(env = DEFAULT_ENV) {
   results.push(
     await test('/tests returns 401 without token', async () => {
       const res = await curl(`${base}/tests/`, { timeout: 5 });
+      assertNotEdgeError(res, base);
       if (res.status !== 401) throw new Error(`Expected 401, got ${res.status}`);
     })
   );
@@ -168,6 +215,7 @@ async function verify(env = DEFAULT_ENV) {
   results.push(
     await test('/repo/tree returns 401 without token', async () => {
       const res = await curl(`${base}/repo/tree`, { timeout: 5 });
+      assertNotEdgeError(res, base);
       if (res.status !== 401) throw new Error(`Expected 401, got ${res.status}`);
     })
   );
@@ -179,8 +227,11 @@ async function verify(env = DEFAULT_ENV) {
   results.push(
     await test('404 on unknown path', async () => {
       const res = await curl(`${base}/unknown-route-xyz123`, { timeout: 5 });
+      assertNotEdgeError(res, base);
       if (res.status !== 404) throw new Error(`Expected 404, got ${res.status}`);
-      const json = JSON.parse(res.body);
+      const parsed = parseJsonSafe(res.body);
+      if (!parsed.ok) throw new Error('404 response was not valid JSON');
+      const json = parsed.value;
       if (!json.error) throw new Error('Missing error field');
       if (!json.requestId) throw new Error('Missing requestId');
     })
@@ -204,8 +255,8 @@ async function verify(env = DEFAULT_ENV) {
   }
 }
 
-const env = process.argv[2] || DEFAULT_ENV;
-verify(env).catch((err) => {
+const env = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : DEFAULT_ENV;
+verify(env, process.argv.slice(2)).catch((err) => {
   console.error('Fatal error:', err.message);
   process.exit(2);
 });
