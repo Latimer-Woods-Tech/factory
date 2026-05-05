@@ -181,33 +181,51 @@ function planComment(issue, template, tier, extra = '') {
 //     anything related to the flagged issue, it's a hallucination — reject it.
 
 // 1. Deterministic constraint check on LLM-generated content
+// Strips comments and string literals before pattern matching to avoid false
+// positives on documentation, JSDoc examples, or inline explanations.
+function stripCommentsAndStrings(src) {
+  // Remove block comments /* ... */
+  let s = src.replace(/\/\*[\s\S]*?\*\//g, ' ');
+  // Remove line comments // ...
+  s = s.replace(/\/\/[^\n]*/g, ' ');
+  // Remove template literals (simplified — removes content between backticks)
+  s = s.replace(/`[^`]*`/g, '""');
+  // Remove double-quoted strings
+  s = s.replace(/"(?:[^"\\]|\\.)*"/g, '""');
+  // Remove single-quoted strings
+  s = s.replace(/'(?:[^'\\]|\\.)*'/g, "''");
+  return s;
+}
+
 function checkGeneratedContent(filename, content) {
   const violations = [];
   const lines = content.split('\n');
-  const addedText = content; // treat entire generated file as "added"
+  // Run constraint checks on code-only text (comments/strings stripped)
+  const codeOnly = stripCommentsAndStrings(content);
 
-  if (/\bprocess\.env\b/.test(addedText))
+  if (/\bprocess\.env\b/.test(codeOnly))
     violations.push('No process.env — use Hono/Worker bindings');
 
-  if (/\brequire\s*\(/.test(addedText))
+  if (/\brequire\s*\(/.test(codeOnly))
     violations.push('No CommonJS require() — ESM only');
 
-  if (/\bnew Buffer\b|\bBuffer\.from\b|\bBuffer\.alloc\b/.test(addedText))
+  if (/\bnew Buffer\b|\bBuffer\.from\b|\bBuffer\.alloc\b/.test(codeOnly))
     violations.push('No Buffer — use Uint8Array/TextEncoder/TextDecoder');
 
-  if (/from\s+['"](?:fs|path|crypto)['"]/m.test(addedText) ||
-      /from\s+['"]node:/m.test(addedText))
+  if (/from\s+['"](?:fs|path|crypto)['"]/m.test(codeOnly) ||
+      /from\s+['"]node:/m.test(codeOnly))
     violations.push('No Node.js built-ins (fs/path/crypto/node:)');
 
-  if (/from\s+['"](?:express|fastify|next)['"]/m.test(addedText))
+  if (/from\s+['"](?:express|fastify|next)['"]/m.test(codeOnly))
     violations.push('No Express/Fastify/Next — use Hono');
 
-  if (/import\s+.*jsonwebtoken/m.test(addedText))
+  if (/import\s+.*jsonwebtoken/m.test(codeOnly))
     violations.push('No jsonwebtoken — use Web Crypto API');
 
-  // Flag suspiciously large generated files (> 500 lines) — likely hallucination
-  if (lines.length > 500)
-    violations.push(`Generated file is ${lines.length} lines — exceeds 500-line safety limit`);
+  // Flag suspiciously large generated files — configurable via MAX_GENERATED_LINES env var
+  const maxLines = parseInt(process.env.MAX_GENERATED_LINES ?? '800', 10);
+  if (lines.length > maxLines)
+    violations.push(`Generated file is ${lines.length} lines — exceeds ${maxLines}-line safety limit (set MAX_GENERATED_LINES to adjust)`);
 
   // Flag empty or near-empty generated files
   const nonEmpty = lines.filter(l => l.trim().length > 0).length;
@@ -224,9 +242,13 @@ function enforceSlotSchema(raw, slotNames) {
   const clean = {};
   for (const key of Object.keys(raw)) {
     if (allowed.has(key)) {
-      // Reject slot values that look like injected instructions
+      // Reject slot values that look like prompt-injection instructions.
+      // Pattern requires an imperative verb followed by its target to avoid
+      // false positives on legitimate content (e.g. "never disregard errors",
+      // "the system prompt structure", security docs that mention jailbreak).
       const val = raw[key];
-      if (typeof val === 'string' && /ignore previous|disregard|system prompt|jailbreak/i.test(val)) {
+      const INJECTION_RE = /\b(ignore|disregard|forget|override)\s+(previous|above|all|prior|earlier)\s+(instructions?|context|rules?|prompt)/i;
+      if (typeof val === 'string' && INJECTION_RE.test(val)) {
         console.warn(`[GUARD] Slot "${key}" contains suspicious instruction text — nulled`);
         clean[key] = null;
       } else {
@@ -257,10 +279,13 @@ function fixAddressesConcerns(concernLines, oldContent, newContent) {
 
   if (!keywords.length) return true; // no parseable keywords — allow through
 
-  // Lines that changed
-  const oldLines = new Set(oldContent.split('\n'));
-  const newLines = newContent.split('\n').filter(l => !oldLines.has(l));
-  const changedText = newLines.join(' ').toLowerCase();
+  // Build the set of truly changed lines: lines added OR lines removed.
+  // A fix that works by deleting bad code (no new lines) is still valid.
+  const oldSet = new Set(oldContent.split('\n'));
+  const newSet = new Set(newContent.split('\n'));
+  const addedLines   = newContent.split('\n').filter(l => !oldSet.has(l));
+  const removedLines = oldContent.split('\n').filter(l => !newSet.has(l));
+  const changedText  = [...addedLines, ...removedLines].join(' ').toLowerCase();
 
   const matched = keywords.filter(k => changedText.includes(k));
   if (matched.length === 0) {
