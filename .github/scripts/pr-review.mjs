@@ -24,7 +24,14 @@ const {
   PR_NUMBER,
   REPO,
   PR_SHA,
+  // Max times the bot may post REQUEST_CHANGES before escalating to human.
+  // Set MAX_REVIEW_ATTEMPTS in repo/org secrets. Default: 3.
+  MAX_REVIEW_ATTEMPTS = '3',
+  // GitHub login to notify (request review from) on red-tier PRs and escalations.
+  HUMAN_REVIEWER = 'adrper79-dot',
 } = process.env;
+
+const MAX_ATTEMPTS = parseInt(MAX_REVIEW_ATTEMPTS, 10);
 
 const repo = REPO?.split('/')[1] ?? REPO;
 const prNum = parseInt(PR_NUMBER, 10);
@@ -513,6 +520,82 @@ function buildReviewBody({ tier, decision, deterministicResult, llmResult, prTit
   return lines.join('\n');
 }
 
+// ─── Escalation: limit hit ───────────────────────────────────────────────────
+//
+// Called when the bot has posted REQUEST_CHANGES MAX_ATTEMPTS times without the
+// PR being fixed. Actions taken:
+//   1. Add label `supervisor:review-limit-reached` to the PR
+//   2. Request review from HUMAN_REVIEWER so GitHub sends an immediate notification
+//   3. File a GitHub issue referencing the PR so it appears on the board
+//   4. Post a COMMENT on the PR explaining what happened
+
+async function escalateToHuman(prUrl, prTitle, attemptCount, concerns) {
+  console.log(`[ESCALATE] Review limit reached (${attemptCount}/${MAX_ATTEMPTS}) — escalating to ${HUMAN_REVIEWER}`);
+
+  // 1. Label the PR
+  try {
+    await gh('POST', `/repos/${ORG}/${repo}/issues/${prNum}/labels`, { labels: ['supervisor:review-limit-reached'] });
+  } catch (err) {
+    console.warn(`[WARN] Could not apply escalation label: ${err.message.slice(0, 80)}`);
+  }
+
+  // 2. Request human review
+  try {
+    await gh('POST', `/repos/${ORG}/${repo}/pulls/${prNum}/requested_reviewers`, { reviewers: [HUMAN_REVIEWER] });
+    console.log(`[OK] Requested review from ${HUMAN_REVIEWER}`);
+  } catch (err) {
+    console.warn(`[WARN] Could not request review: ${err.message.slice(0, 80)}`);
+  }
+
+  // 3. File a tracking issue
+  const issueBody = [
+    `## 🚨 Review Limit Reached — Manual Intervention Required`,
+    ``,
+    `PR **[#${prNum}: ${prTitle}](${prUrl})** has been rejected by the 2-party LLM reviewer **${attemptCount} times** without a successful fix.`,
+    ``,
+    `### Unresolved concerns`,
+    ...(concerns.length
+      ? concerns.map(c => `- **${c.reviewer ?? 'Bot'}** · \`${c.file ?? '?'}\`: ${c.detail}`)
+      : ['- No structured concerns recorded — check PR review thread for details']),
+    ``,
+    `### Action required`,
+    `1. Open the PR: ${prUrl}`,
+    `2. Read the review comments from \`factory-cross-repo[bot]\``,
+    `3. Either approve the PR (if the bot is wrong) or close it and fix the underlying issue`,
+    ``,
+    `_Filed automatically by factory-cross-repo after ${attemptCount} failed review cycles._`,
+  ].join('\n');
+
+  try {
+    const issue = await gh('POST', `/repos/${ORG}/${repo}/issues`, {
+      title: `[supervisor] Review limit reached: PR #${prNum} — ${prTitle}`,
+      body: issueBody,
+      labels: ['supervisor:review-limit-reached', 'status:blocked'],
+      assignees: [HUMAN_REVIEWER],
+    });
+    console.log(`[OK] Filed escalation issue #${issue.number}`);
+  } catch (err) {
+    console.warn(`[WARN] Could not file escalation issue: ${err.message.slice(0, 80)}`);
+  }
+
+  // 4. Comment on the PR
+  const comment = [
+    `## 🚨 Review Limit Reached`,
+    ``,
+    `This PR has been rejected by the Grok→Claude 2-party reviewer **${attemptCount} times** (limit: ${MAX_ATTEMPTS}).`,
+    ``,
+    `**@${HUMAN_REVIEWER}** — your review is now required. A tracking issue has been filed in this repository.`,
+    ``,
+    `_The automated fix loop is paused. Push a new commit to restart it, or close this PR._`,
+  ].join('\n');
+
+  try {
+    await gh('POST', `/repos/${ORG}/${repo}/issues/${prNum}/comments`, { body: comment });
+  } catch (err) {
+    console.warn(`[WARN] Could not post escalation comment: ${err.message.slice(0, 80)}`);
+  }
+}
+
 // ─── Post GitHub review ───────────────────────────────────────────────────────
 
 async function postReview(event, body) {
@@ -559,6 +642,27 @@ async function main() {
     return;
   }
 
+  // ── Retry limit check ────────────────────────────────────────────────────────
+  // Count prior REQUEST_CHANGES reviews by this bot across all commits.
+  const priorRejections = existingReviews.filter(
+    r => r.user?.login === REVIEW_BOT_LOGIN && r.state === 'CHANGES_REQUESTED',
+  ).length;
+  console.log(`[INFO] Prior rejections by bot: ${priorRejections}/${MAX_ATTEMPTS}`);
+
+  if (priorRejections >= MAX_ATTEMPTS) {
+    // Gather the last batch of concerns to surface in the escalation issue
+    const lastReview = existingReviews
+      .filter(r => r.user?.login === REVIEW_BOT_LOGIN && r.state === 'CHANGES_REQUESTED')
+      .at(-1);
+    // Parse concerns out of the review body (best-effort)
+    const concernLines = (lastReview?.body ?? '')
+      .split('\n')
+      .filter(l => l.startsWith('- **'))
+      .map(l => ({ detail: l.replace(/^- \*\*[^*]+\*\*[^:]*: /, ''), file: null, reviewer: 'Bot' }));
+    await escalateToHuman(pr.html_url, pr.title, priorRejections, concernLines);
+    return;
+  }
+
   // Fetch changed files
   const files = await gh('GET', `/repos/${ORG}/${repo}/pulls/${prNum}/files`);
   const filenames = files.map(f => f.filename);
@@ -569,6 +673,18 @@ async function main() {
   const truncated = totalDiffChars > MAX_DIFF_CHARS;
 
   console.log(`[INFO] Tier: ${tier} | Files: ${filenames.length} | Diff: ${totalDiffChars} chars | Admin: ${adminMutation}`);
+
+  // ── Red-tier: immediately request human review ────────────────────────────
+  // This triggers a GitHub notification so @HUMAN_REVIEWER can act fast.
+  // The review body will contain both LLM verdicts, so they need only one tap.
+  if (tier === 'red' && HUMAN_REVIEWER) {
+    try {
+      await gh('POST', `/repos/${ORG}/${repo}/pulls/${prNum}/requested_reviewers`, { reviewers: [HUMAN_REVIEWER] });
+      console.log(`[INFO] Red-tier PR — requested immediate review from ${HUMAN_REVIEWER}`);
+    } catch (err) {
+      console.warn(`[WARN] Could not request red-tier review: ${err.message.slice(0, 80)}`);
+    }
+  }
 
   // Deterministic checks
   const addedLines = extractAddedLines(files);
