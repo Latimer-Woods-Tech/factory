@@ -12,6 +12,7 @@ YAML templates that drive autonomous execution. See `../TEMPLATE_SPEC.md` for sc
 | `sentry-triage-new-issue` | yellow | New Sentry error class investigation; diagnoses + proposes fix PR if <5 lines |
 | `wrangler-config-drift-fix` | yellow | Stale wrangler.jsonc bindings — validates against Cloudflare then opens fix PR |
 | `reusable-workflow-rollout` | yellow | Replace bespoke app workflow with factory reusable caller |
+| `branch-protection-hardening` | yellow | Promote a CI check from warn-only to required after 14-day signal-quality gate |
 
 Fixtures live at `tests/supervisor/fixtures/<slug>.yml`. `template-suite.yml` workflow will match + parameterize + gate each template against its fixture on every PR (ships separately).
 
