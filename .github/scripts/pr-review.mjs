@@ -151,7 +151,7 @@ function extractAddedLines(files) {
 const NON_WORKER_PATH_PREFIXES = ['.github/', 'scripts/', 'docs/', 'tests/', 'migrations/'];
 const NON_WORKER_EXTENSIONS = ['.md', '.yml', '.yaml', '.json', '.jsonc', '.toml', '.txt', '.gitignore'];
 
-function isActionsRunnerFile(filename) {
+function isNonWorkerFile(filename) {
   if (NON_WORKER_PATH_PREFIXES.some(p => filename.startsWith(p))) return true;
   const ext = filename.slice(filename.lastIndexOf('.'));
   if (NON_WORKER_EXTENSIONS.includes(ext)) return true;
@@ -258,22 +258,6 @@ Only flag Workers constraint violations in files under \`apps/\`, \`packages/\`,
 - 🟡 Yellow: apps/*/src/**, client/**, tests/** — review required, can approve if clean
 - 🔴 Red: .github/workflows/**, packages/**, migrations/**, wrangler configs, capabilities.yml, service-registry.yml, supervisor plans — highest risk
 
-1. wordis-bond is off-limits to all automation — CODEOWNERS + denylist.
-2. No credentials in docs, memory, plans, issue bodies, PRs, or comments. Rotate if leaked; do not just delete from git.
-3. Red-tier paths never auto-merge: .github/workflows/**, packages/**, migrations/**, Stripe code, production wrangler config, production Neon user tables.
-4. Every /admin mutation requires out-of-band CODEOWNER ✅ — plan-approval and PR-review do not substitute.
-5. Per-run LLM budget: $5 USD hard cap. On BUDGET_EXCEEDED: pause, label supervisor:budget-paused, file a human issue.
-6. Single-writer per app via LockDO. Claim lock before acting, renew every 10 min, release on close.
-7. Issues must carry supervisor:approved-source before supervisor pickup.
-8. Irreversible actions require explicit human approval — includes deleting CF resources, rulesets, Stripe mutations, live email/SMS outside test mode.
-9. No-template issues: classify Red, label supervisor:no-template. Do not invent plans from scratch.
-10. If the plan is wrong, file an issue against ARCHITECTURE.md. Tag a CODEOWNER. Do not improvise.
-
-## Trust Tiers (CODEOWNERS)
-- 🟢 Green: docs/**, *.md, session/** — low risk, auto-approvable
-- 🟡 Yellow: apps/*/src/**, client/**, tests/** — review required, can approve if clean
-- 🔴 Red: .github/workflows/**, packages/**, migrations/**, wrangler configs, capabilities.yml, service-registry.yml, supervisor plans — highest risk
-
 ## Package Dependency Order (violations = circular import risk)
 errors → monitoring → logger → realtime → auth → neon → stripe → llm → telephony → analytics → deploy → testing → email → copy → content → social → seo → crm → compliance → admin → video → schedule → validation`;
 
@@ -320,23 +304,45 @@ Output ONLY valid JSON — no markdown wrapper, no explanation outside the JSON:
 "lgtm": false means the PR has issues that should block merge.
 Keep architectural_concerns to genuine problems — do not flag style preferences or CI runner commands.`;
 
-// ─── LLM review ──────────────────────────────────────────────────────────────
+// ─── Shared LLM payload builder ──────────────────────────────────────────────
+// Both callClaude and callGrok require identical user-message content.
+// Build it once and pass it to each caller to avoid drift between the two.
 
-async function callClaude(prTitle, tier, files, deterministicWarnings) {
+function buildLLMContent(prTitle, tier, files, deterministicWarnings) {
   const filesSummary = files.map(f => `  ${f.status ?? 'modified'}: ${f.filename}`).join('\n');
   const diffText = files
     .filter(f => f.patch)
     .map(f => `### ${f.filename}\n\`\`\`diff\n${f.patch}\n\`\`\``)
     .join('\n\n');
-
-  const truncatedDiff = diffText.length > MAX_DIFF_CHARS
+  const truncated = diffText.length > MAX_DIFF_CHARS;
+  const truncatedDiff = truncated
     ? diffText.slice(0, MAX_DIFF_CHARS) + '\n\n[... diff truncated at 28k chars — review remaining files manually]'
     : diffText;
-
   const deterministicNote = deterministicWarnings.length > 0
     ? `\nDeterministic warnings already flagged (do not re-check):\n${deterministicWarnings.map(w => `- ${w.detail}`).join('\n')}\n`
     : '';
+  const userContent =
+    `PR: "${prTitle}"\n` +
+    `Tier: ${tier.toUpperCase()}\n` +
+    `Files changed:\n${filesSummary}\n` +
+    deterministicNote +
+    `\n---\n${truncatedDiff}`;
+  return { userContent, truncated };
+}
 
+function parseLLMJson(raw) {
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  try {
+    return jsonMatch ? JSON.parse(jsonMatch[0]) : { architectural_concerns: [], warnings: [], summary: raw, lgtm: false };
+  } catch {
+    return { architectural_concerns: [], warnings: [], summary: raw, lgtm: false };
+  }
+}
+
+// ─── LLM review — Claude (party 2) ───────────────────────────────────────────
+
+async function callClaude(prTitle, tier, files, deterministicWarnings) {
+  const { userContent } = buildLLMContent(prTitle, tier, files, deterministicWarnings);
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -352,46 +358,18 @@ async function callClaude(prTitle, tier, files, deterministicWarnings) {
         { type: 'text', text: CONSTRAINT_BLOCK, cache_control: { type: 'ephemeral' } },
         { type: 'text', text: REVIEW_SCHEMA, cache_control: { type: 'ephemeral' } },
       ],
-      messages: [{
-        role: 'user',
-        content:
-          `PR: "${prTitle}"\n` +
-          `Tier: ${tier.toUpperCase()}\n` +
-          `Files changed:\n${filesSummary}\n` +
-          deterministicNote +
-          `\n---\n${truncatedDiff}`,
-      }],
+      messages: [{ role: 'user', content: userContent }],
     }),
   });
-
   if (!res.ok) throw new Error(`Anthropic ${res.status}: ${await res.text()}`);
   const data = await res.json();
-  const raw = data.content?.[0]?.text ?? '{}';
-  const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  try {
-    return jsonMatch ? JSON.parse(jsonMatch[0]) : { architectural_concerns: [], warnings: [], summary: raw, lgtm: false };
-  } catch {
-    return { architectural_concerns: [], warnings: [], summary: raw, lgtm: false };
-  }
+  return parseLLMJson(data.content?.[0]?.text ?? '{}');
 }
 
-// ─── Grok fallback (xAI OpenAI-compatible API) ──────────────────────────────
+// ─── LLM review — Grok (party 1, xAI OpenAI-compatible API) ──────────────────
 
 async function callGrok(prTitle, tier, files, deterministicWarnings) {
-  const filesSummary = files.map(f => `  ${f.status ?? 'modified'}: ${f.filename}`).join('\n');
-  const diffText = files
-    .filter(f => f.patch)
-    .map(f => `### ${f.filename}\n\`\`\`diff\n${f.patch}\n\`\`\``)
-    .join('\n\n');
-
-  const truncatedDiff = diffText.length > MAX_DIFF_CHARS
-    ? diffText.slice(0, MAX_DIFF_CHARS) + '\n\n[... diff truncated at 28k chars — review remaining files manually]'
-    : diffText;
-
-  const deterministicNote = deterministicWarnings.length > 0
-    ? `\nDeterministic warnings already flagged (do not re-check):\n${deterministicWarnings.map(w => `- ${w.detail}`).join('\n')}\n`
-    : '';
-
+  const { userContent } = buildLLMContent(prTitle, tier, files, deterministicWarnings);
   const res = await fetch('https://api.x.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -403,28 +381,13 @@ async function callGrok(prTitle, tier, files, deterministicWarnings) {
       max_tokens: 1024,
       messages: [
         { role: 'system', content: `${CONSTRAINT_BLOCK}\n\n${REVIEW_SCHEMA}` },
-        {
-          role: 'user',
-          content:
-            `PR: "${prTitle}"\n` +
-            `Tier: ${tier.toUpperCase()}\n` +
-            `Files changed:\n${filesSummary}\n` +
-            deterministicNote +
-            `\n---\n${truncatedDiff}`,
-        },
+        { role: 'user', content: userContent },
       ],
     }),
   });
-
   if (!res.ok) throw new Error(`Grok ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const data = await res.json();
-  const raw = data.choices?.[0]?.message?.content ?? '{}';
-  const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  try {
-    return jsonMatch ? JSON.parse(jsonMatch[0]) : { architectural_concerns: [], warnings: [], summary: raw, lgtm: false };
-  } catch {
-    return { architectural_concerns: [], warnings: [], summary: raw, lgtm: false };
-  }
+  return parseLLMJson(data.choices?.[0]?.message?.content ?? '{}');
 }
 
 // ─── LLM orchestration (Grok first-pass → Claude confirmation) ───────────────
@@ -491,7 +454,12 @@ async function callLLMConsensus(prTitle, tier, files, deterministicWarnings) {
 
   // ── Consensus ──────────────────────────────────────────────────────────────
   // Both must agree to approve. If one is unavailable, the available one decides.
-  const grokLgtm  = grokResult  == null ? true  : (grokResult.lgtm  ?? false);
+  // If BOTH parties fail (runtime errors), fail closed — never silently approve.
+  if (!grokResult && !claudeResult) {
+    throw new Error('Both LLM parties failed to respond — cannot post a review without consensus. Check GROK_API_KEY and ANTHROPIC_API_KEY.');
+  }
+
+  const grokLgtm   = grokResult   == null ? true : (grokResult.lgtm   ?? false);
   const claudeLgtm = claudeResult == null ? true : (claudeResult.lgtm ?? false);
   const consensusLgtm = grokLgtm && claudeLgtm;
 
@@ -797,7 +765,7 @@ async function main() {
   // workerAddedLines — only files that run in CF Workers (excludes Actions runner files)
   // allAddedLines — all files (for universal checks: secrets in wrangler, fetch handling, any type)
   const allAddedLines = extractAddedLines(files);
-  const workerAddedLines = extractAddedLines(files.filter(f => !isActionsRunnerFile(f.filename ?? '')));
+  const workerAddedLines = extractAddedLines(files.filter(f => !isNonWorkerFile(f.filename ?? '')));
   const deterministicResult = runDeterministicChecks(workerAddedLines, allAddedLines, filenames);
 
   console.log(`[INFO] Deterministic: ${deterministicResult.violations.length} violations, ${deterministicResult.warnings.length} warnings`);

@@ -6,6 +6,7 @@ const ORG = 'Latimer-Woods-Tech';
 const MONITORED_REPOS = ['factory', 'HumanDesign', 'videoking', 'xico-city'];
 const DENYLIST = new Set(['wordis-bond']);
 const RUN_ID = `sup-${Date.now()}`;
+const MAX_GENERATED_LINES = parseInt(process.env.MAX_GENERATED_LINES ?? '800', 10);
 const { GH_TOKEN, ANTHROPIC_API_KEY, PUSHOVER_TOKEN, PUSHOVER_USER, TRIGGER_ISSUE } = process.env;
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001';
 
@@ -249,7 +250,7 @@ function checkGeneratedContent(filename, content) {
     violations.push('No jsonwebtoken — use Web Crypto API');
 
   // Flag suspiciously large generated files — configurable via MAX_GENERATED_LINES env var
-  const maxLines = parseInt(process.env.MAX_GENERATED_LINES ?? '800', 10);
+  const maxLines = MAX_GENERATED_LINES;
   if (lines.length > maxLines)
     violations.push(`Generated file is ${lines.length} lines — exceeds ${maxLines}-line safety limit (set MAX_GENERATED_LINES to adjust)`);
 
@@ -603,7 +604,7 @@ If a concern cannot be resolved without human input, output an empty fixes array
 
             await gh('PUT', `/repos/${ORG}/${repo}/contents/${fix.filename}`, {
               message: `fix: supervisor auto-fix attempt ${rejectionCount + 1} — ${fixResult.explanation?.slice(0, 60) ?? 'resolve review concerns'} [${RUN_ID}]`,
-              content: btoa(unescape(encodeURIComponent(fix.content))),
+              content: Buffer.from(fix.content).toString('base64'),
               branch,
               ...(existingSha ? { sha: existingSha } : {}),
             });
