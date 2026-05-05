@@ -65,7 +65,11 @@ export function OverviewTab() {
             <dt className="text-slate-400">Session ID</dt>
             <dd className="text-white font-mono text-xs">{me.sessionId}</dd>
             <dt className="text-slate-400">Locked at</dt>
-            <dd className="text-white">{new Date(me.envLockedAt).toLocaleString()}</dd>
+            <dd className="text-white">
+              {typeof me.envLockedAt === 'number' && me.envLockedAt > 0
+                ? new Date(me.envLockedAt).toLocaleString()
+                : '—'}
+            </dd>
           </dl>
         ) : (
           <p className="text-sm text-slate-500">Loading…</p>

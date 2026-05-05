@@ -41,7 +41,7 @@ export const useSession = create<SessionState>((set, get) => ({
     if (!raw) return;
     try {
       const parsed = JSON.parse(raw) as Omit<SessionState, 'login' | 'logout' | 'hydrate' | 'isAuthed'>;
-      if (parsed.expiresAt && parsed.expiresAt < Date.now()) {
+      if (!parsed.expiresAt || parsed.expiresAt < Date.now()) {
         sessionStorage.removeItem(STORAGE_KEY);
         return;
       }
