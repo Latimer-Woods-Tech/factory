@@ -17,21 +17,24 @@
 
 # ===========================================================================
 # GREEN tier — supervisor (via factory-cross-repo bot) can merge on blessed template
+# factory-cross-repo[bot] is co-owner so its 2-party-confirmed APPROVE satisfies
+# the code-owner gate without human intervention.
 # ===========================================================================
-docs/**                                 @adrper79-dot
-*.md                                    @adrper79-dot
-session/**                              @adrper79-dot
-documents/**                            @adrper79-dot
-.github/ISSUE_TEMPLATE/**               @adrper79-dot
-.github/PULL_REQUEST_TEMPLATE.md        @adrper79-dot
+docs/**                                 @adrper79-dot factory-cross-repo[bot]
+*.md                                    @adrper79-dot factory-cross-repo[bot]
+session/**                              @adrper79-dot factory-cross-repo[bot]
+documents/**                            @adrper79-dot factory-cross-repo[bot]
+.github/ISSUE_TEMPLATE/**               @adrper79-dot factory-cross-repo[bot]
+.github/PULL_REQUEST_TEMPLATE.md        @adrper79-dot factory-cross-repo[bot]
 
 # ===========================================================================
-# YELLOW tier — auto-PR + auto-merge on green CI + plan-approval
-# (Adrian remains listed so human review is always possible; bot is co-owner)
+# YELLOW tier — auto-PR + auto-merge on green CI + 2-party LLM approval
+# factory-cross-repo[bot] is co-owner so Grok→Claude consensus APPROVE drives
+# merge without requiring @adrper79-dot on every PR.
 # ===========================================================================
-apps/*/src/**                           @adrper79-dot
-client/**                               @adrper79-dot
-tests/**                                @adrper79-dot
+apps/*/src/**                           @adrper79-dot factory-cross-repo[bot]
+client/**                               @adrper79-dot factory-cross-repo[bot]
+tests/**                                @adrper79-dot factory-cross-repo[bot]
 
 # ===========================================================================
 # RED tier — belt-and-suspenders guards (human only)

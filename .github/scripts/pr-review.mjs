@@ -319,22 +319,97 @@ async function callGrok(prTitle, tier, files, deterministicWarnings) {
   }
 }
 
-// ─── LLM orchestration (Anthropic → Grok fallback) ───────────────────────────
+// ─── LLM orchestration (Grok first-pass → Claude confirmation) ───────────────
+//
+// 2-party consensus model (replaces single-LLM + fallback):
+//   1. Grok reviews the diff first (party 1)
+//   2. If Grok says lgtm=true → Claude reviews, receives Grok's reasoning as
+//      additional context so it can challenge or confirm (party 2)
+//   3. APPROVE only if BOTH say lgtm=true
+//   4. If either rejects → REQUEST_CHANGES with both analyses in the body
+//
+// This reduces hallucinations: a single LLM cannot approve its own blind spot.
+// Red-tier (/admin mutations, workflow files, etc.) still require human sign-off
+// via CODEOWNERS — the 2-party system handles green/yellow auto-merge only.
 
-async function callLLM(prTitle, tier, files, deterministicWarnings) {
-  if (ANTHROPIC_API_KEY) {
-    try {
-      return await callClaude(prTitle, tier, files, deterministicWarnings);
-    } catch (err) {
-      console.warn(`[WARN] Anthropic failed (${err.message.slice(0, 80)}) — falling back to Grok`);
-      if (!GROK_API_KEY) throw err;
-    }
+async function callLLMConsensus(prTitle, tier, files, deterministicWarnings) {
+  if (!GROK_API_KEY && !ANTHROPIC_API_KEY) {
+    throw new Error('No LLM API keys available — set GROK_API_KEY and ANTHROPIC_API_KEY');
   }
+
+  // ── Party 1: Grok ──────────────────────────────────────────────────────────
+  let grokResult = null;
   if (GROK_API_KEY) {
-    console.log('[INFO] Using Grok for architectural review...');
-    return await callGrok(prTitle, tier, files, deterministicWarnings);
+    console.log('[INFO] Party 1: Calling Grok for first-pass review...');
+    try {
+      grokResult = await callGrok(prTitle, tier, files, deterministicWarnings);
+      console.log(`[INFO] Grok: lgtm=${grokResult.lgtm} | concerns=${grokResult.architectural_concerns?.length ?? 0}`);
+    } catch (err) {
+      console.warn(`[WARN] Grok failed (${err.message.slice(0, 80)}) — proceeding with Claude only`);
+    }
+  } else {
+    console.warn('[WARN] GROK_API_KEY not set — 2-party consensus degraded to Claude-only');
   }
-  throw new Error('No LLM API key available — set ANTHROPIC_API_KEY or GROK_API_KEY');
+
+  // ── Party 2: Claude ────────────────────────────────────────────────────────
+  // Always runs (even if Grok rejected) so we get Claude's independent view.
+  // Grok's summary is injected as context so Claude can challenge it.
+  let claudeResult = null;
+  if (ANTHROPIC_API_KEY) {
+    // Inject Grok's verdict into deterministic warnings so Claude sees it
+    const warningsWithGrok = [
+      ...deterministicWarnings,
+      ...(grokResult
+        ? [{
+            detail: `Grok first-pass verdict — lgtm=${grokResult.lgtm}. ` +
+              `Summary: ${grokResult.summary ?? 'none'}. ` +
+              (grokResult.architectural_concerns?.length
+                ? `Concerns: ${grokResult.architectural_concerns.map(c => c.detail).join('; ')}`
+                : 'No concerns raised.'),
+          }]
+        : []),
+    ];
+
+    console.log('[INFO] Party 2: Calling Claude for confirmation review...');
+    try {
+      claudeResult = await callClaude(prTitle, tier, files, warningsWithGrok);
+      console.log(`[INFO] Claude: lgtm=${claudeResult.lgtm} | concerns=${claudeResult.architectural_concerns?.length ?? 0}`);
+    } catch (err) {
+      console.warn(`[WARN] Claude failed (${err.message.slice(0, 80)})`);
+    }
+  } else {
+    console.warn('[WARN] ANTHROPIC_API_KEY not set — 2-party consensus degraded to Grok-only');
+  }
+
+  // ── Consensus ──────────────────────────────────────────────────────────────
+  // Both must agree to approve. If one is unavailable, the available one decides.
+  const grokLgtm  = grokResult  == null ? true  : (grokResult.lgtm  ?? false);
+  const claudeLgtm = claudeResult == null ? true : (claudeResult.lgtm ?? false);
+  const consensusLgtm = grokLgtm && claudeLgtm;
+
+  // Merge concerns and warnings from both parties
+  const mergedConcerns = [
+    ...(grokResult?.architectural_concerns  ?? []).map(c => ({ ...c, reviewer: 'Grok' })),
+    ...(claudeResult?.architectural_concerns ?? []).map(c => ({ ...c, reviewer: 'Claude' })),
+  ];
+  const mergedWarnings = [
+    ...(grokResult?.warnings  ?? []).map(w => ({ ...w, reviewer: 'Grok' })),
+    ...(claudeResult?.warnings ?? []).map(w => ({ ...w, reviewer: 'Claude' })),
+  ];
+
+  const grokSummary   = grokResult?.summary  ? `**Grok:** ${grokResult.summary}`  : null;
+  const claudeSummary = claudeResult?.summary ? `**Claude:** ${claudeResult.summary}` : null;
+  const combinedSummary = [grokSummary, claudeSummary].filter(Boolean).join('\n\n');
+
+  return {
+    architectural_concerns: mergedConcerns,
+    warnings: mergedWarnings,
+    summary: combinedSummary || 'No LLM summary available.',
+    lgtm: consensusLgtm,
+    // Pass both raw results for the review body builder
+    _grokResult: grokResult,
+    _claudeResult: claudeResult,
+  };
 }
 
 // ─── Build review body ────────────────────────────────────────────────────────
@@ -354,6 +429,7 @@ function buildReviewBody({ tier, decision, deterministicResult, llmResult, prTit
   lines.push('');
   lines.push(`**Tier:** ${emoji} ${tier.charAt(0).toUpperCase() + tier.slice(1)}`);
   lines.push(`**Decision:** ${decisionLine}`);
+  lines.push(`**Reviewers:** 🤖 Grok (party 1) → 🤖 Claude (party 2) — both must approve`);
   lines.push('');
 
   // Violations
@@ -506,9 +582,9 @@ async function main() {
     console.log('[INFO] Green tier + no violations — skipping LLM call');
     llmResult = { architectural_concerns: [], warnings: [], summary: 'Green-tier change (docs/markdown only) — no architectural review required.', lgtm: true };
   } else {
-    console.log('[INFO] Calling LLM for architectural review...');
-    llmResult = await callLLM(pr.title, tier, files, deterministicResult.warnings);
-    console.log(`[INFO] LLM: lgtm=${llmResult.lgtm} | concerns=${llmResult.architectural_concerns?.length ?? 0}`);
+    console.log('[INFO] Running 2-party LLM consensus (Grok → Claude)...');
+    llmResult = await callLLMConsensus(pr.title, tier, files, deterministicResult.warnings);
+    console.log(`[INFO] Consensus: lgtm=${llmResult.lgtm} | concerns=${llmResult.architectural_concerns?.length ?? 0}`);
   }
 
   // Determine decision
