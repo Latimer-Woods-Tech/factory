@@ -15,8 +15,8 @@
 | Parameter | Value |
 |---|---|
 | **Frequency** | Daily, weekdays only (Mon–Fri) |
-| **Time** | 7:00 AM ET (11:00 UTC summer/EDT; 12:00 UTC winter/EST) |
-| **Cron expression** | `0 11 * * 1-5` (EDT, summer); shift to `0 12 * * 1-5` after fall DST change |
+| **Time** | 7:00 AM ET — EDT (UTC-4, summer): 11:00 UTC; EST (UTC-5, winter): 12:00 UTC |
+| **Cron expression** | `0 11 * * 1-5` (summer, EDT=UTC-4); shift to `0 12 * * 1-5` after DST ends (winter, EST=UTC-5) |
 | **CF Worker trigger** | `apps/supervisor/wrangler.jsonc` `triggers.crons` block |
 | **GitHub Actions mirror** | `.github/workflows/daily-supervisor.yml` |
 | **Timeout** | 20 minutes hard (GitHub Actions); Worker scheduled handler re-invokes via DO |
@@ -231,16 +231,16 @@ FOR EACH CANDIDATE ISSUE:
      tier = green  → proceed to plan post (step 11)
 
  11. PLAN POST (Green + Yellow + Red)
-     a. Extract slots via Anthropic (Green only, only after plan-approved; deferred to
-        keep LLM costs to zero on the initial plan-post round-trip for Green tier)
-     b. Post plan comment with: template slug, tier, run ID, step intents, approval ask
-     c. Add labels: supervisor:awaiting-approval + status:in_progress (all tiers)
-        Exception: Red-tier gets agent:claimed:sauna immediately (no execution path)
-     d. Log: "🟢⏳ / 🟡⏳ / 🔴 {repo}#{issue}: plan posted"
-     e. STOP — continue to next issue
+     a. Post plan comment with: template slug, tier, run ID, step intents, approval ask
+        (No slot extraction yet — avoids LLM cost until plan is approved)
+     b. Add labels: supervisor:awaiting-approval + status:in_progress (Green + Yellow)
+        Red-tier: add agent:claimed:sauna + status:in_progress instead (no execution path)
+     c. Log: "🟢⏳ / 🟡⏳ / 🔴 {repo}#{issue}: plan posted"
+     d. STOP — continue to next issue
 
- 12. EXECUTE (Green only, after supervisor:plan-approved label is present)
-     a. Claim LockDO for the target app (Rail 7)
+ 12. EXECUTE (Green only, on the run where supervisor:plan-approved label is present)
+     a. Extract slots via Anthropic (first and only extraction — happens here at execution time)
+     b. Claim LockDO for the target app (Rail 7)
      b. For each step in the plan:
         - Dry-run if mutating (side_effects != 'none')
         - For write-app/write-external: await out-of-band CODEOWNER ✅ (Rail 5)

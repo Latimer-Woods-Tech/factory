@@ -700,10 +700,9 @@ async function main() {
       if (!template) {
         // Rail 9: no template → label supervisor:no-template (FRIDGE rule 9).
         // Clear any stale awaiting-approval label — the template no longer exists.
+        // removeLabel handles 404 (label not present) gracefully, so the check is unconditional.
         console.log(`[SKIP] ${repo}#${issue.number} "${issue.title}" — no template match`);
-        if (ctx.labels.includes('supervisor:awaiting-approval')) {
-          await removeLabel(repo, issue.number, 'supervisor:awaiting-approval');
-        }
+        await removeLabel(repo, issue.number, 'supervisor:awaiting-approval');
         await addLabels(repo, issue.number, ['supervisor:no-template']);
         outcomes.push(`❓ ${repo}#${issue.number}: no template matched`);
         continue;
