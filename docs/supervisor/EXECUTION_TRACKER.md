@@ -70,7 +70,7 @@ Sauna does the work. Adrian reviews templates and the supervisor scaffold.
 - [ ] `SUP-3.2` (factory#105) — `capabilities.yml` in selfprime, videoking, xico-city, factory-admin (4 PRs)
 - [ ] `SUP-3.3` (factory#106) — Bootstrap 6–8 starter templates from last 50 merged PRs (candidates pre-analyzed in `file://session/template-bootstrap-candidates.md`)
 - [ ] `SUP-3.4` (factory#107) — Scaffold `apps/supervisor` (DO + LockDO + tools + planner + memory + auth + stats)
-- [ ] `SUP-3.5` (factory#108) — Daily scheduled Sauna supervisor (Phase-1) — drafted at `file://schedules/daily-factory-supervisor/schedule.md` (DISABLED)
+- [ ] `SUP-3.5` (factory#108) — Daily scheduled Sauna supervisor (Phase-1) — drafted at `schedules/daily-factory-supervisor/schedule.md` (DISABLED) ⏳
 
 **Exit gate:** supervisor compiles, one fixture issue runs end-to-end on test branch with no production effects.
 

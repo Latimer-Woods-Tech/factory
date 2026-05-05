@@ -5,6 +5,17 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
 
+  // DAILY SCHEDULE — currently disabled.
+  // Enable by uncommenting the triggers block below and redeploying.
+  // Cron: 7 AM ET weekdays.
+  //   Summer (EDT): 11:00 UTC → "0 11 * * 1-5"
+  //   Winter (EST): 12:00 UTC → "0 12 * * 1-5"
+  // After enabling: wrangler deploy --env production
+  //
+  // "triggers": {
+  //   "crons": ["0 11 * * 1-5"]
+  // },
+
   "durable_objects": {
     "bindings": [
       { "name": "SUPERVISOR", "class_name": "SupervisorDO" },
