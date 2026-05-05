@@ -193,6 +193,8 @@ observability.get('/synthetic/journey', async (c) => {
   const outageClass = classifyOutage(probes);
 
   // Fetch recent snapshots (up to 12) for trend display.
+  // Keys are ISO timestamp strings (lexicographically sortable), so
+  // sorting them descending gives the most-recent-first ordering.
   const list = await kv.list({ prefix: 'snapshots:', limit: 12 });
   const sortedKeys = list.keys.map((k) => k.name).sort().reverse();
   const trendRaws = await Promise.all(sortedKeys.map((k) => kv.get(k)));

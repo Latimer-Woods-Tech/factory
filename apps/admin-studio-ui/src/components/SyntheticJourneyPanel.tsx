@@ -53,7 +53,7 @@ function probeDotClass(ok: boolean): string {
 
 function trendDotClass(s: JourneyTrendPoint): string {
   if (s.journeyFailed === 0) return 'bg-emerald-400';
-  if (s.journeyFailed >= s.journeyOk + s.journeyFailed) return 'bg-red-500';
+  if (s.journeyOk === 0) return 'bg-red-500';
   return 'bg-amber-400';
 }
 
@@ -107,7 +107,7 @@ export function SyntheticJourneyPanel() {
               <span className="text-xs text-slate-500">{probe.latencyMs}ms</span>
               {!probe.ok && probe.error && (
                 <span className="ml-1 truncate text-xs text-amber-300" title={probe.error}>
-                  {probe.error.slice(0, 80)}
+                  {probe.error.length > 80 ? `${probe.error.slice(0, 80)}…` : probe.error}
                 </span>
               )}
               {probe.url && (
