@@ -262,10 +262,189 @@ async function executeGreen(repo, issue, template, slots) {
   return { branch, prUrl: pr.html_url, prNumber: pr.number };
 }
 
+// ─── PR feedback loop (read rejection → Claude fix → push) ───────────────────
+//
+// Scans all open PRs authored by the supervisor bot across monitored repos.
+// For each PR where the latest review decision is CHANGES_REQUESTED:
+//   1. Extract the concern list from the bot review body
+//   2. Fetch the current file contents from the PR branch
+//   3. Call Claude to produce a corrected version of each file mentioned
+//   4. Commit the fixes to the PR branch — this triggers pr-review.yml to
+//      re-run automatically via the `synchronize` event
+//
+// This loop runs BEFORE the issue-processing loop so stuck PRs clear first.
+
+const BOT_LOGIN = 'factory-cross-repo[bot]';
+const MAX_FIX_ATTEMPTS = 3; // Must stay ≤ MAX_REVIEW_ATTEMPTS in pr-review.mjs
+
+async function runPrFeedbackLoop(outcomes) {
+  if (!ANTHROPIC_API_KEY) {
+    console.log('[PRLoop] ANTHROPIC_API_KEY not set — skipping PR feedback loop');
+    return;
+  }
+
+  for (const repo of MONITORED_REPOS) {
+    let prs;
+    try {
+      prs = await gh('GET', `/repos/${ORG}/${repo}/pulls?state=open&per_page=50`);
+    } catch (e) {
+      console.warn(`[PRLoop] ${repo}: could not fetch PRs: ${e.message}`);
+      continue;
+    }
+
+    // Only process PRs opened by the supervisor bot
+    const botPrs = prs.filter(pr => pr.user?.login === BOT_LOGIN);
+    if (!botPrs.length) continue;
+
+    for (const pr of botPrs) {
+      try {
+        const reviews = await gh('GET', `/repos/${ORG}/${repo}/pulls/${pr.number}/reviews`);
+
+        // Skip if not currently blocked by REQUEST_CHANGES
+        const latestDecision = reviews
+          .filter(r => r.user?.login === BOT_LOGIN)
+          .at(-1)?.state;
+        if (latestDecision !== 'CHANGES_REQUESTED') continue;
+
+        // Count rejections — if at limit, escalation already fired, skip fix attempt
+        const rejectionCount = reviews.filter(
+          r => r.user?.login === BOT_LOGIN && r.state === 'CHANGES_REQUESTED',
+        ).length;
+        if (rejectionCount >= MAX_FIX_ATTEMPTS) {
+          console.log(`[PRLoop] ${repo}#${pr.number}: at rejection limit (${rejectionCount}) — escalation previously fired, skipping`);
+          continue;
+        }
+
+        // Extract concern text from the most recent REQUEST_CHANGES review body
+        const lastReview = reviews
+          .filter(r => r.user?.login === BOT_LOGIN && r.state === 'CHANGES_REQUESTED')
+          .at(-1);
+        const reviewBody = lastReview?.body ?? '';
+
+        // Extract violation + warning lines from the review body
+        const concernLines = reviewBody
+          .split('\n')
+          .filter(l => /^[-*]/.test(l.trim()) && l.length < 300)
+          .slice(0, 20)
+          .join('\n');
+
+        if (!concernLines.trim()) {
+          console.log(`[PRLoop] ${repo}#${pr.number}: no parseable concerns in review body — skipping`);
+          continue;
+        }
+
+        console.log(`[PRLoop] ${repo}#${pr.number}: rejection ${rejectionCount}, generating fix...`);
+
+        // Fetch changed files from the PR
+        const files = await gh('GET', `/repos/${ORG}/${repo}/pulls/${pr.number}/files`);
+
+        // Only attempt to fix source files (not generated, not binary)
+        const fixableFiles = files.filter(f =>
+          f.patch && /\.(ts|tsx|mjs|js|json|yml|yaml|md)$/.test(f.filename),
+        ).slice(0, 5); // cap to avoid token blowout
+
+        if (!fixableFiles.length) {
+          console.log(`[PRLoop] ${repo}#${pr.number}: no fixable files — skipping`);
+          continue;
+        }
+
+        // Build Claude prompt
+        const diffContext = fixableFiles
+          .map(f => `### ${f.filename}\n\`\`\`diff\n${(f.patch ?? '').slice(0, 4000)}\n\`\`\``)
+          .join('\n\n');
+
+        const fixPrompt = `You are the Factory supervisor auto-fix agent.
+
+A PR was rejected by the Grok→Claude 2-party reviewer with these concerns:
+${concernLines}
+
+Here is the current diff for the files in the PR:
+${diffContext}
+
+Produce corrected file contents that resolve ALL the listed concerns while preserving the intent of the change.
+Output ONLY valid JSON in this exact shape — no markdown wrapper:
+{
+  "fixes": [
+    { "filename": "path/to/file.ts", "content": "...full corrected file content..." }
+  ],
+  "explanation": "One sentence describing what was changed to fix the concerns."
+}
+
+If a concern cannot be resolved without human input, output an empty fixes array and explain why in the explanation field.`;
+
+        let fixResult;
+        try {
+          const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': ANTHROPIC_API_KEY,
+              'anthropic-version': '2023-06-01',
+            },
+            body: JSON.stringify({
+              model: ANTHROPIC_MODEL,
+              max_tokens: 4096,
+              messages: [{ role: 'user', content: fixPrompt }],
+            }),
+          });
+          if (!res.ok) throw new Error(`Anthropic ${res.status}: ${await res.text()}`);
+          const data = await res.json();
+          const raw = data.content?.[0]?.text ?? '{}';
+          const jsonMatch = raw.match(/\{[\s\S]*\}/);
+          fixResult = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+        } catch (e) {
+          console.warn(`[PRLoop] ${repo}#${pr.number}: Claude fix call failed: ${e.message.slice(0, 80)}`);
+          continue;
+        }
+
+        if (!fixResult?.fixes?.length) {
+          console.log(`[PRLoop] ${repo}#${pr.number}: Claude could not auto-fix (${fixResult?.explanation ?? 'no explanation'})`);
+          outcomes.push(`🔁 ${repo}#${pr.number}: auto-fix attempted but Claude yielded no changes — ${fixResult?.explanation ?? ''}`);
+          continue;
+        }
+
+        // Commit each fixed file to the PR branch
+        const branch = pr.head.ref;
+        let committed = 0;
+        for (const fix of fixResult.fixes) {
+          if (!fix.filename || !fix.content) continue;
+          try {
+            let existingSha;
+            try {
+              const existing = await gh('GET', `/repos/${ORG}/${repo}/contents/${fix.filename}?ref=${branch}`);
+              existingSha = existing.sha;
+            } catch { /* new file */ }
+
+            await gh('PUT', `/repos/${ORG}/${repo}/contents/${fix.filename}`, {
+              message: `fix: supervisor auto-fix attempt ${rejectionCount + 1} — ${fixResult.explanation?.slice(0, 60) ?? 'resolve review concerns'} [${RUN_ID}]`,
+              content: btoa(unescape(encodeURIComponent(fix.content))),
+              branch,
+              ...(existingSha ? { sha: existingSha } : {}),
+            });
+            committed++;
+          } catch (e) {
+            console.warn(`[PRLoop] ${repo}#${pr.number}: could not commit ${fix.filename}: ${e.message.slice(0, 80)}`);
+          }
+        }
+
+        if (committed > 0) {
+          console.log(`[PRLoop] ${repo}#${pr.number}: committed ${committed} fix(es) — pr-review will re-trigger on synchronize`);
+          outcomes.push(`🔁 ${repo}#${pr.number}: auto-fix committed (attempt ${rejectionCount + 1}) — ${fixResult.explanation}`);
+        }
+      } catch (e) {
+        console.warn(`[PRLoop] ${repo}#${pr.number}: unexpected error: ${e.message.slice(0, 120)}`);
+      }
+    }
+  }
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
   const outcomes = [];
+
+  // ── PR feedback loop first: clear stuck PRs before claiming new issues ──────
+  await runPrFeedbackLoop(outcomes);
 
   // Load templates from docs/supervisor/plans/
   const tplList = await gh('GET', `/repos/${ORG}/factory/contents/docs/supervisor/plans`);

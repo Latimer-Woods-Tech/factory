@@ -719,13 +719,14 @@ async function main() {
   // The review body will contain both LLM verdicts, so they need only one tap.
   if (tier === 'red' && HUMAN_REVIEWER) {
     try {
+      // Requesting review sends a free GitHub notification (email + mobile push).
+      // No SMS here — GitHub notification is sufficient for red-tier PRs since the
+      // LLM verdicts will already be in the review body when you open it.
       await gh('POST', `/repos/${ORG}/${repo}/pulls/${prNum}/requested_reviewers`, { reviewers: [HUMAN_REVIEWER] });
-      console.log(`[INFO] Red-tier PR — requested immediate review from ${HUMAN_REVIEWER}`);
+      console.log(`[INFO] Red-tier PR — requested review from ${HUMAN_REVIEWER} (GitHub notification sent)`);
     } catch (err) {
       console.warn(`[WARN] Could not request red-tier review: ${err.message.slice(0, 80)}`);
     }
-    // SMS so you know immediately — full LLM verdicts are in the review body
-    await sendSms(`[Factory] 🔴 Red-tier PR #${prNum} needs your approval: ${pr.html_url}`);
   }
 
   // Deterministic checks
