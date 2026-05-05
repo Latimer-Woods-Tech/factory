@@ -324,3 +324,68 @@ The `factory-status-dashboard.yml` cron job checks every consumer repo's CI is u
 - ❌ Pushing to `main` without going through CI; rulesets should prevent this anyway
 - ❌ Adding workflow files to factory that aren't documented in this file or `README.md`
 - ❌ Building and deploying Cloudflare Pages with custom inline YAML instead of `_app-deploy-pages.yml`
+
+---
+
+## Autonomous PR Review Pipeline
+
+> Added May 2026. This section documents the LLM-gated auto-merge system. Read alongside `docs/supervisor/ARCHITECTURE.md`.
+
+### Overview
+
+All non-infrastructure PRs opened by the `factory-cross-repo` bot go through a fully autonomous review-and-merge pipeline. No human is required for green-tier (docs/markdown) or yellow-tier (app source) PRs unless the retry limit is hit.
+
+```
+PR opened/synchronize
+  └─► pr-review.yml (.github/workflows/pr-review.yml)
+        ├─ Tier classification (red / yellow / green)
+        ├─ Red tier → request human review immediately, stop
+        └─ Green/Yellow tier:
+              pr-review.mjs (.github/scripts/pr-review.mjs)
+                1. Grok first-pass
+                2. Claude second-pass
+                Both LGTM → APPROVE + merge
+                Either fails → CHANGES_REQUESTED (merged concerns)
+                             → supervisor feedback loop fixes & re-triggers
+
+supervisor-loop.yml (cron: every 4 hours + workflow_dispatch)
+  └─► supervisor-core.mjs (.github/scripts/supervisor-core.mjs)
+        1. runPrFeedbackLoop()  ← scans CHANGES_REQUESTED bot PRs, self-heals
+        2. processIssues()      ← issue → analysis → scaffold → PR flow
+```
+
+### Tier Classification
+
+| Tier | Paths | Review model |
+|------|-------|--------------|
+| **Green** | `docs/**`, `*.md`, `session/**`, `.github/ISSUE_TEMPLATE/**`, `.github/PULL_REQUEST_TEMPLATE.md` | LLM consensus only; auto-merge on 2/2 approve |
+| **Yellow** | `apps/*/src/**`, `client/**`, `tests/**` | LLM consensus only; auto-merge on 2/2 approve |
+| **Red** | `packages/**`, `.github/workflows/**`, `wrangler.jsonc`, `migrations/**`, `scripts/**`, `skills/**` | Human review required; bot posts immediate notification |
+
+### Required Secrets
+
+| Secret | Purpose |
+|--------|---------|
+| `ANTHROPIC_API_KEY` | Claude second-pass review |
+| `GROK_API_KEY` | Grok first-pass review |
+| `GH_APP_ID` | factory-cross-repo GitHub App identity |
+| `GH_APP_PRIVATE_KEY` | factory-cross-repo auth |
+| `MAX_REVIEW_ATTEMPTS` | Retry limit before escalation (default `3`) |
+| `HUMAN_REVIEWER` | GitHub handle to notify on escalation (default `adrper79-dot`) |
+
+### Escalation
+
+After `MAX_REVIEW_ATTEMPTS` failed reviews on a single PR:
+1. Label PR `supervisor:review-limit-reached`
+2. File a GitHub issue describing the stall
+3. Post a comment on the PR linking the issue
+4. Request review from `HUMAN_REVIEWER` (GitHub notification)
+
+### Hallucination Guards
+
+Before the supervisor commits any LLM fix, three guards run:
+
+1. **`checkGeneratedContent()`** — strips comments/strings then checks for constraint violations (`process.env`, `require`, `Buffer`, Node built-ins, Express/jwt); flags near-empty files and files exceeding `MAX_GENERATED_LINES` (default 800, configurable).
+2. **`enforceSlotSchema()`** — strips hallucinated slot keys not in the template schema; nulls values matching a structured prompt-injection pattern.
+3. **`fixAddressesConcerns()`** — verifies at least one concern keyword appears in added or removed lines of the diff.
+

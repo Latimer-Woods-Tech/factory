@@ -145,44 +145,57 @@ function extractAddedLines(files) {
     .join('\n');
 }
 
-function runDeterministicChecks(addedLines, filenames) {
+// Paths that run in GitHub Actions Linux runners, not in Cloudflare Workers.
+// Workers runtime constraints (process.env, require, Buffer, Node built-ins)
+// do NOT apply to these files — applying them causes false positives.
+const ACTIONS_RUNNER_PATHS = ['.github/workflows/', '.github/scripts/', 'scripts/'];
+
+function isActionsRunnerFile(filename) {
+  return ACTIONS_RUNNER_PATHS.some(p => filename.startsWith(p));
+}
+
+function runDeterministicChecks(workerAddedLines, allAddedLines, filenames) {
+  // workerAddedLines — added content from non-Actions-runner files only
+  //   (Workers runtime constraints apply here)
+  // allAddedLines — all added content regardless of file path
+  //   (universal checks: secrets, fetch, any type)
   const violations = [];
   const warnings = [];
 
-  if (/\bprocess\.env\b/.test(addedLines))
+  if (/\bprocess\.env\b/.test(workerAddedLines))
     violations.push({ constraint: 'No process.env', detail: 'Use c.env / env bindings instead of process.env' });
 
-  if (/\brequire\s*\(/.test(addedLines))
+  if (/\brequire\s*\(/.test(workerAddedLines))
     violations.push({ constraint: 'No CommonJS require()', detail: 'ESM imports only — replace require() with import' });
 
-  if (/\bnew Buffer\b|\bBuffer\.from\b|\bBuffer\.alloc\b/.test(addedLines))
+  if (/\bnew Buffer\b|\bBuffer\.from\b|\bBuffer\.alloc\b/.test(workerAddedLines))
     violations.push({ constraint: 'No Buffer', detail: 'Use Uint8Array, TextEncoder, or TextDecoder instead of Buffer' });
 
-  if (/from\s+['"](?:fs|path|crypto)['"]/m.test(addedLines))
+  if (/from\s+['"](?:fs|path|crypto)['"]/m.test(workerAddedLines))
     violations.push({ constraint: 'No Node.js built-ins', detail: 'fs, path, crypto are not available in Workers — use platform-safe APIs' });
 
-  if (/from\s+['"]node:/m.test(addedLines))
+  if (/from\s+['"]node:/m.test(workerAddedLines))
     violations.push({ constraint: 'No node: imports', detail: 'node: protocol imports are not available in Cloudflare Workers' });
 
-  if (/from\s+['"](?:express|fastify|next)['"]/m.test(addedLines))
+  if (/from\s+['"](?:express|fastify|next)['"]/m.test(workerAddedLines))
     violations.push({ constraint: 'No Express/Fastify/Next', detail: 'Use Hono for routing — no other HTTP frameworks' });
 
-  if (/import\s+.*jsonwebtoken/m.test(addedLines))
+  if (/import\s+.*jsonwebtoken/m.test(workerAddedLines))
     violations.push({ constraint: 'No jsonwebtoken', detail: 'Use Web Crypto API for JWT — never the jsonwebtoken package' });
 
-  // Secret in vars block (wrangler config)
+  // Secret in vars block (wrangler config) — check all lines
   if (filenames.some(f => /wrangler/.test(f)) &&
-      /vars:\s*[\s\S]*?(?:KEY|SECRET|TOKEN|PASSWORD)\s*:/im.test(addedLines))
+      /vars:\s*[\s\S]*?(?:KEY|SECRET|TOKEN|PASSWORD)\s*:/im.test(allAddedLines))
     violations.push({ constraint: 'No secrets in wrangler vars', detail: 'Use wrangler secret put — never put secrets in the vars block' });
 
-  // Fetch without error handling
-  const rawFetchMatches = addedLines.match(/await\s+fetch\s*\(/g) ?? [];
-  const handledFetchMatches = addedLines.match(/(?:\.ok|\.status|res\.ok|response\.ok)/g) ?? [];
+  // Fetch without error handling — check all lines
+  const rawFetchMatches = allAddedLines.match(/await\s+fetch\s*\(/g) ?? [];
+  const handledFetchMatches = allAddedLines.match(/(?:\.ok|\.status|res\.ok|response\.ok)/g) ?? [];
   if (rawFetchMatches.length > handledFetchMatches.length)
     warnings.push({ detail: `${rawFetchMatches.length} fetch() call(s) detected — verify each checks .ok or .status before consuming the body` });
 
-  // any in TypeScript (warning only — can't reliably detect without type info)
-  const anyCount = (addedLines.match(/:\s*any\b/g) ?? []).length;
+  // any in TypeScript (warning only) — check all lines
+  const anyCount = (allAddedLines.match(/:\s*any\b/g) ?? []).length;
   if (anyCount > 0)
     warnings.push({ detail: `${anyCount} use(s) of \`any\` type — strict mode forbids any in public APIs` });
 
@@ -730,8 +743,11 @@ async function main() {
   }
 
   // Deterministic checks
-  const addedLines = extractAddedLines(files);
-  const deterministicResult = runDeterministicChecks(addedLines, filenames);
+  // workerAddedLines — only files that run in CF Workers (excludes Actions runner files)
+  // allAddedLines — all files (for universal checks: secrets in wrangler, fetch handling, any type)
+  const allAddedLines = extractAddedLines(files);
+  const workerAddedLines = extractAddedLines(files.filter(f => !isActionsRunnerFile(f.filename ?? '')));
+  const deterministicResult = runDeterministicChecks(workerAddedLines, allAddedLines, filenames);
 
   console.log(`[INFO] Deterministic: ${deterministicResult.violations.length} violations, ${deterministicResult.warnings.length} warnings`);
 
