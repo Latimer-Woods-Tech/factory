@@ -2,7 +2,7 @@
 // DO NOT EDIT DIRECTLY — edit docs/supervisor/plans/*.yml instead,
 // then run: node scripts/generate-supervisor-templates.mjs
 //
-// Generated: 2026-05-05T02:57:23.999Z
+// Generated: 2026-05-05T03:08:52.459Z
 // Source files: db-migration-gap-fix.yml, deps-bump-minor-patch.yml, docs-naming-convention.yml, package-version-migration.yml, reusable-workflow-rollout.yml, sentry-triage-new-issue.yml, syn-package-migration.yml, ux-regression-triage.yml, wrangler-config-drift-fix.yml
 
 import type { Template } from './load';

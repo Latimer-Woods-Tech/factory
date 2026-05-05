@@ -23,6 +23,11 @@
       "table_name",
       "column_or_relation"
     ],
+    "slot_validators": {
+      "sentry_issue_id": "^[A-Z][A-Z0-9\\-]+-\\d+$",
+      "table_name": "^[a-z_][a-z0-9_]{0,62}$",
+      "column_or_relation": "^[a-z_][a-z0-9_]{0,62}$"
+    },
     "step_intents": [
       "Fetch the Sentry issue to confirm the DatabaseError text and extract stack context.",
       "Scan migrations directory for a migration that creates the referenced column or relation.",
@@ -102,6 +107,12 @@
       "ci_status",
       "security_advisory"
     ],
+    "slot_validators": {
+      "package_name": "^(@[a-z0-9][a-z0-9._-]*\\/)?[a-z0-9][a-z0-9._-]*$",
+      "from_version": "^v?\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$",
+      "to_version": "^v?\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$",
+      "repo_name": "^[A-Za-z0-9._-]+\\/[A-Za-z0-9._-]+$"
+    },
     "step_intents": [
       "Confirm the PR only touches package.json (and lockfile) and that the bumped package matches the slot.",
       "Sanity-check the lockfile resolves $slots.package_name to $slots.to_version.",
@@ -184,6 +195,13 @@
       "branch_name",
       "scope"
     ],
+    "slot_validators": {
+      "target_path": "^(docs|documents)/.+\\.md$",
+      "parent_dir": "^(docs|documents)(/.+)?$",
+      "commit_message": "^(docs|chore)[(:]",
+      "doc_body": "^[\\s\\S]{1,200000}$",
+      "branch_name": "^supervisor/docs/[a-z0-9][a-z0-9-]{0,60}$"
+    },
     "step_intents": [
       "Verify the parent directory exists before writing a new doc into it.",
       "Check whether the target doc already exists so the PR is an add vs. update.",
@@ -276,6 +294,11 @@
       "file_to_delete",
       "repo"
     ],
+    "slot_validators": {
+      "package_name": "^@latimer-woods-tech/[a-z-]+$",
+      "file_to_delete": "^[a-zA-Z0-9/_.-]+\\.(?:js|ts)$",
+      "repo": "^[a-zA-Z0-9-]+$"
+    },
     "step_intents": [
       "read existing inline implementation to verify replacement is complete",
       "verify new package is listed as dependency",
@@ -331,6 +354,9 @@
       "workflow_kind",
       "existing_workflow_path"
     ],
+    "slot_validators": {
+      "existing_workflow_path": "^\\.github/workflows/[A-Za-z0-9_.-]+\\.ya?ml$"
+    },
     "step_intents": [
       "Confirm the target repo is healthy and reachable before proposing workflow changes.",
       "Read the app's current workflow file so the caller can preserve any custom inputs.",
@@ -422,6 +448,10 @@
       "severity",
       "fix_mode"
     ],
+    "slot_validators": {
+      "sentry_short_id": "^[A-Z][A-Z0-9\\-]+-\\d+$",
+      "repo_name": "^[a-z0-9][a-z0-9\\-_]*\\/[a-zA-Z0-9][a-zA-Z0-9\\-_.]*$"
+    },
     "step_intents": [
       "Fetch the Sentry issue detail including stacktrace, breadcrumbs, and culprit frame.",
       "Read the implicated source file at the top stack frame to localize the defect line.",
@@ -505,6 +535,10 @@
       "package_name",
       "target_repo"
     ],
+    "slot_validators": {
+      "package_name": "^[\\s\\S]{0,120}$",
+      "target_repo": "^[\\s\\S]{0,120}$"
+    },
     "step_intents": [
       "Post migration triage checklist and request explicit review."
     ],
@@ -545,6 +579,9 @@
       "severity",
       "component"
     ],
+    "slot_validators": {
+      "component": "^[\\s\\S]{0,200}$"
+    },
     "step_intents": [
       "Post a structured triage plan comment and request human approval for execution."
     ],
@@ -586,6 +623,10 @@
       "binding_id",
       "worker_name"
     ],
+    "slot_validators": {
+      "binding_id": "^[a-f0-9]{32}$|^[A-Z][A-Z0-9_]{2,63}$",
+      "worker_name": "^[a-z][a-z0-9-]{1,62}$"
+    },
     "step_intents": [
       "Read the worker's current wrangler.jsonc to inspect declared bindings.",
       "Verify whether the referenced binding exists in the Cloudflare account and resolve the correct ID if drifted.",

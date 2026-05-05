@@ -72,14 +72,15 @@ async function loadTemplates() {
   const file = await gh('GET', `/repos/${ORG}/factory/contents/apps/supervisor/src/planner/templates.generated.json`);
   const data = JSON.parse(Buffer.from(file.content, 'base64').toString('utf8'));
   return data.map((t) => ({
-    id:          t.id,
-    tier:        t.tier,
-    titlePattern:  t.triggers?.title_pattern  ?? '',
-    bodyPatterns:  t.triggers?.body_patterns  ?? [],
-    labels:      t.triggers?.labels_any_of ?? [],
-    slotNames:   t.slot_names   ?? [],
-    stepIntents: t.step_intents ?? [],
-    prFiles:     t.pr_files     ?? [],
+    id:             t.id,
+    tier:           t.tier,
+    titlePattern:   t.triggers?.title_pattern  ?? '',
+    bodyPatterns:   t.triggers?.body_patterns  ?? [],
+    labels:         t.triggers?.labels_any_of ?? [],
+    slotNames:      t.slot_names      ?? [],
+    slotValidators: t.slot_validators ?? {},
+    stepIntents:    t.step_intents    ?? [],
+    prFiles:        t.pr_files        ?? [],
   }));
 }
 
@@ -229,28 +230,40 @@ function checkGeneratedContent(filename, content) {
   return violations;
 }
 
-// 2. Schema guard — strip keys not declared in the template's slotNames
-function enforceSlotSchema(raw, slotNames) {
+// 2. Schema guard — strip keys not declared in the template's slotNames,
+//    validate values against per-slot regex validators from the YAML schema.
+function enforceSlotSchema(raw, slotNames, slotValidators = {}) {
   if (!raw || typeof raw !== 'object') return {};
   const allowed = new Set(slotNames);
   const clean = {};
+  const INJECTION_RE = /\b(ignore|disregard|forget|override)\s+(previous|above|all|prior|earlier)\s+(instructions?|context|rules?|prompt)/i;
+
   for (const key of Object.keys(raw)) {
-    if (allowed.has(key)) {
-      // Reject slot values that look like prompt-injection instructions.
-      // Pattern requires an imperative verb followed by its target to avoid
-      // false positives on legitimate content (e.g. "never disregard errors",
-      // "the system prompt structure", security docs that mention jailbreak).
-      const val = raw[key];
-      const INJECTION_RE = /\b(ignore|disregard|forget|override)\s+(previous|above|all|prior|earlier)\s+(instructions?|context|rules?|prompt)/i;
-      if (typeof val === 'string' && INJECTION_RE.test(val)) {
-        console.warn(`[GUARD] Slot "${key}" contains suspicious instruction text — nulled`);
-        clean[key] = null;
-      } else {
-        clean[key] = val;
-      }
-    } else {
+    if (!allowed.has(key)) {
       console.warn(`[GUARD] Slot "${key}" not in template schema — stripped`);
+      continue;
     }
+    const val = raw[key];
+    // Injection guard
+    if (typeof val === 'string' && INJECTION_RE.test(val)) {
+      console.warn(`[GUARD] Slot "${key}" contains suspicious instruction text — nulled`);
+      clean[key] = null;
+      continue;
+    }
+    // Validator guard — reject values that don't match the YAML-declared regex
+    const validatorPattern = slotValidators[key];
+    if (validatorPattern && typeof val === 'string') {
+      try {
+        if (!new RegExp(validatorPattern).test(val)) {
+          console.warn(`[GUARD] Slot "${key}" value ${JSON.stringify(val)} failed validator /${validatorPattern}/ — nulled`);
+          clean[key] = null;
+          continue;
+        }
+      } catch {
+        // Malformed regex in validator (shouldn't happen — generator validates them) — allow through
+      }
+    }
+    clean[key] = val;
   }
   // Ensure all declared slots exist (even if null)
   for (const name of slotNames) {
@@ -292,7 +305,7 @@ function fixAddressesConcerns(concernLines, oldContent, newContent) {
 
 // ─── Anthropic slot extraction ────────────────────────────────────────────────
 
-async function extractSlots(slotNames, issue, factoryContext = '') {
+async function extractSlots(slotNames, issue, factoryContext = '', slotValidators = {}) {
   const contextPrefix = factoryContext
     ? `[FACTORY CONTEXT — immutable architectural rules]\n${factoryContext}\n\n`
     : '';
@@ -331,8 +344,8 @@ async function extractSlots(slotNames, issue, factoryContext = '') {
   } catch {
     parsed = {};
   }
-  // Guard 2: enforce schema — strip hallucinated keys, null missing ones
-  return enforceSlotSchema(parsed, slotNames);
+  // Guard 2: enforce schema — strip hallucinated keys, null missing ones, validate formats
+  return enforceSlotSchema(parsed, slotNames, slotValidators);
 }
 
 // ─── Green execution (create branch + files + PR) ────────────────────────────
@@ -735,7 +748,7 @@ async function main() {
       }
 
       // Green — extract slots, execute, open PR
-      const slots = await extractSlots(template.slotNames, ctx, factoryContext);
+      const slots = await extractSlots(template.slotNames, ctx, factoryContext, template.slotValidators);
       console.log(`[SLOTS] ${JSON.stringify(slots)}`);
 
       let execNote = '';

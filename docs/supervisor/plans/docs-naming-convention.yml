@@ -27,7 +27,7 @@ slots:
     source: issue_title
   - name: doc_body
     type: string
-    validator: "(?s)^.{1,200000}$"
+    validator: "^[\\s\\S]{1,200000}$"
     source: issue_body
   - name: branch_name
     type: string
