@@ -265,6 +265,22 @@ Only flag Workers constraint violations in files under \`apps/\`, \`packages/\`,
 - 🟡 Yellow: apps/*/src/**, client/**, tests/** — review required, can approve if clean
 - 🔴 Red: .github/workflows/**, packages/**, migrations/**, wrangler configs, capabilities.yml, service-registry.yml, supervisor plans — highest risk
 
+1. wordis-bond is off-limits to all automation — CODEOWNERS + denylist.
+2. No credentials in docs, memory, plans, issue bodies, PRs, or comments. Rotate if leaked; do not just delete from git.
+3. Red-tier paths never auto-merge: .github/workflows/**, packages/**, migrations/**, Stripe code, production wrangler config, production Neon user tables.
+4. Every /admin mutation requires out-of-band CODEOWNER ✅ — plan-approval and PR-review do not substitute.
+5. Per-run LLM budget: $5 USD hard cap. On BUDGET_EXCEEDED: pause, label supervisor:budget-paused, file a human issue.
+6. Single-writer per app via LockDO. Claim lock before acting, renew every 10 min, release on close.
+7. Issues must carry supervisor:approved-source before supervisor pickup.
+8. Irreversible actions require explicit human approval — includes deleting CF resources, rulesets, Stripe mutations, live email/SMS outside test mode.
+9. No-template issues: classify Red, label supervisor:no-template. Do not invent plans from scratch.
+10. If the plan is wrong, file an issue against ARCHITECTURE.md. Tag a CODEOWNER. Do not improvise.
+
+## Trust Tiers (CODEOWNERS)
+- 🟢 Green: docs/**, *.md, session/** — low risk, auto-approvable
+- 🟡 Yellow: apps/*/src/**, client/**, tests/** — review required, can approve if clean
+- 🔴 Red: .github/workflows/**, packages/**, migrations/**, wrangler configs, capabilities.yml, service-registry.yml, supervisor plans — highest risk
+
 ## Package Dependency Order (violations = circular import risk)
 errors → monitoring → logger → realtime → auth → neon → stripe → llm → telephony → analytics → deploy → testing → email → copy → content → social → seo → crm → compliance → admin → video → schedule → validation`;
 
