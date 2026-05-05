@@ -1,0 +1,12 @@
+fixture_for: testing-skill-adoption
+issue:
+  title: "ci(testing): adopt skills/global/testing composite action in videoking"
+  labels: [enhancement, hardening, testing]
+  body: |
+    VideoKing CI currently runs `npm test` inline without the shared testing skill.
+    We should adopt the factory global testing composite action for consistency.
+
+    target_repo: videoking
+    working_directory: .
+    run_playwright: "false"
+    existing_ci_path: .github/workflows/ci.yml

@@ -1,0 +1,94 @@
+id: docs-runbook-update
+version: 1
+tier: green
+triggers:
+  labels_any_of: [docs, documentation, runbook]
+  title_pattern: "^(docs|chore)[(:].*runbook"
+  body_patterns:
+    - "(?is)(path|file)\\s*[:=]\\s*docs/runbooks/.+\\.md"
+    - "(?is)(content|body)\\s*[:=]"
+preconditions:
+  - capability_exists: github.readFile
+  - capability_exists: github.openPR
+  - capability_exists: github.comment
+slots:
+  - name: target_path
+    type: string
+    validator: "^docs/runbooks/[a-z0-9][a-z0-9-]{0,80}\\.md$"
+    source: issue_body
+  - name: doc_body
+    type: string
+    validator: "(?s)^.{1,200000}$"
+    source: issue_body
+  - name: commit_message
+    type: string
+    validator: "^(docs|chore)[(:]"
+    source: issue_title
+  - name: branch_name
+    type: string
+    validator: "^supervisor/docs/runbook/[a-z0-9][a-z0-9-]{0,60}$"
+    source: issue_title
+  - name: scope
+    type: enum
+    values: [add, update]
+    source: issue_body
+    default: add
+steps:
+  - id: s1
+    tool: github.readFile
+    depends_on: null
+    params:
+      path: "docs/runbooks"
+      ref: "main"
+    intent: "Verify the docs/runbooks directory exists before writing into it."
+  - id: s2
+    tool: github.readFile
+    depends_on: s1
+    params:
+      path: "$slots.target_path"
+      ref: "main"
+      allow_missing: true
+    intent: "Check whether the runbook already exists; sets PR title to add vs. update."
+  - id: s3
+    tool: github.openPR
+    depends_on: s2
+    params:
+      branch: "$slots.branch_name"
+      base: "main"
+      title: "$slots.commit_message"
+      commit_message: "$slots.commit_message"
+      files:
+        - path: "$slots.target_path"
+          content: "$slots.doc_body"
+      body: |
+        Auto-drafted by supervisor from template `docs-runbook-update`.
+        Scope: $slots.scope
+        Target: $slots.target_path
+        Source issue: see linked issue.
+      labels: [docs, supervisor, tier-green]
+    intent: "Open a docs-only PR adding or updating the target runbook file."
+    requires_human_review: true
+  - id: s4
+    tool: github.comment
+    depends_on: s3
+    params:
+      pr: "$s3.number"
+      body: "Supervisor opened this runbook PR from the linked issue. Only `docs/runbooks/` is modified; no code paths, secrets, or protected paths are touched."
+    intent: "Leave a reviewer note on the PR explaining provenance and scope."
+acceptance_gate:
+  description: "A PR was opened on the expected branch with exactly one changed file at docs/runbooks/ matching target_path."
+  verifier_query:
+    tool: github.openPR
+    query: "pr:$s3.number files.path == '$slots.target_path' AND files.count == 1 AND base == 'main' AND head == '$slots.branch_name'"
+    assert: "count >= 1"
+rollback:
+  - on_step: s3
+    action: github.closePR
+    params:
+      pr: "$s3.number"
+      comment: "Rolling back supervisor-drafted runbook PR; see linked issue for retry."
+  - on_step: s4
+    action: github.removeLabel
+    params:
+      pr: "$s3.number"
+      label: "supervisor"
