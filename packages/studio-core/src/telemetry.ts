@@ -44,7 +44,8 @@ export interface TelemetryHealthMetricDetails {
   requests_1h: number;
   errors_1h: number;
   latency: TelemetryLatency;
-  external_dependencies: Record<string, TelemetryStatus | 'unknown' | 'error'>;
+  /** Dependency status: 'green'/'yellow'/'red' from SLO, or 'unknown' when unreachable. */
+  external_dependencies: Record<string, TelemetryStatus | 'unknown'>;
 }
 
 /**
@@ -259,9 +260,12 @@ export function validateTelemetryEvents(raw: unknown): string | null {
   const r = raw as Record<string, unknown>;
 
   if (!Array.isArray(r.events)) return 'events must be an array';
-  for (let i = 0; i < r.events.length; i++) {
-    const ev = r.events[i] as Record<string, unknown>;
-    if (!ev || typeof ev !== 'object') return `events[${i}] must be an object`;
+  // Cast the array items through unknown to avoid implicit-any spreading
+  const events = r.events as unknown[];
+  for (let i = 0; i < events.length; i++) {
+    const raw_ev = events[i];
+    if (!raw_ev || typeof raw_ev !== 'object') return `events[${i}] must be an object`;
+    const ev = raw_ev as Record<string, unknown>;
     if (typeof ev.type !== 'string' || !ev.type) return `events[${i}].type must be a non-empty string`;
     if (typeof ev.label !== 'string') return `events[${i}].label must be a string`;
     if (typeof ev.count !== 'number') return `events[${i}].count must be a number`;
@@ -362,15 +366,15 @@ export interface TelemetryCoverageMatrix {
  * Use this to seed the coverage matrix before running live probes.
  */
 export function makeUnknownAppCoverage(appId: string, label: string, baseUrl: string): AppTelemetryCoverage {
-  const endpoints = TELEMETRY_ENDPOINTS.map<TelemetryEndpointCoverage>((path) => ({
+  const [health, metrics, events] = TELEMETRY_ENDPOINTS.map<TelemetryEndpointCoverage>((path) => ({
     path,
-    status: 'unknown',
+    status: 'unknown' as const,
   }));
   return {
     appId,
     label,
     baseUrl,
-    endpoints: endpoints as AppTelemetryCoverage['endpoints'],
+    endpoints: [health!, metrics!, events!],
     overall: 'unknown',
   };
 }

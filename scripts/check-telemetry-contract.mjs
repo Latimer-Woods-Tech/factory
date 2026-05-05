@@ -70,8 +70,8 @@ function parseWorkers(raw) {
     const idLine = lines[0] ?? '';
     const id = idLine.replace(/#.*$/, '').trim();
 
-    // Parse telemetry_required
-    let telemetryRequired = false;
+    // Parse telemetry_required (tri-state: true | false | null for missing)
+    let telemetryRequired = null;
     for (const line of lines) {
       const m = line.match(/^\s+telemetry_required:\s*(true|false)\b/);
       if (m) {
@@ -114,6 +114,16 @@ const workers = parseWorkers(raw);
 const violations = [];
 
 for (const worker of workers) {
+  // Workers missing the field entirely are flagged — every entry must declare intent.
+  if (worker.telemetryRequired === null) {
+    violations.push(
+      `${REGISTRY_FILE}: worker '${worker.id}' is missing the 'telemetry_required' field. ` +
+        `Add 'telemetry_required: true' for Factory SaaS apps or 'telemetry_required: false' ` +
+        `for infrastructure workers.`,
+    );
+    continue;
+  }
+
   if (!worker.telemetryRequired) continue;
 
   for (const required of REQUIRED_TELEMETRY_PATHS) {
@@ -123,18 +133,6 @@ for (const worker of workers) {
           `but is missing '${required}' from critical_endpoints`,
       );
     }
-  }
-}
-
-// Also verify no worker has telemetry_required: true but is missing the field entirely
-// (belt-and-suspenders for future additions)
-for (const worker of workers) {
-  if (worker.id && worker.telemetryRequired === undefined) {
-    violations.push(
-      `${REGISTRY_FILE}: worker '${worker.id}' is missing the 'telemetry_required' field. ` +
-        `Add 'telemetry_required: true' for Factory SaaS apps or 'telemetry_required: false' ` +
-        `for infrastructure workers.`,
-    );
   }
 }
 
@@ -152,8 +150,8 @@ if (violations.length > 0) {
 }
 
 // Report which apps are required to expose telemetry
-const required = workers.filter((w) => w.telemetryRequired);
-const exempt = workers.filter((w) => !w.telemetryRequired);
+const required = workers.filter((w) => w.telemetryRequired === true);
+const exempt = workers.filter((w) => w.telemetryRequired === false);
 
 console.log('Telemetry contract conformance check passed.');
 console.log(
