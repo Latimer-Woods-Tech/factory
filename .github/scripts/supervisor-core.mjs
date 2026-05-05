@@ -60,60 +60,27 @@ async function pushover(title, message) {
   }
 }
 
-// ─── Template YAML parser ─────────────────────────────────────────────────────
-// No external deps — targeted field extraction only. The authoritative parse
-// is done at build time by scripts/generate-supervisor-templates.mjs (js-yaml).
+// ─── Template loader ──────────────────────────────────────────────────────────
+// Reads the pre-generated templates.generated.json from the factory repo via
+// the GitHub API. The file is emitted by scripts/generate-supervisor-templates.mjs
+// (run as a prebuild step) from docs/supervisor/plans/*.yml using js-yaml.
+//
+// No YAML parsing here, no regex fragility — JSON.parse is the only dep.
+// To add or modify a template: edit the YAML, run the generator, commit both.
 
-function parseTemplate(raw) {
-  const lineVal = (key) => (raw.match(new RegExp(`^${key}:\\s*(.+)$`, 'm')) || [])[1]?.trim() ?? '';
-
-  const id = lineVal('id');
-
-  // Tier: check for red-tier paths first, then use declared tier
-  let tier = lineVal('tier') || 'yellow';
-  if (/\.github\/workflows|packages\/|migrations\/|wrangler\./i.test(raw)) tier = 'red';
-
-  // triggers.labels_any_of — inline [a, b] or block list
-  let labels = [];
-  const inlineMatch = raw.match(/labels_any_of:\s*\[([^\]]+)\]/m);
-  if (inlineMatch) {
-    labels = inlineMatch[1].split(',').map((s) => s.trim().replace(/['"]/g, ''));
-  } else {
-    const block = raw.match(/labels_any_of:\n((?:[ \t]+-[^\n]+\n?)+)/m);
-    if (block) labels = [...block[1].matchAll(/- +(.+)/g)].map((m) => m[1].trim());
-  }
-
-  // triggers.title_pattern — strip surrounding quotes
-  const titlePattern = lineVal('title_pattern').replace(/^["']|["']$/g, '');
-
-  // triggers.body_patterns — block list only (inline not used in practice)
-  const bodyPatterns = [];
-  const bpBlock = raw.match(/body_patterns:\s*\n((?:[ \t]+-[^\n]+\n?)+)/m);
-  if (bpBlock) {
-    for (const m of bpBlock[1].matchAll(/- +["']?([^"'\n]+)["']?/g)) {
-      bodyPatterns.push(m[1].trim());
-    }
-  }
-
-  // Slot names for Anthropic extraction
-  const slotNames = [...raw.matchAll(/^  - name:\s*(.+)$/gm)].map((m) => m[1].trim());
-
-  // Step intents for plan comment
-  const stepIntents = [...raw.matchAll(/intent:\s*["']([^"']+)["']/gm)].map((m) => m[1]);
-
-  // Find openPR step's file slot references for Green execution
-  let prFiles = [];
-  const openPrBlock = raw.match(/tool: github\.openPR([\s\S]*?)(?=  - id:|\Z)/m);
-  if (openPrBlock) {
-    const filesSection = openPrBlock[1].match(/files:([\s\S]*?)(?=      body:|      labels:|    intent:)/m);
-    if (filesSection) {
-      const pathSlot = (filesSection[1].match(/path:\s*["']?\$slots\.(\w+)["']?/) || [])[1];
-      const contentSlot = (filesSection[1].match(/content:\s*["']?\$slots\.(\w+)["']?/) || [])[1];
-      if (pathSlot && contentSlot) prFiles = [{ pathSlot, contentSlot }];
-    }
-  }
-
-  return { id, tier, titlePattern, bodyPatterns, labels, slotNames, stepIntents, prFiles };
+async function loadTemplates() {
+  const file = await gh('GET', `/repos/${ORG}/factory/contents/apps/supervisor/src/planner/templates.generated.json`);
+  const data = JSON.parse(Buffer.from(file.content, 'base64').toString('utf8'));
+  return data.map((t) => ({
+    id:          t.id,
+    tier:        t.tier,
+    titlePattern:  t.triggers?.title_pattern  ?? '',
+    bodyPatterns:  t.triggers?.body_patterns  ?? [],
+    labels:      t.triggers?.labels_any_of ?? [],
+    slotNames:   t.slot_names   ?? [],
+    stepIntents: t.step_intents ?? [],
+    prFiles:     t.pr_files     ?? [],
+  }));
 }
 
 // ─── Deterministic template matching ─────────────────────────────────────────
@@ -665,17 +632,8 @@ async function main() {
   // ── PR feedback loop first: clear stuck PRs before claiming new issues ──────
   await runPrFeedbackLoop(outcomes);
 
-  // Load templates from docs/supervisor/plans/
-  const tplList = await gh('GET', `/repos/${ORG}/factory/contents/docs/supervisor/plans`);
-  const templates = await Promise.all(
-    tplList
-      .filter((f) => f.name.endsWith('.yml'))
-      .map(async (f) => {
-        const file = await gh('GET', f.url);
-        const raw = Buffer.from(file.content, 'base64').toString('utf8');
-        return parseTemplate(raw);
-      }),
-  );
+  // Load pre-generated templates from templates.generated.json (built from docs/supervisor/plans/*.yml)
+  const templates = await loadTemplates();
   console.log(`[INFO] Loaded ${templates.length} templates: ${templates.map((t) => t.id).join(', ')}`);
 
   // Fetch CONTEXT.md to use as system prompt prefix for all LLM calls
