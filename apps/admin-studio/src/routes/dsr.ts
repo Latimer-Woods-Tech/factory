@@ -74,7 +74,10 @@ dsr.get('/', async (c) => {
     return c.json(
       {
         error: 'Failed to list DSR requests',
-        detail: c.env.STUDIO_ENV !== 'production' ? (err as Error).message : undefined,
+        detail:
+          c.env.STUDIO_ENV !== 'production'
+            ? err instanceof Error ? err.message : String(err)
+            : undefined,
       },
       500,
     );
@@ -103,7 +106,7 @@ dsr.get('/:id', async (c) => {
     const request = await getDSRStatus(db, requestId);
     return c.json(request);
   } catch (err) {
-    const msg = (err as Error).message ?? '';
+    const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes('not found')) {
       return c.json({ error: `DSR ${requestId} not found` }, 404);
     }

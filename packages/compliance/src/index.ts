@@ -441,8 +441,9 @@ export async function listDSRRequests(
     updated_at: string;
   }
 
-  // Build conditional filters. We use ILIKE for optional equality checks so
-  // the query is parameterised and not subject to SQL injection.
+  // Build conditional filters. We use IS NULL checks on parameters to allow
+  // optional equality filtering without multiple query branches — all params
+  // are passed to the server and evaluated safely without string interpolation.
   const rows = await db.execute<DsrRow>(
     sql`SELECT id, user_id, app_id, request_type, status, notes, submitted_at, updated_at
         FROM compliance_dsr_requests
