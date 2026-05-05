@@ -12,6 +12,12 @@ on:
         required: false
         type: string
 
+# MA-8: single-writer policy — queue runs rather than cancel so no supervisor
+# tick is lost when the schedule fires while a label-triggered run is active.
+concurrency:
+  group: supervisor-loop
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
