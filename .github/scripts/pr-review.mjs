@@ -24,7 +24,51 @@ const {
   PR_NUMBER,
   REPO,
   PR_SHA,
+  // Max times the bot may post REQUEST_CHANGES before escalating to human.
+  // Set MAX_REVIEW_ATTEMPTS in repo/org vars. Default: 3.
+  MAX_REVIEW_ATTEMPTS = '3',
+  // GitHub login to notify (request review from) on red-tier PRs and escalations.
+  HUMAN_REVIEWER = 'adrper79-dot',
+  // Telnyx SMS — all three required for SMS to fire; silently skipped if absent.
+  TELNYX_API_KEY,
+  TELNYX_FROM_NUMBER,
+  NOTIFICATION_PHONE,
 } = process.env;
+
+const MAX_ATTEMPTS = parseInt(MAX_REVIEW_ATTEMPTS, 10);
+
+// ─── SMS notification via Telnyx ─────────────────────────────────────────────
+// Silently no-ops if TELNYX_API_KEY / TELNYX_FROM_NUMBER / NOTIFICATION_PHONE
+// are not set — SMS is best-effort, never blocks the review pipeline.
+
+async function sendSms(message) {
+  if (!TELNYX_API_KEY || !TELNYX_FROM_NUMBER || !NOTIFICATION_PHONE) {
+    console.log('[SMS] Skipped — TELNYX_API_KEY / TELNYX_FROM_NUMBER / NOTIFICATION_PHONE not configured');
+    return;
+  }
+  try {
+    const res = await fetch('https://api.telnyx.com/v2/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${TELNYX_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: TELNYX_FROM_NUMBER,
+        to: NOTIFICATION_PHONE,
+        text: message.slice(0, 160), // SMS hard limit
+      }),
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      console.warn(`[SMS] Telnyx error ${res.status}: ${t.slice(0, 120)}`);
+    } else {
+      console.log('[SMS] Sent successfully');
+    }
+  } catch (err) {
+    console.warn(`[SMS] Failed to send: ${err.message.slice(0, 80)}`);
+  }
+}
 
 const repo = REPO?.split('/')[1] ?? REPO;
 const prNum = parseInt(PR_NUMBER, 10);
@@ -101,44 +145,63 @@ function extractAddedLines(files) {
     .join('\n');
 }
 
-function runDeterministicChecks(addedLines, filenames) {
+// Files that are NOT Cloudflare Workers runtime code.
+// Workers runtime constraints (process.env, require, Buffer, Node built-ins)
+// do NOT apply to these files — applying them causes false positives.
+const NON_WORKER_PATH_PREFIXES = ['.github/', 'scripts/', 'docs/', 'tests/', 'migrations/'];
+const NON_WORKER_EXTENSIONS = ['.md', '.yml', '.yaml', '.json', '.jsonc', '.toml', '.txt', '.gitignore'];
+
+function isActionsRunnerFile(filename) {
+  if (NON_WORKER_PATH_PREFIXES.some(p => filename.startsWith(p))) return true;
+  const ext = filename.slice(filename.lastIndexOf('.'));
+  if (NON_WORKER_EXTENSIONS.includes(ext)) return true;
+  // Config/dotfiles with no path prefix
+  const basename = filename.split('/').pop() ?? filename;
+  return /^(CODEOWNERS|\.gitignore|\.gitattributes|renovate\.json|package\.json|tsconfig\.json)$/.test(basename);
+}
+
+function runDeterministicChecks(workerAddedLines, allAddedLines, filenames) {
+  // workerAddedLines — added content from non-Actions-runner files only
+  //   (Workers runtime constraints apply here)
+  // allAddedLines — all added content regardless of file path
+  //   (universal checks: secrets, fetch, any type)
   const violations = [];
   const warnings = [];
 
-  if (/\bprocess\.env\b/.test(addedLines))
+  if (/\bprocess\.env\b/.test(workerAddedLines))
     violations.push({ constraint: 'No process.env', detail: 'Use c.env / env bindings instead of process.env' });
 
-  if (/\brequire\s*\(/.test(addedLines))
+  if (/\brequire\s*\(/.test(workerAddedLines))
     violations.push({ constraint: 'No CommonJS require()', detail: 'ESM imports only — replace require() with import' });
 
-  if (/\bnew Buffer\b|\bBuffer\.from\b|\bBuffer\.alloc\b/.test(addedLines))
+  if (/\bnew Buffer\b|\bBuffer\.from\b|\bBuffer\.alloc\b/.test(workerAddedLines))
     violations.push({ constraint: 'No Buffer', detail: 'Use Uint8Array, TextEncoder, or TextDecoder instead of Buffer' });
 
-  if (/from\s+['"](?:fs|path|crypto)['"]/m.test(addedLines))
+  if (/from\s+['"](?:fs|path|crypto)['"]/m.test(workerAddedLines))
     violations.push({ constraint: 'No Node.js built-ins', detail: 'fs, path, crypto are not available in Workers — use platform-safe APIs' });
 
-  if (/from\s+['"]node:/m.test(addedLines))
+  if (/from\s+['"]node:/m.test(workerAddedLines))
     violations.push({ constraint: 'No node: imports', detail: 'node: protocol imports are not available in Cloudflare Workers' });
 
-  if (/from\s+['"](?:express|fastify|next)['"]/m.test(addedLines))
+  if (/from\s+['"](?:express|fastify|next)['"]/m.test(workerAddedLines))
     violations.push({ constraint: 'No Express/Fastify/Next', detail: 'Use Hono for routing — no other HTTP frameworks' });
 
-  if (/import\s+.*jsonwebtoken/m.test(addedLines))
+  if (/import\s+.*jsonwebtoken/m.test(workerAddedLines))
     violations.push({ constraint: 'No jsonwebtoken', detail: 'Use Web Crypto API for JWT — never the jsonwebtoken package' });
 
-  // Secret in vars block (wrangler config)
+  // Secret in vars block (wrangler config) — check all lines
   if (filenames.some(f => /wrangler/.test(f)) &&
-      /vars:\s*[\s\S]*?(?:KEY|SECRET|TOKEN|PASSWORD)\s*:/im.test(addedLines))
+      /vars:\s*[\s\S]*?(?:KEY|SECRET|TOKEN|PASSWORD)\s*:/im.test(allAddedLines))
     violations.push({ constraint: 'No secrets in wrangler vars', detail: 'Use wrangler secret put — never put secrets in the vars block' });
 
-  // Fetch without error handling
-  const rawFetchMatches = addedLines.match(/await\s+fetch\s*\(/g) ?? [];
-  const handledFetchMatches = addedLines.match(/(?:\.ok|\.status|res\.ok|response\.ok)/g) ?? [];
+  // Fetch without error handling — check all lines
+  const rawFetchMatches = allAddedLines.match(/await\s+fetch\s*\(/g) ?? [];
+  const handledFetchMatches = allAddedLines.match(/(?:\.ok|\.status|res\.ok|response\.ok)/g) ?? [];
   if (rawFetchMatches.length > handledFetchMatches.length)
     warnings.push({ detail: `${rawFetchMatches.length} fetch() call(s) detected — verify each checks .ok or .status before consuming the body` });
 
-  // any in TypeScript (warning only — can't reliably detect without type info)
-  const anyCount = (addedLines.match(/:\s*any\b/g) ?? []).length;
+  // any in TypeScript (warning only) — check all lines
+  const anyCount = (allAddedLines.match(/:\s*any\b/g) ?? []).length;
   if (anyCount > 0)
     warnings.push({ detail: `${anyCount} use(s) of \`any\` type — strict mode forbids any in public APIs` });
 
@@ -164,7 +227,37 @@ const CONSTRAINT_BLOCK = `\
 - Build: tsup ESM only — no CJS output
 - Test: Vitest + @cloudflare/vitest-pool-workers
 
+## CRITICAL: Constraint Scope — Actions Runner vs Workers Runtime
+The constraints above apply ONLY to Cloudflare Workers source files (TypeScript/JavaScript
+that runs inside a V8 isolate). They do NOT apply to:
+- \`.github/workflows/\` — these are GitHub Actions YAML; they run on Ubuntu runners with
+  full Linux access (apt-get, psql, curl, bash, Node.js, Python, etc. are all valid).
+- \`.github/scripts/\` — Node.js scripts that run inside GitHub Actions jobs.
+- \`scripts/\` — local/CI helper scripts (also Node.js or bash).
+
+If you see \`apt-get install\`, \`psql\`, \`curl\`, \`node scripts/\`, \`npm ci\`, \`wrangler deploy\`,
+or shell commands in a \`.github/workflows/\` file, do NOT flag them as Workers violations.
+They are CI runner commands and are correct and expected in that context.
+
+Only flag Workers constraint violations in files under \`apps/\`, \`packages/\`, or \`src/\`.
+
 ## FRIDGE Rules (non-negotiable operating rules)
+1. wordis-bond is off-limits to all automation — CODEOWNERS + denylist.
+2. No credentials in docs, memory, plans, issue bodies, PRs, or comments. Rotate if leaked; do not just delete from git.
+3. Red-tier paths never auto-merge: .github/workflows/**, packages/**, migrations/**, Stripe code, production wrangler config, production Neon user tables.
+4. Every /admin mutation requires out-of-band CODEOWNER ✅ — plan-approval and PR-review do not substitute.
+5. Per-run LLM budget: $5 USD hard cap. On BUDGET_EXCEEDED: pause, label supervisor:budget-paused, file a human issue.
+6. Single-writer per app via LockDO. Claim lock before acting, renew every 10 min, release on close.
+7. Issues must carry supervisor:approved-source before supervisor pickup.
+8. Irreversible actions require explicit human approval — includes deleting CF resources, rulesets, Stripe mutations, live email/SMS outside test mode.
+9. No-template issues: classify Red, label supervisor:no-template. Do not invent plans from scratch.
+10. If the plan is wrong, file an issue against ARCHITECTURE.md. Tag a CODEOWNER. Do not improvise.
+
+## Trust Tiers (CODEOWNERS)
+- 🟢 Green: docs/**, *.md, session/** — low risk, auto-approvable
+- 🟡 Yellow: apps/*/src/**, client/**, tests/** — review required, can approve if clean
+- 🔴 Red: .github/workflows/**, packages/**, migrations/**, wrangler configs, capabilities.yml, service-registry.yml, supervisor plans — highest risk
+
 1. wordis-bond is off-limits to all automation — CODEOWNERS + denylist.
 2. No credentials in docs, memory, plans, issue bodies, PRs, or comments. Rotate if leaked; do not just delete from git.
 3. Red-tier paths never auto-merge: .github/workflows/**, packages/**, migrations/**, Stripe code, production wrangler config, production Neon user tables.
@@ -188,13 +281,28 @@ const REVIEW_SCHEMA = `\
 ## Your task
 Review the PR diff below against the Factory constraints above.
 The deterministic checks (process.env, Buffer, require, etc.) have already been run — do NOT re-check those.
-Focus on:
-- Architectural fit (is this the right approach for the Factory stack?)
-- Error handling patterns (every fetch, every DB call)
-- Type safety concerns beyond simple \`any\` (unsafe casts, missing generics)
-- Package dependency order violations (importing a higher-level package from a lower-level one)
-- FRIDGE rule violations not caught by deterministic checks
-- Anything that would break in a Workers runtime that a Node.js dev might miss
+
+IMPORTANT SCOPE RULE: Constraints apply only to Workers source code (apps/**, packages/**, src/**).
+Files under .github/workflows/, .github/scripts/, and scripts/ run on GitHub Actions Ubuntu runners,
+not inside Cloudflare Workers V8 isolates. apt-get, psql, bash, Node.js, and shell tools are
+expected and correct in those files. Do NOT flag them as Workers violations.
+
+## EXPLICITLY NOT YOUR JOB — do NOT flag these as violations
+- The design of the PR review pipeline itself (trust tiers, bot review, 2-party consensus, CODEOWNERS structure).
+  These are intentional governance choices made by the repository owners.
+- CODEOWNERS file changes — the bot co-ownership assignments are deliberate and correct.
+  The bot is ONLY listed as co-owner on green/yellow paths (docs, apps/*/src); red paths still require human CODEOWNER approval.
+- Architectural patterns or system design decisions that are documented in CLAUDE.md, FRIDGE.md, or CODEOWNERS.
+- Style preferences, naming conventions, or subjective code organization.
+- GitHub Actions workflow changes (syntax, steps, shell commands) — these are not Workers code.
+- The review pipeline flagging its own behavior or meta-commenting on the review system.
+
+## DO flag these
+- Factory Hard Constraint violations in Workers source files (apps/**, packages/**, src/**)
+- Error handling missing on fetch/DB calls in Workers source
+- Type safety holes (unsafe casts, untyped generics) in Workers source
+- Package dependency order violations in packages/**
+- FRIDGE rules 1, 2, 5, 7, 8, 9, 10 violated by the actual code changes
 
 Output ONLY valid JSON — no markdown wrapper, no explanation outside the JSON:
 {
@@ -210,7 +318,7 @@ Output ONLY valid JSON — no markdown wrapper, no explanation outside the JSON:
 
 "lgtm": true means no architectural concerns were found (warnings are OK).
 "lgtm": false means the PR has issues that should block merge.
-Keep architectural_concerns to genuine problems — do not flag style preferences.`;
+Keep architectural_concerns to genuine problems — do not flag style preferences or CI runner commands.`;
 
 // ─── LLM review ──────────────────────────────────────────────────────────────
 
@@ -319,22 +427,97 @@ async function callGrok(prTitle, tier, files, deterministicWarnings) {
   }
 }
 
-// ─── LLM orchestration (Anthropic → Grok fallback) ───────────────────────────
+// ─── LLM orchestration (Grok first-pass → Claude confirmation) ───────────────
+//
+// 2-party consensus model (replaces single-LLM + fallback):
+//   1. Grok reviews the diff first (party 1)
+//   2. If Grok says lgtm=true → Claude reviews, receives Grok's reasoning as
+//      additional context so it can challenge or confirm (party 2)
+//   3. APPROVE only if BOTH say lgtm=true
+//   4. If either rejects → REQUEST_CHANGES with both analyses in the body
+//
+// This reduces hallucinations: a single LLM cannot approve its own blind spot.
+// Red-tier (/admin mutations, workflow files, etc.) still require human sign-off
+// via CODEOWNERS — the 2-party system handles green/yellow auto-merge only.
 
-async function callLLM(prTitle, tier, files, deterministicWarnings) {
-  if (ANTHROPIC_API_KEY) {
-    try {
-      return await callClaude(prTitle, tier, files, deterministicWarnings);
-    } catch (err) {
-      console.warn(`[WARN] Anthropic failed (${err.message.slice(0, 80)}) — falling back to Grok`);
-      if (!GROK_API_KEY) throw err;
-    }
+async function callLLMConsensus(prTitle, tier, files, deterministicWarnings) {
+  if (!GROK_API_KEY && !ANTHROPIC_API_KEY) {
+    throw new Error('No LLM API keys available — set GROK_API_KEY and ANTHROPIC_API_KEY');
   }
+
+  // ── Party 1: Grok ──────────────────────────────────────────────────────────
+  let grokResult = null;
   if (GROK_API_KEY) {
-    console.log('[INFO] Using Grok for architectural review...');
-    return await callGrok(prTitle, tier, files, deterministicWarnings);
+    console.log('[INFO] Party 1: Calling Grok for first-pass review...');
+    try {
+      grokResult = await callGrok(prTitle, tier, files, deterministicWarnings);
+      console.log(`[INFO] Grok: lgtm=${grokResult.lgtm} | concerns=${grokResult.architectural_concerns?.length ?? 0}`);
+    } catch (err) {
+      console.warn(`[WARN] Grok failed (${err.message.slice(0, 80)}) — proceeding with Claude only`);
+    }
+  } else {
+    console.warn('[WARN] GROK_API_KEY not set — 2-party consensus degraded to Claude-only');
   }
-  throw new Error('No LLM API key available — set ANTHROPIC_API_KEY or GROK_API_KEY');
+
+  // ── Party 2: Claude ────────────────────────────────────────────────────────
+  // Always runs (even if Grok rejected) so we get Claude's independent view.
+  // Grok's summary is injected as context so Claude can challenge it.
+  let claudeResult = null;
+  if (ANTHROPIC_API_KEY) {
+    // Inject Grok's verdict into deterministic warnings so Claude sees it
+    const warningsWithGrok = [
+      ...deterministicWarnings,
+      ...(grokResult
+        ? [{
+            detail: `Grok first-pass verdict — lgtm=${grokResult.lgtm}. ` +
+              `Summary: ${grokResult.summary ?? 'none'}. ` +
+              (grokResult.architectural_concerns?.length
+                ? `Concerns: ${grokResult.architectural_concerns.map(c => c.detail).join('; ')}`
+                : 'No concerns raised.'),
+          }]
+        : []),
+    ];
+
+    console.log('[INFO] Party 2: Calling Claude for confirmation review...');
+    try {
+      claudeResult = await callClaude(prTitle, tier, files, warningsWithGrok);
+      console.log(`[INFO] Claude: lgtm=${claudeResult.lgtm} | concerns=${claudeResult.architectural_concerns?.length ?? 0}`);
+    } catch (err) {
+      console.warn(`[WARN] Claude failed (${err.message.slice(0, 80)})`);
+    }
+  } else {
+    console.warn('[WARN] ANTHROPIC_API_KEY not set — 2-party consensus degraded to Grok-only');
+  }
+
+  // ── Consensus ──────────────────────────────────────────────────────────────
+  // Both must agree to approve. If one is unavailable, the available one decides.
+  const grokLgtm  = grokResult  == null ? true  : (grokResult.lgtm  ?? false);
+  const claudeLgtm = claudeResult == null ? true : (claudeResult.lgtm ?? false);
+  const consensusLgtm = grokLgtm && claudeLgtm;
+
+  // Merge concerns and warnings from both parties
+  const mergedConcerns = [
+    ...(grokResult?.architectural_concerns  ?? []).map(c => ({ ...c, reviewer: 'Grok' })),
+    ...(claudeResult?.architectural_concerns ?? []).map(c => ({ ...c, reviewer: 'Claude' })),
+  ];
+  const mergedWarnings = [
+    ...(grokResult?.warnings  ?? []).map(w => ({ ...w, reviewer: 'Grok' })),
+    ...(claudeResult?.warnings ?? []).map(w => ({ ...w, reviewer: 'Claude' })),
+  ];
+
+  const grokSummary   = grokResult?.summary  ? `**Grok:** ${grokResult.summary}`  : null;
+  const claudeSummary = claudeResult?.summary ? `**Claude:** ${claudeResult.summary}` : null;
+  const combinedSummary = [grokSummary, claudeSummary].filter(Boolean).join('\n\n');
+
+  return {
+    architectural_concerns: mergedConcerns,
+    warnings: mergedWarnings,
+    summary: combinedSummary || 'No LLM summary available.',
+    lgtm: consensusLgtm,
+    // Pass both raw results for the review body builder
+    _grokResult: grokResult,
+    _claudeResult: claudeResult,
+  };
 }
 
 // ─── Build review body ────────────────────────────────────────────────────────
@@ -354,6 +537,7 @@ function buildReviewBody({ tier, decision, deterministicResult, llmResult, prTit
   lines.push('');
   lines.push(`**Tier:** ${emoji} ${tier.charAt(0).toUpperCase() + tier.slice(1)}`);
   lines.push(`**Decision:** ${decisionLine}`);
+  lines.push(`**Reviewers:** 🤖 Grok (party 1) → 🤖 Claude (party 2) — both must approve`);
   lines.push('');
 
   // Violations
@@ -437,6 +621,85 @@ function buildReviewBody({ tier, decision, deterministicResult, llmResult, prTit
   return lines.join('\n');
 }
 
+// ─── Escalation: limit hit ───────────────────────────────────────────────────
+//
+// Called when the bot has posted REQUEST_CHANGES MAX_ATTEMPTS times without the
+// PR being fixed. Actions taken:
+//   1. Add label `supervisor:review-limit-reached` to the PR
+//   2. Request review from HUMAN_REVIEWER so GitHub sends an immediate notification
+//   3. File a GitHub issue referencing the PR so it appears on the board
+//   4. Post a COMMENT on the PR explaining what happened
+
+async function escalateToHuman(prUrl, prTitle, attemptCount, concerns) {
+  console.log(`[ESCALATE] Review limit reached (${attemptCount}/${MAX_ATTEMPTS}) — escalating to ${HUMAN_REVIEWER}`);
+
+  // 1. Label the PR
+  try {
+    await gh('POST', `/repos/${ORG}/${repo}/issues/${prNum}/labels`, { labels: ['supervisor:review-limit-reached'] });
+  } catch (err) {
+    console.warn(`[WARN] Could not apply escalation label: ${err.message.slice(0, 80)}`);
+  }
+
+  // 2. Request human review
+  try {
+    await gh('POST', `/repos/${ORG}/${repo}/pulls/${prNum}/requested_reviewers`, { reviewers: [HUMAN_REVIEWER] });
+    console.log(`[OK] Requested review from ${HUMAN_REVIEWER}`);
+  } catch (err) {
+    console.warn(`[WARN] Could not request review: ${err.message.slice(0, 80)}`);
+  }
+
+  // 3. File a tracking issue
+  const issueBody = [
+    `## 🚨 Review Limit Reached — Manual Intervention Required`,
+    ``,
+    `PR **[#${prNum}: ${prTitle}](${prUrl})** has been rejected by the 2-party LLM reviewer **${attemptCount} times** without a successful fix.`,
+    ``,
+    `### Unresolved concerns`,
+    ...(concerns.length
+      ? concerns.map(c => `- **${c.reviewer ?? 'Bot'}** · \`${c.file ?? '?'}\`: ${c.detail}`)
+      : ['- No structured concerns recorded — check PR review thread for details']),
+    ``,
+    `### Action required`,
+    `1. Open the PR: ${prUrl}`,
+    `2. Read the review comments from \`factory-cross-repo[bot]\``,
+    `3. Either approve the PR (if the bot is wrong) or close it and fix the underlying issue`,
+    ``,
+    `_Filed automatically by factory-cross-repo after ${attemptCount} failed review cycles._`,
+  ].join('\n');
+
+  try {
+    const issue = await gh('POST', `/repos/${ORG}/${repo}/issues`, {
+      title: `[supervisor] Review limit reached: PR #${prNum} — ${prTitle}`,
+      body: issueBody,
+      labels: ['supervisor:review-limit-reached', 'status:blocked'],
+      assignees: [HUMAN_REVIEWER],
+    });
+    console.log(`[OK] Filed escalation issue #${issue.number}`);
+  } catch (err) {
+    console.warn(`[WARN] Could not file escalation issue: ${err.message.slice(0, 80)}`);
+  }
+
+  // 4. Comment on the PR
+  const comment = [
+    `## 🚨 Review Limit Reached`,
+    ``,
+    `This PR has been rejected by the Grok→Claude 2-party reviewer **${attemptCount} times** (limit: ${MAX_ATTEMPTS}).`,
+    ``,
+    `**@${HUMAN_REVIEWER}** — your review is now required. A tracking issue has been filed in this repository.`,
+    ``,
+    `_The automated fix loop is paused. Push a new commit to restart it, or close this PR._`,
+  ].join('\n');
+
+  try {
+    await gh('POST', `/repos/${ORG}/${repo}/issues/${prNum}/comments`, { body: comment });
+  } catch (err) {
+    console.warn(`[WARN] Could not post escalation comment: ${err.message.slice(0, 80)}`);
+  }
+
+  // 5. SMS notification
+  await sendSms(`[Factory] PR #${prNum} stuck after ${attemptCount} rejections. Review needed: ${prUrl}`);
+}
+
 // ─── Post GitHub review ───────────────────────────────────────────────────────
 
 async function postReview(event, body) {
@@ -483,6 +746,27 @@ async function main() {
     return;
   }
 
+  // ── Retry limit check ────────────────────────────────────────────────────────
+  // Count prior REQUEST_CHANGES reviews by this bot across all commits.
+  const priorRejections = existingReviews.filter(
+    r => r.user?.login === REVIEW_BOT_LOGIN && r.state === 'CHANGES_REQUESTED',
+  ).length;
+  console.log(`[INFO] Prior rejections by bot: ${priorRejections}/${MAX_ATTEMPTS}`);
+
+  if (priorRejections >= MAX_ATTEMPTS) {
+    // Gather the last batch of concerns to surface in the escalation issue
+    const lastReview = existingReviews
+      .filter(r => r.user?.login === REVIEW_BOT_LOGIN && r.state === 'CHANGES_REQUESTED')
+      .at(-1);
+    // Parse concerns out of the review body (best-effort)
+    const concernLines = (lastReview?.body ?? '')
+      .split('\n')
+      .filter(l => l.startsWith('- **'))
+      .map(l => ({ detail: l.replace(/^- \*\*[^*]+\*\*[^:]*: /, ''), file: null, reviewer: 'Bot' }));
+    await escalateToHuman(pr.html_url, pr.title, priorRejections, concernLines);
+    return;
+  }
+
   // Fetch changed files
   const files = await gh('GET', `/repos/${ORG}/${repo}/pulls/${prNum}/files`);
   const filenames = files.map(f => f.filename);
@@ -494,9 +778,27 @@ async function main() {
 
   console.log(`[INFO] Tier: ${tier} | Files: ${filenames.length} | Diff: ${totalDiffChars} chars | Admin: ${adminMutation}`);
 
+  // ── Red-tier: immediately request human review ────────────────────────────
+  // This triggers a GitHub notification so @HUMAN_REVIEWER can act fast.
+  // The review body will contain both LLM verdicts, so they need only one tap.
+  if (tier === 'red' && HUMAN_REVIEWER) {
+    try {
+      // Requesting review sends a free GitHub notification (email + mobile push).
+      // No SMS here — GitHub notification is sufficient for red-tier PRs since the
+      // LLM verdicts will already be in the review body when you open it.
+      await gh('POST', `/repos/${ORG}/${repo}/pulls/${prNum}/requested_reviewers`, { reviewers: [HUMAN_REVIEWER] });
+      console.log(`[INFO] Red-tier PR — requested review from ${HUMAN_REVIEWER} (GitHub notification sent)`);
+    } catch (err) {
+      console.warn(`[WARN] Could not request red-tier review: ${err.message.slice(0, 80)}`);
+    }
+  }
+
   // Deterministic checks
-  const addedLines = extractAddedLines(files);
-  const deterministicResult = runDeterministicChecks(addedLines, filenames);
+  // workerAddedLines — only files that run in CF Workers (excludes Actions runner files)
+  // allAddedLines — all files (for universal checks: secrets in wrangler, fetch handling, any type)
+  const allAddedLines = extractAddedLines(files);
+  const workerAddedLines = extractAddedLines(files.filter(f => !isActionsRunnerFile(f.filename ?? '')));
+  const deterministicResult = runDeterministicChecks(workerAddedLines, allAddedLines, filenames);
 
   console.log(`[INFO] Deterministic: ${deterministicResult.violations.length} violations, ${deterministicResult.warnings.length} warnings`);
 
@@ -506,9 +808,9 @@ async function main() {
     console.log('[INFO] Green tier + no violations — skipping LLM call');
     llmResult = { architectural_concerns: [], warnings: [], summary: 'Green-tier change (docs/markdown only) — no architectural review required.', lgtm: true };
   } else {
-    console.log('[INFO] Calling LLM for architectural review...');
-    llmResult = await callLLM(pr.title, tier, files, deterministicResult.warnings);
-    console.log(`[INFO] LLM: lgtm=${llmResult.lgtm} | concerns=${llmResult.architectural_concerns?.length ?? 0}`);
+    console.log('[INFO] Running 2-party LLM consensus (Grok → Claude)...');
+    llmResult = await callLLMConsensus(pr.title, tier, files, deterministicResult.warnings);
+    console.log(`[INFO] Consensus: lgtm=${llmResult.lgtm} | concerns=${llmResult.architectural_concerns?.length ?? 0}`);
   }
 
   // Determine decision

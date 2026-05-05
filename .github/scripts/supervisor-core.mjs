@@ -163,6 +163,139 @@ function planComment(issue, template, tier, extra = '') {
   ].join('\n');
 }
 
+// ─── Hallucination & bad-logic guards ────────────────────────────────────────
+//
+// Three layers — applied to all LLM-generated content before any commit lands:
+//
+//  1. CONSTRAINT CHECK  — same rules as pr-review.mjs deterministic checks.
+//     Catches process.env, require(), Buffer, Node built-ins, etc. in generated
+//     code. If any violation is found the content is rejected outright.
+//
+//  2. SCHEMA GUARD (slots) — validates that extractSlots() only returns keys
+//     declared in the template. Extra keys are stripped; missing keys stay null.
+//     Prevents Claude from inventing paths or injecting arbitrary file content.
+//
+//  3. CONCERN-ADDRESSED CHECK (feedback loop) — before committing a "fix",
+//     verify that at least one concern keyword from the review body actually
+//     appears in the diff between old and new content. If the fix doesn't touch
+//     anything related to the flagged issue, it's a hallucination — reject it.
+
+// 1. Deterministic constraint check on LLM-generated content
+// Strips comments and string literals before pattern matching to avoid false
+// positives on documentation, JSDoc examples, or inline explanations.
+function stripCommentsAndStrings(src) {
+  // Remove block comments /* ... */
+  let s = src.replace(/\/\*[\s\S]*?\*\//g, ' ');
+  // Remove line comments // ...
+  s = s.replace(/\/\/[^\n]*/g, ' ');
+  // Remove template literals (simplified — removes content between backticks)
+  s = s.replace(/`[^`]*`/g, '""');
+  // Remove double-quoted strings
+  s = s.replace(/"(?:[^"\\]|\\.)*"/g, '""');
+  // Remove single-quoted strings
+  s = s.replace(/'(?:[^'\\]|\\.)*'/g, "''");
+  return s;
+}
+
+function checkGeneratedContent(filename, content) {
+  const violations = [];
+  const lines = content.split('\n');
+  // Run constraint checks on code-only text (comments/strings stripped)
+  const codeOnly = stripCommentsAndStrings(content);
+
+  if (/\bprocess\.env\b/.test(codeOnly))
+    violations.push('No process.env — use Hono/Worker bindings');
+
+  if (/\brequire\s*\(/.test(codeOnly))
+    violations.push('No CommonJS require() — ESM only');
+
+  if (/\bnew Buffer\b|\bBuffer\.from\b|\bBuffer\.alloc\b/.test(codeOnly))
+    violations.push('No Buffer — use Uint8Array/TextEncoder/TextDecoder');
+
+  if (/from\s+['"](?:fs|path|crypto)['"]/m.test(codeOnly) ||
+      /from\s+['"]node:/m.test(codeOnly))
+    violations.push('No Node.js built-ins (fs/path/crypto/node:)');
+
+  if (/from\s+['"](?:express|fastify|next)['"]/m.test(codeOnly))
+    violations.push('No Express/Fastify/Next — use Hono');
+
+  if (/import\s+.*jsonwebtoken/m.test(codeOnly))
+    violations.push('No jsonwebtoken — use Web Crypto API');
+
+  // Flag suspiciously large generated files — configurable via MAX_GENERATED_LINES env var
+  const maxLines = parseInt(process.env.MAX_GENERATED_LINES ?? '800', 10);
+  if (lines.length > maxLines)
+    violations.push(`Generated file is ${lines.length} lines — exceeds ${maxLines}-line safety limit (set MAX_GENERATED_LINES to adjust)`);
+
+  // Flag empty or near-empty generated files
+  const nonEmpty = lines.filter(l => l.trim().length > 0).length;
+  if (nonEmpty < 3)
+    violations.push('Generated file is effectively empty — likely hallucination');
+
+  return violations;
+}
+
+// 2. Schema guard — strip keys not declared in the template's slotNames
+function enforceSlotSchema(raw, slotNames) {
+  if (!raw || typeof raw !== 'object') return {};
+  const allowed = new Set(slotNames);
+  const clean = {};
+  for (const key of Object.keys(raw)) {
+    if (allowed.has(key)) {
+      // Reject slot values that look like prompt-injection instructions.
+      // Pattern requires an imperative verb followed by its target to avoid
+      // false positives on legitimate content (e.g. "never disregard errors",
+      // "the system prompt structure", security docs that mention jailbreak).
+      const val = raw[key];
+      const INJECTION_RE = /\b(ignore|disregard|forget|override)\s+(previous|above|all|prior|earlier)\s+(instructions?|context|rules?|prompt)/i;
+      if (typeof val === 'string' && INJECTION_RE.test(val)) {
+        console.warn(`[GUARD] Slot "${key}" contains suspicious instruction text — nulled`);
+        clean[key] = null;
+      } else {
+        clean[key] = val;
+      }
+    } else {
+      console.warn(`[GUARD] Slot "${key}" not in template schema — stripped`);
+    }
+  }
+  // Ensure all declared slots exist (even if null)
+  for (const name of slotNames) {
+    if (!(name in clean)) clean[name] = null;
+  }
+  return clean;
+}
+
+// 3. Concern-addressed check — at least one concern keyword must appear
+//    in the lines changed by the fix (old vs new content diff)
+function fixAddressesConcerns(concernLines, oldContent, newContent) {
+  if (!oldContent || !newContent) return true; // can't check — allow through
+
+  // Extract keywords from concern lines (2+ char non-punctuation words)
+  const keywords = [...new Set(
+    concernLines
+      .toLowerCase()
+      .match(/\b[a-z_$][a-z0-9_$]{2,}\b/g) ?? [],
+  )].filter(w => !['the', 'and', 'for', 'not', 'use', 'with', 'this', 'that', 'are', 'from'].includes(w));
+
+  if (!keywords.length) return true; // no parseable keywords — allow through
+
+  // Build the set of truly changed lines: lines added OR lines removed.
+  // A fix that works by deleting bad code (no new lines) is still valid.
+  const oldSet = new Set(oldContent.split('\n'));
+  const newSet = new Set(newContent.split('\n'));
+  const addedLines   = newContent.split('\n').filter(l => !oldSet.has(l));
+  const removedLines = oldContent.split('\n').filter(l => !newSet.has(l));
+  const changedText  = [...addedLines, ...removedLines].join(' ').toLowerCase();
+
+  const matched = keywords.filter(k => changedText.includes(k));
+  if (matched.length === 0) {
+    console.warn(`[GUARD] Fix does not address any concern keywords: ${keywords.slice(0, 8).join(', ')}`);
+    return false;
+  }
+  console.log(`[GUARD] Fix addresses concern keywords: ${matched.slice(0, 5).join(', ')}`);
+  return true;
+}
+
 // ─── Anthropic slot extraction ────────────────────────────────────────────────
 
 async function extractSlots(slotNames, issue, factoryContext = '') {
@@ -198,11 +331,14 @@ async function extractSlots(slotNames, issue, factoryContext = '') {
   const data = await res.json();
   const raw = data.content?.[0]?.text ?? '{}';
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  let parsed;
   try {
-    return jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
   } catch {
-    return {};
+    parsed = {};
   }
+  // Guard 2: enforce schema — strip hallucinated keys, null missing ones
+  return enforceSlotSchema(parsed, slotNames);
 }
 
 // ─── Green execution (create branch + files + PR) ────────────────────────────
@@ -262,10 +398,215 @@ async function executeGreen(repo, issue, template, slots) {
   return { branch, prUrl: pr.html_url, prNumber: pr.number };
 }
 
+// ─── PR feedback loop (read rejection → Claude fix → push) ───────────────────
+//
+// Scans all open PRs authored by the supervisor bot across monitored repos.
+// For each PR where the latest review decision is CHANGES_REQUESTED:
+//   1. Extract the concern list from the bot review body
+//   2. Fetch the current file contents from the PR branch
+//   3. Call Claude to produce a corrected version of each file mentioned
+//   4. Commit the fixes to the PR branch — this triggers pr-review.yml to
+//      re-run automatically via the `synchronize` event
+//
+// This loop runs BEFORE the issue-processing loop so stuck PRs clear first.
+
+const BOT_LOGIN = 'factory-cross-repo[bot]';
+const MAX_FIX_ATTEMPTS = 3; // Must stay ≤ MAX_REVIEW_ATTEMPTS in pr-review.mjs
+
+async function runPrFeedbackLoop(outcomes) {
+  if (!ANTHROPIC_API_KEY) {
+    console.log('[PRLoop] ANTHROPIC_API_KEY not set — skipping PR feedback loop');
+    return;
+  }
+
+  for (const repo of MONITORED_REPOS) {
+    let prs;
+    try {
+      prs = await gh('GET', `/repos/${ORG}/${repo}/pulls?state=open&per_page=50`);
+    } catch (e) {
+      console.warn(`[PRLoop] ${repo}: could not fetch PRs: ${e.message}`);
+      continue;
+    }
+
+    // Only process PRs opened by the supervisor bot
+    const botPrs = prs.filter(pr => pr.user?.login === BOT_LOGIN);
+    if (!botPrs.length) continue;
+
+    for (const pr of botPrs) {
+      try {
+        const reviews = await gh('GET', `/repos/${ORG}/${repo}/pulls/${pr.number}/reviews`);
+
+        // Skip if not currently blocked by REQUEST_CHANGES
+        const latestDecision = reviews
+          .filter(r => r.user?.login === BOT_LOGIN)
+          .at(-1)?.state;
+        if (latestDecision !== 'CHANGES_REQUESTED') continue;
+
+        // Count rejections — if at limit, escalation already fired, skip fix attempt
+        const rejectionCount = reviews.filter(
+          r => r.user?.login === BOT_LOGIN && r.state === 'CHANGES_REQUESTED',
+        ).length;
+        if (rejectionCount >= MAX_FIX_ATTEMPTS) {
+          console.log(`[PRLoop] ${repo}#${pr.number}: at rejection limit (${rejectionCount}) — escalation previously fired, skipping`);
+          continue;
+        }
+
+        // Extract concern text from the most recent REQUEST_CHANGES review body
+        const lastReview = reviews
+          .filter(r => r.user?.login === BOT_LOGIN && r.state === 'CHANGES_REQUESTED')
+          .at(-1);
+        const reviewBody = lastReview?.body ?? '';
+
+        // Extract violation + warning lines from the review body
+        const concernLines = reviewBody
+          .split('\n')
+          .filter(l => /^[-*]/.test(l.trim()) && l.length < 300)
+          .slice(0, 20)
+          .join('\n');
+
+        if (!concernLines.trim()) {
+          console.log(`[PRLoop] ${repo}#${pr.number}: no parseable concerns in review body — skipping`);
+          continue;
+        }
+
+        console.log(`[PRLoop] ${repo}#${pr.number}: rejection ${rejectionCount}, generating fix...`);
+
+        // Fetch changed files from the PR
+        const files = await gh('GET', `/repos/${ORG}/${repo}/pulls/${pr.number}/files`);
+
+        // Only attempt to fix source files (not generated, not binary)
+        const fixableFiles = files.filter(f =>
+          f.patch && /\.(ts|tsx|mjs|js|json|yml|yaml|md)$/.test(f.filename),
+        ).slice(0, 5); // cap to avoid token blowout
+
+        if (!fixableFiles.length) {
+          console.log(`[PRLoop] ${repo}#${pr.number}: no fixable files — skipping`);
+          continue;
+        }
+
+        // Build Claude prompt
+        const diffContext = fixableFiles
+          .map(f => `### ${f.filename}\n\`\`\`diff\n${(f.patch ?? '').slice(0, 4000)}\n\`\`\``)
+          .join('\n\n');
+
+        const fixPrompt = `You are the Factory supervisor auto-fix agent.
+
+A PR was rejected by the Grok→Claude 2-party reviewer with these concerns:
+${concernLines}
+
+Here is the current diff for the files in the PR:
+${diffContext}
+
+Produce corrected file contents that resolve ALL the listed concerns while preserving the intent of the change.
+Output ONLY valid JSON in this exact shape — no markdown wrapper:
+{
+  "fixes": [
+    { "filename": "path/to/file.ts", "content": "...full corrected file content..." }
+  ],
+  "explanation": "One sentence describing what was changed to fix the concerns."
+}
+
+If a concern cannot be resolved without human input, output an empty fixes array and explain why in the explanation field.`;
+
+        let fixResult;
+        try {
+          const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': ANTHROPIC_API_KEY,
+              'anthropic-version': '2023-06-01',
+            },
+            body: JSON.stringify({
+              model: ANTHROPIC_MODEL,
+              max_tokens: 4096,
+              messages: [{ role: 'user', content: fixPrompt }],
+            }),
+          });
+          if (!res.ok) throw new Error(`Anthropic ${res.status}: ${await res.text()}`);
+          const data = await res.json();
+          const raw = data.content?.[0]?.text ?? '{}';
+          const jsonMatch = raw.match(/\{[\s\S]*\}/);
+          fixResult = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+        } catch (e) {
+          console.warn(`[PRLoop] ${repo}#${pr.number}: Claude fix call failed: ${e.message.slice(0, 80)}`);
+          continue;
+        }
+
+        if (!fixResult?.fixes?.length) {
+          console.log(`[PRLoop] ${repo}#${pr.number}: Claude could not auto-fix (${fixResult?.explanation ?? 'no explanation'})`);
+          outcomes.push(`🔁 ${repo}#${pr.number}: auto-fix attempted but Claude yielded no changes — ${fixResult?.explanation ?? ''}`);
+          continue;
+        }
+
+        // Commit each fixed file to the PR branch
+        const branch = pr.head.ref;
+        let committed = 0;
+        let guardRejected = 0;
+        for (const fix of fixResult.fixes) {
+          if (!fix.filename || !fix.content) continue;
+
+          // Guard 1: constraint check on generated content
+          const violations = checkGeneratedContent(fix.filename, fix.content);
+          if (violations.length > 0) {
+            console.warn(`[GUARD] ${fix.filename} failed constraint check — NOT committed:`);
+            violations.forEach(v => console.warn(`  • ${v}`));
+            guardRejected++;
+            continue;
+          }
+
+          // Guard 3: concern-addressed check — fetch current file content to diff
+          let oldContent = '';
+          try {
+            const existing = await gh('GET', `/repos/${ORG}/${repo}/contents/${fix.filename}?ref=${branch}`);
+            oldContent = Buffer.from(existing.content ?? '', 'base64').toString('utf8');
+          } catch { /* new file — skip concern check */ }
+
+          if (oldContent && !fixAddressesConcerns(concernLines, oldContent, fix.content)) {
+            console.warn(`[GUARD] ${fix.filename} fix does not address review concerns — NOT committed`);
+            guardRejected++;
+            continue;
+          }
+
+          try {
+            let existingSha;
+            try {
+              const existing = await gh('GET', `/repos/${ORG}/${repo}/contents/${fix.filename}?ref=${branch}`);
+              existingSha = existing.sha;
+            } catch { /* new file */ }
+
+            await gh('PUT', `/repos/${ORG}/${repo}/contents/${fix.filename}`, {
+              message: `fix: supervisor auto-fix attempt ${rejectionCount + 1} — ${fixResult.explanation?.slice(0, 60) ?? 'resolve review concerns'} [${RUN_ID}]`,
+              content: btoa(unescape(encodeURIComponent(fix.content))),
+              branch,
+              ...(existingSha ? { sha: existingSha } : {}),
+            });
+            committed++;
+          } catch (e) {
+            console.warn(`[PRLoop] ${repo}#${pr.number}: could not commit ${fix.filename}: ${e.message.slice(0, 80)}`);
+          }
+        }
+
+        if (guardRejected > 0 && committed === 0) {
+          outcomes.push(`🛡️ ${repo}#${pr.number}: auto-fix blocked by hallucination guards (${guardRejected} file(s) rejected) — manual fix required`);
+        } else if (committed > 0) {
+          console.log(`[PRLoop] ${repo}#${pr.number}: committed ${committed} fix(es) — pr-review will re-trigger on synchronize`);
+          outcomes.push(`🔁 ${repo}#${pr.number}: auto-fix committed (attempt ${rejectionCount + 1}) — ${fixResult.explanation}`);
+        }
+      } catch (e) {
+        console.warn(`[PRLoop] ${repo}#${pr.number}: unexpected error: ${e.message.slice(0, 120)}`);
+      }
+    }
+  }
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
   const outcomes = [];
+
+  // ── PR feedback loop first: clear stuck PRs before claiming new issues ──────
+  await runPrFeedbackLoop(outcomes);
 
   // Load templates from docs/supervisor/plans/
   const tplList = await gh('GET', `/repos/${ORG}/factory/contents/docs/supervisor/plans`);
@@ -358,7 +699,7 @@ async function main() {
           issue.number,
           planComment(ctx, template, 'red', '\n\n@adrper79-dot — Red-tier: human review required before any execution.'),
         );
-        await addLabels(repo, issue.number, ['agent:claimed:sauna', 'status:wip']);
+        await addLabels(repo, issue.number, ['agent:claimed:sauna', 'status:in_progress']);
         outcomes.push(
           `🔴 ${repo}#${issue.number}: ${template.id} — awaiting review. https://github.com/${ORG}/${repo}/issues/${issue.number}`,
         );
@@ -367,7 +708,7 @@ async function main() {
 
       if (tier === 'yellow') {
         await postComment(repo, issue.number, planComment(ctx, template, 'yellow'));
-        await addLabels(repo, issue.number, ['agent:claimed:sauna', 'status:wip']);
+        await addLabels(repo, issue.number, ['agent:claimed:sauna', 'status:in_progress']);
         outcomes.push(
           `🟡 ${repo}#${issue.number}: ${template.id} — waiting ✅. https://github.com/${ORG}/${repo}/issues/${issue.number}`,
         );
@@ -388,7 +729,7 @@ async function main() {
       }
 
       await postComment(repo, issue.number, planComment(ctx, template, 'green', execNote));
-      await addLabels(repo, issue.number, ['agent:claimed:sauna', 'status:wip']);
+      await addLabels(repo, issue.number, ['agent:claimed:sauna', 'status:in_progress']);
 
       const url = prInfo?.prUrl ?? `https://github.com/${ORG}/${repo}/issues/${issue.number}`;
       outcomes.push(`🟢 ${repo}#${issue.number}: ${template.id}${prInfo ? ` → PR #${prInfo.prNumber}` : ''} ${url}`);

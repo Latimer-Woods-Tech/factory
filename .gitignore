@@ -7,6 +7,9 @@ apps/*/node_modules/
 apps/*/*.tsbuildinfo
 .env.sentry
 .env.*.local
+.dev.vars
+**/.dev.vars
+**/.dev.vars.*
 _external_reviews/
 
 package-lock.json

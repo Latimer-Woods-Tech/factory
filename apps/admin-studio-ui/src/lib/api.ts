@@ -1,5 +1,5 @@
 /**
- * Thin fetch wrapper. Adds JWT, request id, and surfaces 401 → forced logout.
+ * Thin fetch wrapper. Adds JWT, request id, and forces logout for invalid session responses.
  */
 import { useSession } from '../stores/session.js';
 
@@ -26,12 +26,12 @@ export async function apiFetch<T = unknown>(
 
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
 
-  if (res.status === 401) {
-    useSession.getState().logout();
-  }
-
   const text = await res.text();
   const body = text ? safeJson(text) : null;
+
+  if (res.status === 401 || isEnvironmentMismatch403(res.status, body)) {
+    useSession.getState().logout();
+  }
 
   if (!res.ok) {
     const err: ApiError = Object.assign(new Error(`API ${res.status}`), {
@@ -46,4 +46,13 @@ export async function apiFetch<T = unknown>(
 
 function safeJson(text: string): unknown {
   try { return JSON.parse(text); } catch { return text; }
+}
+
+function isEnvironmentMismatch403(status: number, body: unknown): boolean {
+  if (status !== 403 || !body || typeof body !== 'object') {
+    return false;
+  }
+
+  const candidate = body as { error?: unknown; tokenEnv?: unknown };
+  return candidate.error === 'Environment mismatch' && typeof candidate.tokenEnv === 'string';
 }
