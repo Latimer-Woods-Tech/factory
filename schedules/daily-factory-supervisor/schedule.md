@@ -126,8 +126,11 @@ The plan comment format is:
 ```
 
 This requirement drops once a template accumulates ≥ 3 successful merged runs with
-zero reverts (`runs_merged ≥ 3 AND runs_reverted = 0` in `template_stats`).
-See `docs/supervisor/ARCHITECTURE.md` §5.9 for the quality tracking model.
+zero reverts (`runs_merged ≥ 3 AND runs_reverted = 0` in `template_stats`). That
+threshold is **Phase 2** behavior — see §Phase 2 Roadmap below. In Phase 1, plan
+approval is required for every run of every template because all templates start at
+zero runs. The Phase 1 plan-approval rule is simple: if `supervisor:plan-approved`
+label is not present, post plan and wait.
 
 ### Rail 4 — Red tier: never auto-merge
 
@@ -210,28 +213,30 @@ ISSUE SCAN
   7. Exclude issues targeting wordis-bond (Rail 1 — belt and suspenders)
 
 FOR EACH CANDIDATE ISSUE:
-  8. PLAN-APPROVAL CHECK
-     If supervisor:plan-approved label present:
-       → Proceed to step 12 (execute)
-     If supervisor:awaiting-approval label present:
-       → Skip (plan already posted; still waiting)
+  8. TEMPLATE MATCH
+     Call matchTemplate(issue) against loaded templates
+     No match:
+       - If supervisor:awaiting-approval present: remove that stale label
+       - Add supervisor:no-template, log ❓, continue (Rail 9)
+
+  9. PLAN-APPROVAL CHECK (after template match — validates plan is still for a live template)
+     If supervisor:awaiting-approval present AND supervisor:plan-approved NOT present:
+       → Skip (plan already posted; still waiting for CODEOWNER to add plan-approved)
        → Log: "⏳ {repo}#{issue}: plan posted, waiting for approval"
        → Continue to next issue
 
-  9. TEMPLATE MATCH
-     Call matchTemplate(issue) against loaded templates
-     No match → add supervisor:no-template, log ❓, continue (Rail 9)
-
  10. TIER CHECK
-     tier = red  → post Red-tier plan comment, add agent:claimed:sauna, stop (Rail 4)
-     tier = yellow → post Yellow-tier plan comment, add awaiting-approval, stop
+     tier = red    → post Red-tier plan comment, add agent:claimed:sauna + status:in_progress (Rail 4)
+     tier = yellow → post Yellow-tier plan comment, add awaiting-approval + status:in_progress
      tier = green  → proceed to plan post (step 11)
 
- 11. PLAN POST (Green + Yellow)
-     a. Extract slots via Anthropic (with schema guard + injection filter)
+ 11. PLAN POST (Green + Yellow + Red)
+     a. Extract slots via Anthropic (Green only, only after plan-approved; deferred to
+        keep LLM costs to zero on the initial plan-post round-trip for Green tier)
      b. Post plan comment with: template slug, tier, run ID, step intents, approval ask
-     c. Add labels: supervisor:awaiting-approval (+ status:in_progress for yellow/red)
-     d. Log: "🟢⏳ / 🟡⏳ {repo}#{issue}: plan posted, awaiting approval"
+     c. Add labels: supervisor:awaiting-approval + status:in_progress (all tiers)
+        Exception: Red-tier gets agent:claimed:sauna immediately (no execution path)
+     d. Log: "🟢⏳ / 🟡⏳ / 🔴 {repo}#{issue}: plan posted"
      e. STOP — continue to next issue
 
  12. EXECUTE (Green only, after supervisor:plan-approved label is present)

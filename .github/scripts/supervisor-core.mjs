@@ -695,8 +695,25 @@ async function main() {
         continue;
       }
 
-      // Plan-approval fast-path check: if already awaiting approval (plan posted
-      // in a previous run) and not yet approved, skip without re-posting the plan.
+      // Template match
+      const template = matchTemplate(ctx, templates);
+      if (!template) {
+        // Rail 9: no template → label supervisor:no-template (FRIDGE rule 9).
+        // Clear any stale awaiting-approval label — the template no longer exists.
+        console.log(`[SKIP] ${repo}#${issue.number} "${issue.title}" — no template match`);
+        if (ctx.labels.includes('supervisor:awaiting-approval')) {
+          await removeLabel(repo, issue.number, 'supervisor:awaiting-approval');
+        }
+        await addLabels(repo, issue.number, ['supervisor:no-template']);
+        outcomes.push(`❓ ${repo}#${issue.number}: no template matched`);
+        continue;
+      }
+
+      const { tier } = template;
+      console.log(`[MATCH] ${repo}#${issue.number} → ${template.id} (${tier})`);
+
+      // Plan-approval state check: after template match so we know the plan is
+      // still valid for the matched template.
       const hasAwaitingApproval = ctx.labels.includes('supervisor:awaiting-approval');
       const hasPlanApproved = ctx.labels.includes('supervisor:plan-approved');
 
@@ -705,19 +722,6 @@ async function main() {
         outcomes.push(`⏳ ${repo}#${issue.number}: plan posted, awaiting approval`);
         continue;
       }
-
-      // Template match
-      const template = matchTemplate(ctx, templates);
-      if (!template) {
-        // Rail 9: no template → label supervisor:no-template (FRIDGE rule 9)
-        console.log(`[SKIP] ${repo}#${issue.number} "${issue.title}" — no template match`);
-        await addLabels(repo, issue.number, ['supervisor:no-template']);
-        outcomes.push(`❓ ${repo}#${issue.number}: no template matched`);
-        continue;
-      }
-
-      const { tier } = template;
-      console.log(`[MATCH] ${repo}#${issue.number} → ${template.id} (${tier})`);
 
       if (tier === 'red') {
         await postComment(
@@ -754,9 +758,8 @@ async function main() {
       // Phase 1: all Green runs require plan approval (first 10 runs per template).
       // Once supervisor:plan-approved is present the plan was reviewed; execute now.
       if (!hasPlanApproved) {
-        // Post plan and wait — do NOT execute yet.
-        const slots = await extractSlots(template.slotNames, ctx, factoryContext);
-        console.log(`[SLOTS] ${JSON.stringify(slots)}`);
+        // Post plan and wait — do NOT extract slots or execute yet.
+        // Slot extraction is deferred to the approval path to avoid a wasted LLM call.
         const approvalNote = '\n\n@adrper79-dot — Review this plan and add `supervisor:plan-approved` label to approve execution.';
         await postComment(repo, issue.number, planComment(ctx, template, 'green', approvalNote));
         await addLabels(repo, issue.number, ['supervisor:awaiting-approval', 'status:in_progress']);
@@ -766,7 +769,7 @@ async function main() {
         continue;
       }
 
-      // Green + plan-approved → execute
+      // Green + plan-approved → extract slots and execute
       const slots = await extractSlots(template.slotNames, ctx, factoryContext);
       console.log(`[SLOTS] ${JSON.stringify(slots)}`);
 
