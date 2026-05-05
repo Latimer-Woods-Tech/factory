@@ -144,6 +144,14 @@ const ENTRIES: ReadonlyArray<ManifestEntry> = [
     summary: 'Aggregated Sentry + PostHog health snapshot',
     tags: ['ops'],
   },
+  {
+    method: 'GET',
+    path: '/observability/synthetic/journey',
+    auth: 'admin',
+    summary: 'Synthetic journey probe results with pass/fail trend and outage classification',
+    slo: { p95Ms: 500, errorRate: 0.01 },
+    tags: ['ops', 'monitoring', 'synthetic'],
+  },
   // ── Authenticated: repo ───────────────────────────────────────────────
   {
     method: 'GET',
