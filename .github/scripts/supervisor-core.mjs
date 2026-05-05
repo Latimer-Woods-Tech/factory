@@ -370,7 +370,37 @@ async function extractSlots(slotNames, issue, factoryContext = '') {
 
 // ─── Green execution (create branch + files + PR) ────────────────────────────
 
+/**
+ * Returns an existing open supervisor PR for this issue, or null.
+ * Prevents duplicate PRs when the Supervisor loop runs concurrently or
+ * retries before the `agent:claimed:sauna` label propagates via GitHub API.
+ */
+async function findExistingPR(repo, issueNumber) {
+  try {
+    // Search open PRs whose title contains [Supervisor] and the source issue marker
+    const prs = await gh('GET', `/repos/${ORG}/${repo}/pulls?state=open&per_page=50`);
+    const marker = `#${issueNumber}`;
+    return prs.find(
+      (pr) =>
+        pr.title.startsWith('[Supervisor]') &&
+        (pr.body ?? '').includes(`**Source issue:** ${marker}`),
+    ) ?? null;
+  } catch {
+    return null; // non-fatal — proceed and let GitHub reject the dup branch
+  }
+}
+
 async function executeGreen(repo, issue, template, slots) {
+  // Dedup guard: if a supervisor PR already exists for this issue, return it
+  // without creating a branch or committing files. This prevents the race
+  // condition where multiple concurrent loop runs each open a PR before the
+  // `agent:claimed:sauna` label is visible via the GitHub API.
+  const existing = await findExistingPR(repo, issue.number);
+  if (existing) {
+    console.log(`[DEDUP] PR #${existing.number} already open for ${repo}#${issue.number} — skipping`);
+    return { branch: existing.head.ref, prUrl: existing.html_url, prNumber: existing.number, deduped: true };
+  }
+
   const slug = issue.title
     .slice(0, 40)
     .toLowerCase()
@@ -683,7 +713,11 @@ async function main() {
     }
   }
 
-  // Filter already-processed or explicitly opted out of template matching
+  // Filter already-processed or explicitly opted out of template matching.
+  // The `agent:claimed:sauna` label is the primary dedup signal. However,
+  // GitHub label API propagation can be delayed by several seconds when
+  // the supervisor runs concurrently. `executeGreen` performs a secondary
+  // PR-level dedup check (findExistingPR) to guard against that window.
   candidates = candidates.filter((i) => {
     const lbls = i.labels.map((l) => l.name);
     return !lbls.includes('agent:claimed:sauna') &&

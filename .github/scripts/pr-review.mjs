@@ -77,21 +77,28 @@ const prNum = parseInt(PR_NUMBER, 10);
 
 async function gh(method, path, body, accept) {
   const url = path.startsWith('http') ? path : `https://api.github.com${path}`;
-  const res = await fetch(url, {
-    method,
-    headers: {
-      Accept: accept ?? 'application/vnd.github+json',
-      Authorization: `Bearer ${GH_TOKEN}`,
-      'X-GitHub-Api-Version': '2022-11-28',
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`GH ${method} ${path} → ${res.status}: ${t.slice(0, 300)}`);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: {
+        Accept: accept ?? 'application/vnd.github+json',
+        Authorization: `Bearer ${GH_TOKEN}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(`GH ${method} ${path} → ${res.status}: ${t.slice(0, 300)}`);
+    }
+    return res.status === 204 ? null : res.json();
+  } finally {
+    clearTimeout(timer);
   }
-  return res.status === 204 ? null : res.json();
 }
 
 // ─── Tier detection (mirrors CODEOWNERS trust tiers) ─────────────────────────
@@ -343,51 +350,65 @@ function parseLLMJson(raw) {
 
 async function callClaude(prTitle, tier, files, deterministicWarnings) {
   const { userContent } = buildLLMContent(prTitle, tier, files, deterministicWarnings);
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'anthropic-beta': 'prompt-caching-2024-07-31',
-    },
-    body: JSON.stringify({
-      model: ANTHROPIC_MODEL,
-      max_tokens: 1024,
-      system: [
-        { type: 'text', text: CONSTRAINT_BLOCK, cache_control: { type: 'ephemeral' } },
-        { type: 'text', text: REVIEW_SCHEMA, cache_control: { type: 'ephemeral' } },
-      ],
-      messages: [{ role: 'user', content: userContent }],
-    }),
-  });
-  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${await res.text()}`);
-  const data = await res.json();
-  return parseLLMJson(data.content?.[0]?.text ?? '{}');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60_000);
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'prompt-caching-2024-07-31',
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 1024,
+        system: [
+          { type: 'text', text: CONSTRAINT_BLOCK, cache_control: { type: 'ephemeral' } },
+          { type: 'text', text: REVIEW_SCHEMA, cache_control: { type: 'ephemeral' } },
+        ],
+        messages: [{ role: 'user', content: userContent }],
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`Anthropic ${res.status}: ${await res.text()}`);
+    const data = await res.json();
+    return parseLLMJson(data.content?.[0]?.text ?? '{}');
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // ─── LLM review — Grok (party 1, xAI OpenAI-compatible API) ──────────────────
 
 async function callGrok(prTitle, tier, files, deterministicWarnings) {
   const { userContent } = buildLLMContent(prTitle, tier, files, deterministicWarnings);
-  const res = await fetch('https://api.x.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${GROK_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: GROK_MODEL,
-      max_tokens: 1024,
-      messages: [
-        { role: 'system', content: `${CONSTRAINT_BLOCK}\n\n${REVIEW_SCHEMA}` },
-        { role: 'user', content: userContent },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`Grok ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  const data = await res.json();
-  return parseLLMJson(data.choices?.[0]?.message?.content ?? '{}');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60_000);
+  try {
+    const res = await fetch('https://api.x.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROK_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: GROK_MODEL,
+        max_tokens: 1024,
+        messages: [
+          { role: 'system', content: `${CONSTRAINT_BLOCK}\n\n${REVIEW_SCHEMA}` },
+          { role: 'user', content: userContent },
+        ],
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`Grok ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    const data = await res.json();
+    return parseLLMJson(data.choices?.[0]?.message?.content ?? '{}');
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // ─── LLM orchestration (Grok first-pass → Claude confirmation) ───────────────
