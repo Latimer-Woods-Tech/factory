@@ -40,6 +40,17 @@ async function addLabels(repo, issue, labels) {
   }
 }
 
+async function removeLabel(repo, issue, label) {
+  try {
+    await gh('DELETE', `/repos/${ORG}/${repo}/issues/${issue}/labels/${encodeURIComponent(label)}`);
+  } catch (e) {
+    // 404 = label not present — that's fine
+    if (!e.message.includes('404')) {
+      console.warn(`[WARN] removeLabel "${label}" on ${repo}#${issue}: ${e.message}`);
+    }
+  }
+}
+
 async function postComment(repo, issue, body) {
   return gh('POST', `/repos/${ORG}/${repo}/issues/${issue}/comments`, { body });
 }
@@ -656,7 +667,9 @@ async function main() {
     }
   }
 
-  // Filter already-processed or explicitly opted out of template matching
+  // Filter already-processed or explicitly opted out of template matching.
+  // Issues with supervisor:awaiting-approval are still eligible so that when
+  // supervisor:plan-approved is added the same run picks them up.
   candidates = candidates.filter((i) => {
     const lbls = i.labels.map((l) => l.name);
     return !lbls.includes('agent:claimed:sauna') &&
@@ -675,7 +688,7 @@ async function main() {
     };
 
     try {
-      // Denylist check
+      // Denylist check (Rail 1 — wordis-bond hard lockout)
       if (DENYLIST.has(repo)) {
         console.log(`[SKIP] ${repo}#${issue.number} — denylist`);
         outcomes.push(`⛔ ${repo}#${issue.number}: repo in denylist`);
@@ -685,13 +698,29 @@ async function main() {
       // Template match
       const template = matchTemplate(ctx, templates);
       if (!template) {
+        // Rail 9: no template → label supervisor:no-template (FRIDGE rule 9).
+        // Clear any stale awaiting-approval label — the template no longer exists.
+        // removeLabel handles 404 (label not present) gracefully, so the check is unconditional.
         console.log(`[SKIP] ${repo}#${issue.number} "${issue.title}" — no template match`);
+        await removeLabel(repo, issue.number, 'supervisor:awaiting-approval');
+        await addLabels(repo, issue.number, ['supervisor:no-template']);
         outcomes.push(`❓ ${repo}#${issue.number}: no template matched`);
         continue;
       }
 
       const { tier } = template;
       console.log(`[MATCH] ${repo}#${issue.number} → ${template.id} (${tier})`);
+
+      // Plan-approval state check: after template match so we know the plan is
+      // still valid for the matched template.
+      const hasAwaitingApproval = ctx.labels.includes('supervisor:awaiting-approval');
+      const hasPlanApproved = ctx.labels.includes('supervisor:plan-approved');
+
+      if (hasAwaitingApproval && !hasPlanApproved) {
+        console.log(`[WAIT] ${repo}#${issue.number} — plan posted, awaiting supervisor:plan-approved`);
+        outcomes.push(`⏳ ${repo}#${issue.number}: plan posted, awaiting approval`);
+        continue;
+      }
 
       if (tier === 'red') {
         await postComment(
@@ -707,15 +736,39 @@ async function main() {
       }
 
       if (tier === 'yellow') {
-        await postComment(repo, issue.number, planComment(ctx, template, 'yellow'));
+        if (!hasPlanApproved) {
+          await postComment(repo, issue.number, planComment(ctx, template, 'yellow'));
+          await addLabels(repo, issue.number, ['supervisor:awaiting-approval', 'status:in_progress']);
+          outcomes.push(
+            `🟡⏳ ${repo}#${issue.number}: ${template.id} — plan posted, awaiting approval. https://github.com/${ORG}/${repo}/issues/${issue.number}`,
+          );
+          continue;
+        }
+        // Yellow + plan-approved: claim and record; Yellow never auto-merges but plan is logged
+        await removeLabel(repo, issue.number, 'supervisor:awaiting-approval');
         await addLabels(repo, issue.number, ['agent:claimed:sauna', 'status:in_progress']);
         outcomes.push(
-          `🟡 ${repo}#${issue.number}: ${template.id} — waiting ✅. https://github.com/${ORG}/${repo}/issues/${issue.number}`,
+          `🟡✅ ${repo}#${issue.number}: ${template.id} — approved, pending human PR execution. https://github.com/${ORG}/${repo}/issues/${issue.number}`,
         );
         continue;
       }
 
-      // Green — extract slots, execute, open PR
+      // Green tier ──────────────────────────────────────────────────────────────
+      // Phase 1: all Green runs require plan approval (first 10 runs per template).
+      // Once supervisor:plan-approved is present the plan was reviewed; execute now.
+      if (!hasPlanApproved) {
+        // Post plan and wait — do NOT extract slots or execute yet.
+        // Slot extraction is deferred to the approval path to avoid a wasted LLM call.
+        const approvalNote = '\n\n@adrper79-dot — Review this plan and add `supervisor:plan-approved` label to approve execution.';
+        await postComment(repo, issue.number, planComment(ctx, template, 'green', approvalNote));
+        await addLabels(repo, issue.number, ['supervisor:awaiting-approval', 'status:in_progress']);
+        outcomes.push(
+          `🟢⏳ ${repo}#${issue.number}: ${template.id} — plan posted, awaiting approval. https://github.com/${ORG}/${repo}/issues/${issue.number}`,
+        );
+        continue;
+      }
+
+      // Green + plan-approved → extract slots and execute
       const slots = await extractSlots(template.slotNames, ctx, factoryContext);
       console.log(`[SLOTS] ${JSON.stringify(slots)}`);
 
@@ -729,10 +782,11 @@ async function main() {
       }
 
       await postComment(repo, issue.number, planComment(ctx, template, 'green', execNote));
+      await removeLabel(repo, issue.number, 'supervisor:awaiting-approval');
       await addLabels(repo, issue.number, ['agent:claimed:sauna', 'status:in_progress']);
 
       const url = prInfo?.prUrl ?? `https://github.com/${ORG}/${repo}/issues/${issue.number}`;
-      outcomes.push(`🟢 ${repo}#${issue.number}: ${template.id}${prInfo ? ` → PR #${prInfo.prNumber}` : ''} ${url}`);
+      outcomes.push(`🟢✅ ${repo}#${issue.number}: ${template.id}${prInfo ? ` → PR #${prInfo.prNumber}` : ''} ${url}`);
     } catch (err) {
       console.error(`[ERROR] ${repo}#${issue.number}:`, err.message);
       outcomes.push(`❌ ${repo}#${issue.number}: ${err.message.slice(0, 120)}`);

@@ -1,0 +1,99 @@
+# =============================================================================
+# Daily Factory Supervisor — 7 AM ET weekday digest + Green-tier auto-close
+#
+# WHAT IT DOES
+#   1. Runs the PR feedback loop (clears stuck supervisor PRs first).
+#   2. Scans all open supervisor:approved-source issues across monitored repos.
+#   3. For each issue: matches a template, posts a plan comment, adds
+#      supervisor:awaiting-approval label.
+#   4. On subsequent runs (triggered by the issues:labeled event when
+#      supervisor:plan-approved is applied): executes Green-tier plans.
+#   5. Posts a Pushover digest with all outcomes.
+#
+# SCHEDULE
+#   7 AM ET weekdays = 11:00 UTC Mon-Fri (EDT/summer).
+#   Shift cron to "0 12 * * 1-5" after DST ends in November (EST/winter).
+#   CURRENTLY DISABLED — uncomment the schedule block to enable.
+#
+# ENABLING
+#   1. Review schedules/daily-factory-supervisor/schedule.md
+#   2. Confirm PUSHOVER_TOKEN and PUSHOVER_USER secrets are set in factory repo
+#   3. Uncomment the schedule: block below
+#   4. Commit + merge — the cron activates on the next UTC midnight boundary
+#   5. Use workflow_dispatch to smoke-test before the first real cron fire
+#
+# SECRETS USED
+#   FACTORY_APP_ID          — GitHub App ID for factory-cross-repo
+#   FACTORY_APP_PRIVATE_KEY — PEM private key for factory-cross-repo
+#   ANTHROPIC_API_KEY       — LLM slot extraction (Haiku 4.5)
+#   PUSHOVER_TOKEN          — Pushover app token (supervisor alerts)
+#   PUSHOVER_USER           — Pushover user key (Adrian's device)
+#
+# RELATED
+#   factory#108 (SUP-3.5), schedules/daily-factory-supervisor/schedule.md
+#   .github/workflows/supervisor-loop.yml (4-hourly loop — separate from this)
+# =============================================================================
+name: Daily Factory Supervisor
+
+on:
+  # DISABLED — uncomment to activate the 7 AM ET weekday schedule.
+  # When re-enabling after DST change (Nov), shift "11" to "12".
+  # schedule:
+  #   - cron: '0 11 * * 1-5'
+
+  # Trigger on label events so plan-approval (supervisor:plan-approved) fires
+  # execution on the same run the label is applied.
+  issues:
+    types: [labeled]
+
+  # Manual trigger for smoke-testing before the cron is live.
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Specific issue number to process (optional — leave blank to scan all)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run: post plan but do not execute even if approved'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  supervise:
+    # Only run the label-triggered job when the label is supervisor-relevant.
+    # This avoids running the full loop on every label added anywhere in the org.
+    if: |
+      github.event_name != 'issues' ||
+      contains(fromJSON('["supervisor:approved-source","supervisor:plan-approved"]'),
+               github.event.label.name)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Mint factory App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          owner: Latimer-Woods-Tech
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run supervisor core
+        run: node .github/scripts/supervisor-core.mjs
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: claude-haiku-4-5-20251001
+          PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
+          PUSHOVER_USER: ${{ secrets.PUSHOVER_USER }}
+          TRIGGER_ISSUE: ${{ github.event.issue.number || inputs.issue_number || '' }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
