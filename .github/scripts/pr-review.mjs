@@ -25,13 +25,50 @@ const {
   REPO,
   PR_SHA,
   // Max times the bot may post REQUEST_CHANGES before escalating to human.
-  // Set MAX_REVIEW_ATTEMPTS in repo/org secrets. Default: 3.
+  // Set MAX_REVIEW_ATTEMPTS in repo/org vars. Default: 3.
   MAX_REVIEW_ATTEMPTS = '3',
   // GitHub login to notify (request review from) on red-tier PRs and escalations.
   HUMAN_REVIEWER = 'adrper79-dot',
+  // Telnyx SMS — all three required for SMS to fire; silently skipped if absent.
+  TELNYX_API_KEY,
+  TELNYX_FROM_NUMBER,
+  NOTIFICATION_PHONE,
 } = process.env;
 
 const MAX_ATTEMPTS = parseInt(MAX_REVIEW_ATTEMPTS, 10);
+
+// ─── SMS notification via Telnyx ─────────────────────────────────────────────
+// Silently no-ops if TELNYX_API_KEY / TELNYX_FROM_NUMBER / NOTIFICATION_PHONE
+// are not set — SMS is best-effort, never blocks the review pipeline.
+
+async function sendSms(message) {
+  if (!TELNYX_API_KEY || !TELNYX_FROM_NUMBER || !NOTIFICATION_PHONE) {
+    console.log('[SMS] Skipped — TELNYX_API_KEY / TELNYX_FROM_NUMBER / NOTIFICATION_PHONE not configured');
+    return;
+  }
+  try {
+    const res = await fetch('https://api.telnyx.com/v2/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${TELNYX_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: TELNYX_FROM_NUMBER,
+        to: NOTIFICATION_PHONE,
+        text: message.slice(0, 160), // SMS hard limit
+      }),
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      console.warn(`[SMS] Telnyx error ${res.status}: ${t.slice(0, 120)}`);
+    } else {
+      console.log('[SMS] Sent successfully');
+    }
+  } catch (err) {
+    console.warn(`[SMS] Failed to send: ${err.message.slice(0, 80)}`);
+  }
+}
 
 const repo = REPO?.split('/')[1] ?? REPO;
 const prNum = parseInt(PR_NUMBER, 10);
@@ -594,6 +631,9 @@ async function escalateToHuman(prUrl, prTitle, attemptCount, concerns) {
   } catch (err) {
     console.warn(`[WARN] Could not post escalation comment: ${err.message.slice(0, 80)}`);
   }
+
+  // 5. SMS notification
+  await sendSms(`[Factory] PR #${prNum} stuck after ${attemptCount} rejections. Review needed: ${prUrl}`);
 }
 
 // ─── Post GitHub review ───────────────────────────────────────────────────────
@@ -684,6 +724,8 @@ async function main() {
     } catch (err) {
       console.warn(`[WARN] Could not request red-tier review: ${err.message.slice(0, 80)}`);
     }
+    // SMS so you know immediately — full LLM verdicts are in the review body
+    await sendSms(`[Factory] 🔴 Red-tier PR #${prNum} needs your approval: ${pr.html_url}`);
   }
 
   // Deterministic checks
