@@ -28,9 +28,13 @@ workers:
     url: https://prime-self.adrper79.workers.dev           # canonical workers.dev URL
     custom_domain: null                                    # custom domain if any
     health_endpoint: /health
+    telemetry_required: true                               # must expose /api/admin/health|metrics|events
     critical_endpoints:
       - /auth/login
       - /api/practitioners
+      - /api/admin/health
+      - /api/admin/metrics
+      - /api/admin/events
     consumers:
       # Files that hardcode this worker's URL — must be updated before any rename
       - repo: Latimer-Woods-Tech/prime-self-ui
@@ -48,6 +52,7 @@ workers:
     url: https://schedule-worker.adrper79.workers.dev      # canonical workers.dev URL
     custom_domain: null
     health_endpoint: /health
+    telemetry_required: false                              # infra worker; telemetry not required
     deployment_status: live_health_verified_2026-04-29
     critical_endpoints:
       - /jobs
@@ -82,6 +87,7 @@ workers:
     url: https://video-cron.adrper79.workers.dev           # canonical workers.dev URL
     custom_domain: null
     health_endpoint: /health
+    telemetry_required: false                              # infra worker; telemetry not required
     deployment_status: live_health_verified_2026-04-29
     critical_endpoints:
       - /health
@@ -113,6 +119,7 @@ workers:
     url: https://synthetic-monitor.adrper79.workers.dev    # canonical workers.dev URL
     custom_domain: null
     health_endpoint: /health
+    telemetry_required: false                              # infra monitor; telemetry not required
     deployment_status: live_health_verified_2026-04-29
     critical_endpoints:
       - /health
@@ -130,6 +137,7 @@ workers:
     url: https://admin-studio-staging.adrper79.workers.dev
     custom_domain: null
     health_endpoint: /health
+    telemetry_required: false                              # Studio itself; telemetry not required
     deployment_status: live_health_verified_2026-04-29
     critical_endpoints:
       - /health
@@ -167,6 +175,7 @@ workers:
     url: https://admin-studio-production.adrper79.workers.dev
     custom_domain: null
     health_endpoint: /health
+    telemetry_required: false                              # Studio itself; telemetry not required
     deployment_status: configured_not_live_verified_2026-04-29
     notes: >
       Production worker name and URL are configured in wrangler, but `/health`
@@ -209,6 +218,12 @@ workers:
     url: https://api.itsjusus.com
     custom_domain: api.itsjusus.com
     health_endpoint: /health
+    telemetry_required: true                               # must expose /api/admin/health|metrics|events
+    critical_endpoints:
+      - /health
+      - /api/admin/health
+      - /api/admin/metrics
+      - /api/admin/events
     deployment_status: custom_domain_outage_1016_reported_2026-05-02
     notes: >
       VideoKing production traffic is split across `itsjusus.com` (Pages),
