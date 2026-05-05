@@ -172,15 +172,23 @@ async function fetchSentryEvents(
 
   if (!token || !org || !project) return [];
 
-  // requestId correlation: Sentry tags allow filtering by request id.
+  // requestId correlation: sanitize before embedding in Sentry query.
+  // A valid requestId is a UUID (hex chars + dashes only).
+  const SAFE_REQUEST_ID = /^[0-9a-f-]{8,64}$/i;
   let sentryQuery = `is:unresolved`;
-  if (query.requestId) sentryQuery += ` request.id:${query.requestId}`;
+  if (query.requestId && SAFE_REQUEST_ID.test(query.requestId)) {
+    sentryQuery += ` request.id:${query.requestId}`;
+  }
+
+  // Use the caller's env (falling back to the session default, not 'production')
+  // so Sentry incidents are labelled with the correct environment.
+  const resolvedEnv = query.env ?? 'staging';
 
   const sentryUrl = new URL(
     `https://sentry.io/api/0/projects/${encodeURIComponent(org)}/${encodeURIComponent(project)}/issues/`,
   );
   sentryUrl.searchParams.set('limit', '20');
-  sentryUrl.searchParams.set('environment', query.env ?? 'production');
+  sentryUrl.searchParams.set('environment', resolvedEnv);
   sentryUrl.searchParams.set('statsPeriod', '24h');
   sentryUrl.searchParams.set('query', sentryQuery);
   if (query.from) sentryUrl.searchParams.set('start', query.from);
@@ -197,7 +205,8 @@ async function fetchSentryEvents(
       id: `sentry-${issue.id}`,
       kind: 'incident',
       occurredAt: issue.lastSeen,
-      env: query.env ?? 'production',
+      // Use the queried env so every incident in this page has a consistent label.
+      env: resolvedEnv,
       severity: severityFromSentryLevel(issue.level),
       title: issue.title,
       action: issue.culprit,

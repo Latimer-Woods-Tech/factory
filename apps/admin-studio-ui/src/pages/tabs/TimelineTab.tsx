@@ -419,7 +419,8 @@ export function TimelineTab() {
                     <button
                       type="button"
                       onClick={() => {
-                        setFilters({ ...EMPTY_FILTERS, requestId: ev.requestId! });
+                        const rid = ev.requestId ?? '';
+                        setFilters({ ...EMPTY_FILTERS, requestId: rid });
                         setEvents([]);
                         setCursor(null);
                         setExpanded(null);
@@ -434,7 +435,8 @@ export function TimelineTab() {
                     <button
                       type="button"
                       onClick={() => {
-                        setFilters({ ...EMPTY_FILTERS, sessionId: ev.sessionId! });
+                        const sid = ev.sessionId ?? '';
+                        setFilters({ ...EMPTY_FILTERS, sessionId: sid });
                         setEvents([]);
                         setCursor(null);
                         setExpanded(null);

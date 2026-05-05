@@ -89,7 +89,8 @@ export function AuditTab() {
 
   /** Deep-link to Timeline tab filtered by this requestId. */
   function requestIdLink(requestId: string): string {
-    return `/timeline?requestId=${encodeURIComponent(requestId)}`;
+    const p = new URLSearchParams({ requestId });
+    return `/timeline?${p.toString()}`;
   }
 
   return (
