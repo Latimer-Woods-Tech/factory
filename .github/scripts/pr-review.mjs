@@ -818,6 +818,21 @@ async function main() {
     console.log(`[INFO] Consensus: lgtm=${llmResult.lgtm} | concerns=${llmResult.architectural_concerns?.length ?? 0}`);
   }
 
+  // Filter out LLM concerns that reference non-Worker paths (.github/, scripts/, etc.)
+  // LLMs sometimes flag Buffer/require/process.env in Actions runner scripts despite
+  // explicit prompt instructions not to. This structural filter is the safety net.
+  if (llmResult.architectural_concerns?.length) {
+    const before = llmResult.architectural_concerns.length;
+    llmResult.architectural_concerns = llmResult.architectural_concerns.filter(c => {
+      if (!c.file) return true;
+      return !NON_WORKER_PATH_PREFIXES.some(p => c.file.startsWith(p));
+    });
+    const filtered = before - llmResult.architectural_concerns.length;
+    if (filtered > 0) {
+      console.log(`[INFO] Filtered ${filtered} LLM concern(s) referencing non-Worker paths (false positives)`);
+    }
+  }
+
   // Determine decision
   const hasViolations = deterministicResult.violations.length > 0 ||
     (llmResult.architectural_concerns?.length ?? 0) > 0;
