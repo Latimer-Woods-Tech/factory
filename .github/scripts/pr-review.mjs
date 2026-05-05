@@ -167,6 +167,16 @@ function isNonWorkerFile(filename) {
   return /^(CODEOWNERS|\.gitignore|\.gitattributes|renovate\.json|package\.json|tsconfig\.json)$/.test(basename);
 }
 
+function isFrontendUiFile(filename) {
+  return /^apps\/[^/]+-ui\//.test(filename) || filename.startsWith('apps/admin-studio-ui/');
+}
+
+function hasFetchCallInPatch(file) {
+  const patch = file?.patch ?? '';
+  if (!patch) return false;
+  return /\bfetch\s*\(/.test(patch);
+}
+
 function runDeterministicChecks(workerAddedLines, allAddedLines, filenames) {
   // workerAddedLines — added content from non-Actions-runner files only
   //   (Workers runtime constraints apply here)
@@ -823,9 +833,25 @@ async function main() {
   // explicit prompt instructions not to. This structural filter is the safety net.
   if (llmResult.architectural_concerns?.length) {
     const before = llmResult.architectural_concerns.length;
+    const filesByName = new Map(files.map(f => [f.filename, f]));
     llmResult.architectural_concerns = llmResult.architectural_concerns.filter(c => {
       if (!c.file) return true;
-      return !NON_WORKER_PATH_PREFIXES.some(p => c.file.startsWith(p));
+
+      // Path-based false positives: CI runner/config/docs/non-worker files.
+      if (NON_WORKER_PATH_PREFIXES.some(p => c.file.startsWith(p))) return false;
+
+      // Frontend UI code is not Workers runtime code; Workers hard constraints
+      // (like mandatory fetch handling semantics) should not block merge here.
+      if (isFrontendUiFile(c.file)) return false;
+
+      // Content-based false positive: concern claims missing fetch handling, but
+      // the referenced patch has no fetch() calls at all.
+      if (/fetch\(\) call without explicit error handling|fetch\(\) calls that need explicit error handling/i.test(c.detail ?? '')) {
+        const file = filesByName.get(c.file);
+        if (!hasFetchCallInPatch(file)) return false;
+      }
+
+      return true;
     });
     const filtered = before - llmResult.architectural_concerns.length;
     if (filtered > 0) {
