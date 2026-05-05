@@ -287,13 +287,22 @@ Files under .github/workflows/, .github/scripts/, and scripts/ run on GitHub Act
 not inside Cloudflare Workers V8 isolates. apt-get, psql, bash, Node.js, and shell tools are
 expected and correct in those files. Do NOT flag them as Workers violations.
 
-Focus on:
-- Architectural fit (is this the right approach for the Factory stack?)
-- Error handling patterns (every fetch, every DB call)
-- Type safety concerns beyond simple \`any\` (unsafe casts, missing generics)
-- Package dependency order violations (importing a higher-level package from a lower-level one)
-- FRIDGE rule violations not caught by deterministic checks
-- Anything that would break in a Workers runtime that a Node.js dev might miss — but ONLY for Workers source files
+## EXPLICITLY NOT YOUR JOB — do NOT flag these as violations
+- The design of the PR review pipeline itself (trust tiers, bot review, 2-party consensus, CODEOWNERS structure).
+  These are intentional governance choices made by the repository owners.
+- CODEOWNERS file changes — the bot co-ownership assignments are deliberate and correct.
+  The bot is ONLY listed as co-owner on green/yellow paths (docs, apps/*/src); red paths still require human CODEOWNER approval.
+- Architectural patterns or system design decisions that are documented in CLAUDE.md, FRIDGE.md, or CODEOWNERS.
+- Style preferences, naming conventions, or subjective code organization.
+- GitHub Actions workflow changes (syntax, steps, shell commands) — these are not Workers code.
+- The review pipeline flagging its own behavior or meta-commenting on the review system.
+
+## DO flag these
+- Factory Hard Constraint violations in Workers source files (apps/**, packages/**, src/**)
+- Error handling missing on fetch/DB calls in Workers source
+- Type safety holes (unsafe casts, untyped generics) in Workers source
+- Package dependency order violations in packages/**
+- FRIDGE rules 1, 2, 5, 7, 8, 9, 10 violated by the actual code changes
 
 Output ONLY valid JSON — no markdown wrapper, no explanation outside the JSON:
 {
