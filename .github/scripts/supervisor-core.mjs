@@ -358,7 +358,7 @@ async function main() {
           issue.number,
           planComment(ctx, template, 'red', '\n\n@adrper79-dot — Red-tier: human review required before any execution.'),
         );
-        await addLabels(repo, issue.number, ['agent:claimed:sauna', 'status:wip']);
+        await addLabels(repo, issue.number, ['agent:claimed:sauna', 'status:in_progress']);
         outcomes.push(
           `🔴 ${repo}#${issue.number}: ${template.id} — awaiting review. https://github.com/${ORG}/${repo}/issues/${issue.number}`,
         );
@@ -367,7 +367,7 @@ async function main() {
 
       if (tier === 'yellow') {
         await postComment(repo, issue.number, planComment(ctx, template, 'yellow'));
-        await addLabels(repo, issue.number, ['agent:claimed:sauna', 'status:wip']);
+        await addLabels(repo, issue.number, ['agent:claimed:sauna', 'status:in_progress']);
         outcomes.push(
           `🟡 ${repo}#${issue.number}: ${template.id} — waiting ✅. https://github.com/${ORG}/${repo}/issues/${issue.number}`,
         );
@@ -388,7 +388,7 @@ async function main() {
       }
 
       await postComment(repo, issue.number, planComment(ctx, template, 'green', execNote));
-      await addLabels(repo, issue.number, ['agent:claimed:sauna', 'status:wip']);
+      await addLabels(repo, issue.number, ['agent:claimed:sauna', 'status:in_progress']);
 
       const url = prInfo?.prUrl ?? `https://github.com/${ORG}/${repo}/issues/${issue.number}`;
       outcomes.push(`🟢 ${repo}#${issue.number}: ${template.id}${prInfo ? ` → PR #${prInfo.prNumber}` : ''} ${url}`);
