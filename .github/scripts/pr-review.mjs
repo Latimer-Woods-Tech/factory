@@ -221,7 +221,37 @@ const CONSTRAINT_BLOCK = `\
 - Build: tsup ESM only — no CJS output
 - Test: Vitest + @cloudflare/vitest-pool-workers
 
+## CRITICAL: Constraint Scope — Actions Runner vs Workers Runtime
+The constraints above apply ONLY to Cloudflare Workers source files (TypeScript/JavaScript
+that runs inside a V8 isolate). They do NOT apply to:
+- \`.github/workflows/\` — these are GitHub Actions YAML; they run on Ubuntu runners with
+  full Linux access (apt-get, psql, curl, bash, Node.js, Python, etc. are all valid).
+- \`.github/scripts/\` — Node.js scripts that run inside GitHub Actions jobs.
+- \`scripts/\` — local/CI helper scripts (also Node.js or bash).
+
+If you see \`apt-get install\`, \`psql\`, \`curl\`, \`node scripts/\`, \`npm ci\`, \`wrangler deploy\`,
+or shell commands in a \`.github/workflows/\` file, do NOT flag them as Workers violations.
+They are CI runner commands and are correct and expected in that context.
+
+Only flag Workers constraint violations in files under \`apps/\`, \`packages/\`, or \`src/\`.
+
 ## FRIDGE Rules (non-negotiable operating rules)
+1. wordis-bond is off-limits to all automation — CODEOWNERS + denylist.
+2. No credentials in docs, memory, plans, issue bodies, PRs, or comments. Rotate if leaked; do not just delete from git.
+3. Red-tier paths never auto-merge: .github/workflows/**, packages/**, migrations/**, Stripe code, production wrangler config, production Neon user tables.
+4. Every /admin mutation requires out-of-band CODEOWNER ✅ — plan-approval and PR-review do not substitute.
+5. Per-run LLM budget: $5 USD hard cap. On BUDGET_EXCEEDED: pause, label supervisor:budget-paused, file a human issue.
+6. Single-writer per app via LockDO. Claim lock before acting, renew every 10 min, release on close.
+7. Issues must carry supervisor:approved-source before supervisor pickup.
+8. Irreversible actions require explicit human approval — includes deleting CF resources, rulesets, Stripe mutations, live email/SMS outside test mode.
+9. No-template issues: classify Red, label supervisor:no-template. Do not invent plans from scratch.
+10. If the plan is wrong, file an issue against ARCHITECTURE.md. Tag a CODEOWNER. Do not improvise.
+
+## Trust Tiers (CODEOWNERS)
+- 🟢 Green: docs/**, *.md, session/** — low risk, auto-approvable
+- 🟡 Yellow: apps/*/src/**, client/**, tests/** — review required, can approve if clean
+- 🔴 Red: .github/workflows/**, packages/**, migrations/**, wrangler configs, capabilities.yml, service-registry.yml, supervisor plans — highest risk
+
 1. wordis-bond is off-limits to all automation — CODEOWNERS + denylist.
 2. No credentials in docs, memory, plans, issue bodies, PRs, or comments. Rotate if leaked; do not just delete from git.
 3. Red-tier paths never auto-merge: .github/workflows/**, packages/**, migrations/**, Stripe code, production wrangler config, production Neon user tables.
@@ -245,13 +275,19 @@ const REVIEW_SCHEMA = `\
 ## Your task
 Review the PR diff below against the Factory constraints above.
 The deterministic checks (process.env, Buffer, require, etc.) have already been run — do NOT re-check those.
+
+IMPORTANT SCOPE RULE: Constraints apply only to Workers source code (apps/**, packages/**, src/**).
+Files under .github/workflows/, .github/scripts/, and scripts/ run on GitHub Actions Ubuntu runners,
+not inside Cloudflare Workers V8 isolates. apt-get, psql, bash, Node.js, and shell tools are
+expected and correct in those files. Do NOT flag them as Workers violations.
+
 Focus on:
 - Architectural fit (is this the right approach for the Factory stack?)
 - Error handling patterns (every fetch, every DB call)
 - Type safety concerns beyond simple \`any\` (unsafe casts, missing generics)
 - Package dependency order violations (importing a higher-level package from a lower-level one)
 - FRIDGE rule violations not caught by deterministic checks
-- Anything that would break in a Workers runtime that a Node.js dev might miss
+- Anything that would break in a Workers runtime that a Node.js dev might miss — but ONLY for Workers source files
 
 Output ONLY valid JSON — no markdown wrapper, no explanation outside the JSON:
 {
@@ -267,7 +303,7 @@ Output ONLY valid JSON — no markdown wrapper, no explanation outside the JSON:
 
 "lgtm": true means no architectural concerns were found (warnings are OK).
 "lgtm": false means the PR has issues that should block merge.
-Keep architectural_concerns to genuine problems — do not flag style preferences.`;
+Keep architectural_concerns to genuine problems — do not flag style preferences or CI runner commands.`;
 
 // ─── LLM review ──────────────────────────────────────────────────────────────
 
