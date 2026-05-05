@@ -145,13 +145,19 @@ function extractAddedLines(files) {
     .join('\n');
 }
 
-// Paths that run in GitHub Actions Linux runners, not in Cloudflare Workers.
+// Files that are NOT Cloudflare Workers runtime code.
 // Workers runtime constraints (process.env, require, Buffer, Node built-ins)
 // do NOT apply to these files — applying them causes false positives.
-const ACTIONS_RUNNER_PATHS = ['.github/workflows/', '.github/scripts/', 'scripts/'];
+const NON_WORKER_PATH_PREFIXES = ['.github/', 'scripts/', 'docs/', 'tests/', 'migrations/'];
+const NON_WORKER_EXTENSIONS = ['.md', '.yml', '.yaml', '.json', '.jsonc', '.toml', '.txt', '.gitignore'];
 
 function isActionsRunnerFile(filename) {
-  return ACTIONS_RUNNER_PATHS.some(p => filename.startsWith(p));
+  if (NON_WORKER_PATH_PREFIXES.some(p => filename.startsWith(p))) return true;
+  const ext = filename.slice(filename.lastIndexOf('.'));
+  if (NON_WORKER_EXTENSIONS.includes(ext)) return true;
+  // Config/dotfiles with no path prefix
+  const basename = filename.split('/').pop() ?? filename;
+  return /^(CODEOWNERS|\.gitignore|\.gitattributes|renovate\.json|package\.json|tsconfig\.json)$/.test(basename);
 }
 
 function runDeterministicChecks(workerAddedLines, allAddedLines, filenames) {
