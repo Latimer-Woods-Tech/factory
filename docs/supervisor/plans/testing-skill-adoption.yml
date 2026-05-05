@@ -1,0 +1,107 @@
+id: testing-skill-adoption
+version: 1
+tier: yellow
+triggers:
+  labels_any_of: [enhancement, hardening, testing]
+  title_pattern: "(testing.skill|skills/global/testing|vitest|playwright|adopt.*test)"
+  body_patterns:
+    - "(?i)(skills/global/testing|testing.composite|factory.*testing.action)"
+preconditions:
+  - capability_exists: github.readFile
+  - capability_exists: github.openPR
+  - capability_exists: factory_admin.repo.health
+slots:
+  - name: target_repo
+    type: enum
+    values: [HumanDesign, videoking, xico-city, ijustus, xpelevator, factory-admin]
+    referential_check: factory_admin.repo.health
+    source: issue_title
+  - name: working_directory
+    type: string
+    validator: "^(\\.|[a-zA-Z0-9_/-]{1,80})$"
+    source: issue_body
+    default: "."
+  - name: run_playwright
+    type: enum
+    values: ["true", "false"]
+    source: issue_body
+    default: "false"
+  - name: existing_ci_path
+    type: string
+    validator: "^\\.github/workflows/[A-Za-z0-9_.-]+\\.ya?ml$"
+    source: issue_body
+    default: ".github/workflows/ci.yml"
+steps:
+  - id: s1
+    tool: factory_admin.repo.health
+    depends_on: null
+    params:
+      repo: "$slots.target_repo"
+    intent: "Confirm the target repo is healthy before proposing workflow changes."
+    requires_human_review: false
+  - id: s2
+    tool: github.readFile
+    depends_on: s1
+    params:
+      repo: "$slots.target_repo"
+      path: "$slots.existing_ci_path"
+      ref: "main"
+      allow_missing: true
+    intent: "Read the app's current CI workflow to understand what testing already runs."
+    requires_human_review: false
+  - id: s3
+    tool: github.readFile
+    depends_on: s1
+    params:
+      repo: "factory"
+      path: "skills/global/testing/action.yml"
+      ref: "main"
+    intent: "Read the testing composite action schema to wire inputs correctly."
+    requires_human_review: false
+  - id: s4
+    tool: github.openPR
+    depends_on: s3
+    params:
+      repo: "$slots.target_repo"
+      base: "main"
+      head: "supervisor/adopt-testing-skill"
+      title: "ci(testing): adopt skills/global/testing composite action"
+      body: |
+        Adds the factory global testing skill to the CI workflow for `$slots.target_repo`.
+
+        - Uses: `Latimer-Woods-Tech/factory/skills/global/testing@main`
+        - Working directory: `$slots.working_directory`
+        - Playwright enabled: `$slots.run_playwright`
+
+        See `skills/global/testing/README.md` for integration guide.
+      changes:
+        - op: upsert
+          path: "$slots.existing_ci_path"
+          insert_after: "actions/checkout@v4"
+          # Content is a literal GitHub Actions step; $slots.* is resolved by
+          # the supervisor before writing the file, then passed as-is to the
+          # workflow YAML so GitHub Actions can evaluate ${{ secrets.* }} at
+          # runtime. Supervisor slots use $slots.<name> syntax; GA expressions
+          # use ${{ }} and must not be double-substituted.
+          content: |
+            - uses: Latimer-Woods-Tech/factory/skills/global/testing@main
+              with:
+                node_auth_token: ${{ secrets.GITHUB_TOKEN }}
+                working_directory: $slots.working_directory
+                run_playwright: $slots.run_playwright
+      labels: [enhancement, hardening, supervisor]
+    intent: "Open a PR that adds the testing composite action to the app CI workflow."
+    requires_human_review: true
+acceptance_gate:
+  description: "PR is opened with a step using Latimer-Woods-Tech/factory/skills/global/testing@main and CI on the head passes."
+  verifier_query:
+    tool: github.readFile
+    query: "repo=$slots.target_repo pr=$s4.number check_runs status=completed conclusion=success"
+    assert: "count >= 1"
+rollback:
+  - on_step: s4
+    action: github.closePR
+    params:
+      repo: "$slots.target_repo"
+      number: "$s4.number"
+      comment: "Auto-rollback: acceptance_gate failed for testing-skill-adoption."

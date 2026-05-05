@@ -80,10 +80,15 @@ Sauna does the work. Adrian reviews templates and the supervisor scaffold.
 
 Gates opened by SUP-3 exit. Not yet filed — will file as atomic issues when we get there.
 
-- First Green-tier supervised closure (SYN-7 or SYN-8)
-- 3 more Green closures
-- Template library grows by ≥2 from real runs
-- Plan-approval still required for every run this week
+- [x] `template_stats` table migration (`apps/supervisor/migrations/0002_template_stats.sql`) — tracks runs_attempted, runs_merged, runs_reverted, blessed_at, demoted_at
+- [x] `apps/supervisor/src/stats.ts` — incrementTemplateStats, isTemplateBlessed, getTemplateStats
+- [x] New green template: `docs-runbook-update` (drafted from Red-tier runbook-filing closures)
+- [x] New yellow template: `testing-skill-adoption` (drafted from SYN-8 closure pattern)
+- [x] Template library now 11 templates (3 green, 8 yellow); load.ts SEED updated
+- [x] Test fixtures for both new templates (`tests/supervisor/fixtures/`)
+- [ ] First Green-tier supervised closure (SYN-7 docs or SYN-8 testing skill)
+- [ ] 3 more Green closures
+- [ ] All 4 Green runs merged, 0 reverts
 
 **Exit gate:** 4 Green closures, 0 reverts, ≥2 new templates from production usage.
 

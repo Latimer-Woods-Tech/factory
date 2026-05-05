@@ -1,0 +1,22 @@
+fixture_for: docs-runbook-update
+issue:
+  title: "docs(runbook): add database-rotation runbook to docs/runbooks"
+  labels: [documentation, runbook]
+  body: |
+    We need a canonical runbook for rotating the Neon DB credentials in staging and production.
+
+    path: docs/runbooks/database-credential-rotation.md
+    scope: add
+    branch: supervisor/docs/runbook/database-credential-rotation
+
+    content: |
+      # Database Credential Rotation
+
+      ## Staging
+      1. Generate new credentials in Neon dashboard.
+      2. Update `DATABASE_URL` secret in GitHub → Settings → Secrets.
+      3. Re-deploy the affected worker via `wrangler deploy --env staging`.
+      4. Verify `/health` returns 200 after deploy.
+
+      ## Production
+      Follow the same steps using the production Neon project and the `production` wrangler env.
