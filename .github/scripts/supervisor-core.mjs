@@ -163,6 +163,114 @@ function planComment(issue, template, tier, extra = '') {
   ].join('\n');
 }
 
+// ─── Hallucination & bad-logic guards ────────────────────────────────────────
+//
+// Three layers — applied to all LLM-generated content before any commit lands:
+//
+//  1. CONSTRAINT CHECK  — same rules as pr-review.mjs deterministic checks.
+//     Catches process.env, require(), Buffer, Node built-ins, etc. in generated
+//     code. If any violation is found the content is rejected outright.
+//
+//  2. SCHEMA GUARD (slots) — validates that extractSlots() only returns keys
+//     declared in the template. Extra keys are stripped; missing keys stay null.
+//     Prevents Claude from inventing paths or injecting arbitrary file content.
+//
+//  3. CONCERN-ADDRESSED CHECK (feedback loop) — before committing a "fix",
+//     verify that at least one concern keyword from the review body actually
+//     appears in the diff between old and new content. If the fix doesn't touch
+//     anything related to the flagged issue, it's a hallucination — reject it.
+
+// 1. Deterministic constraint check on LLM-generated content
+function checkGeneratedContent(filename, content) {
+  const violations = [];
+  const lines = content.split('\n');
+  const addedText = content; // treat entire generated file as "added"
+
+  if (/\bprocess\.env\b/.test(addedText))
+    violations.push('No process.env — use Hono/Worker bindings');
+
+  if (/\brequire\s*\(/.test(addedText))
+    violations.push('No CommonJS require() — ESM only');
+
+  if (/\bnew Buffer\b|\bBuffer\.from\b|\bBuffer\.alloc\b/.test(addedText))
+    violations.push('No Buffer — use Uint8Array/TextEncoder/TextDecoder');
+
+  if (/from\s+['"](?:fs|path|crypto)['"]/m.test(addedText) ||
+      /from\s+['"]node:/m.test(addedText))
+    violations.push('No Node.js built-ins (fs/path/crypto/node:)');
+
+  if (/from\s+['"](?:express|fastify|next)['"]/m.test(addedText))
+    violations.push('No Express/Fastify/Next — use Hono');
+
+  if (/import\s+.*jsonwebtoken/m.test(addedText))
+    violations.push('No jsonwebtoken — use Web Crypto API');
+
+  // Flag suspiciously large generated files (> 500 lines) — likely hallucination
+  if (lines.length > 500)
+    violations.push(`Generated file is ${lines.length} lines — exceeds 500-line safety limit`);
+
+  // Flag empty or near-empty generated files
+  const nonEmpty = lines.filter(l => l.trim().length > 0).length;
+  if (nonEmpty < 3)
+    violations.push('Generated file is effectively empty — likely hallucination');
+
+  return violations;
+}
+
+// 2. Schema guard — strip keys not declared in the template's slotNames
+function enforceSlotSchema(raw, slotNames) {
+  if (!raw || typeof raw !== 'object') return {};
+  const allowed = new Set(slotNames);
+  const clean = {};
+  for (const key of Object.keys(raw)) {
+    if (allowed.has(key)) {
+      // Reject slot values that look like injected instructions
+      const val = raw[key];
+      if (typeof val === 'string' && /ignore previous|disregard|system prompt|jailbreak/i.test(val)) {
+        console.warn(`[GUARD] Slot "${key}" contains suspicious instruction text — nulled`);
+        clean[key] = null;
+      } else {
+        clean[key] = val;
+      }
+    } else {
+      console.warn(`[GUARD] Slot "${key}" not in template schema — stripped`);
+    }
+  }
+  // Ensure all declared slots exist (even if null)
+  for (const name of slotNames) {
+    if (!(name in clean)) clean[name] = null;
+  }
+  return clean;
+}
+
+// 3. Concern-addressed check — at least one concern keyword must appear
+//    in the lines changed by the fix (old vs new content diff)
+function fixAddressesConcerns(concernLines, oldContent, newContent) {
+  if (!oldContent || !newContent) return true; // can't check — allow through
+
+  // Extract keywords from concern lines (2+ char non-punctuation words)
+  const keywords = [...new Set(
+    concernLines
+      .toLowerCase()
+      .match(/\b[a-z_$][a-z0-9_$]{2,}\b/g) ?? [],
+  )].filter(w => !['the', 'and', 'for', 'not', 'use', 'with', 'this', 'that', 'are', 'from'].includes(w));
+
+  if (!keywords.length) return true; // no parseable keywords — allow through
+
+  // Lines that changed
+  const oldLines = new Set(oldContent.split('\n'));
+  const newLines = newContent.split('\n').filter(l => !oldLines.has(l));
+  const changedText = newLines.join(' ').toLowerCase();
+
+  const matched = keywords.filter(k => changedText.includes(k));
+  if (matched.length === 0) {
+    console.warn(`[GUARD] Fix does not address any concern keywords: ${keywords.slice(0, 8).join(', ')}`);
+    return false;
+  }
+  console.log(`[GUARD] Fix addresses concern keywords: ${matched.slice(0, 5).join(', ')}`);
+  return true;
+}
+
 // ─── Anthropic slot extraction ────────────────────────────────────────────────
 
 async function extractSlots(slotNames, issue, factoryContext = '') {
@@ -198,11 +306,14 @@ async function extractSlots(slotNames, issue, factoryContext = '') {
   const data = await res.json();
   const raw = data.content?.[0]?.text ?? '{}';
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  let parsed;
   try {
-    return jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
   } catch {
-    return {};
+    parsed = {};
   }
+  // Guard 2: enforce schema — strip hallucinated keys, null missing ones
+  return enforceSlotSchema(parsed, slotNames);
 }
 
 // ─── Green execution (create branch + files + PR) ────────────────────────────
@@ -406,8 +517,32 @@ If a concern cannot be resolved without human input, output an empty fixes array
         // Commit each fixed file to the PR branch
         const branch = pr.head.ref;
         let committed = 0;
+        let guardRejected = 0;
         for (const fix of fixResult.fixes) {
           if (!fix.filename || !fix.content) continue;
+
+          // Guard 1: constraint check on generated content
+          const violations = checkGeneratedContent(fix.filename, fix.content);
+          if (violations.length > 0) {
+            console.warn(`[GUARD] ${fix.filename} failed constraint check — NOT committed:`);
+            violations.forEach(v => console.warn(`  • ${v}`));
+            guardRejected++;
+            continue;
+          }
+
+          // Guard 3: concern-addressed check — fetch current file content to diff
+          let oldContent = '';
+          try {
+            const existing = await gh('GET', `/repos/${ORG}/${repo}/contents/${fix.filename}?ref=${branch}`);
+            oldContent = Buffer.from(existing.content ?? '', 'base64').toString('utf8');
+          } catch { /* new file — skip concern check */ }
+
+          if (oldContent && !fixAddressesConcerns(concernLines, oldContent, fix.content)) {
+            console.warn(`[GUARD] ${fix.filename} fix does not address review concerns — NOT committed`);
+            guardRejected++;
+            continue;
+          }
+
           try {
             let existingSha;
             try {
@@ -427,7 +562,9 @@ If a concern cannot be resolved without human input, output an empty fixes array
           }
         }
 
-        if (committed > 0) {
+        if (guardRejected > 0 && committed === 0) {
+          outcomes.push(`🛡️ ${repo}#${pr.number}: auto-fix blocked by hallucination guards (${guardRejected} file(s) rejected) — manual fix required`);
+        } else if (committed > 0) {
           console.log(`[PRLoop] ${repo}#${pr.number}: committed ${committed} fix(es) — pr-review will re-trigger on synchronize`);
           outcomes.push(`🔁 ${repo}#${pr.number}: auto-fix committed (attempt ${rejectionCount + 1}) — ${fixResult.explanation}`);
         }
