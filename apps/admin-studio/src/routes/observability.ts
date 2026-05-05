@@ -41,10 +41,12 @@ observability.get('/sentry/issues', async (c) => {
   const limit = clamp(Number.parseInt(url.searchParams.get('limit') ?? '20', 10), 1, 100);
   const env = url.searchParams.get('env') ?? c.var.envContext.env;
 
+  const sentryCt = new AbortController();
+  const sentryTimer = setTimeout(() => sentryCt.abort(), 8_000);
   try {
     const res = await fetch(
       `https://sentry.io/api/0/projects/${encodeURIComponent(org)}/${encodeURIComponent(project)}/issues/?limit=${limit}&environment=${encodeURIComponent(env)}&statsPeriod=24h&query=is:unresolved`,
-      { headers: { Authorization: `Bearer ${token}` } },
+      { headers: { Authorization: `Bearer ${token}` }, signal: sentryCt.signal },
     );
     if (!res.ok) {
       return c.json({ configured: true, error: `sentry-${res.status}`, issues: [] }, 502);
@@ -53,6 +55,8 @@ observability.get('/sentry/issues', async (c) => {
     return c.json({ configured: true, env, issues });
   } catch (err) {
     return c.json({ configured: true, error: (err as Error).message, issues: [] }, 502);
+  } finally {
+    clearTimeout(sentryTimer);
   }
 });
 
@@ -77,6 +81,8 @@ observability.get('/posthog/tiles', async (c) => {
 
   // Minimal viable tile: total events in last 24h via the Insights API.
   // Richer tiles (DAU, retention, conversion) land in Phase C.
+  const phCt = new AbortController();
+  const phTimer = setTimeout(() => phCt.abort(), 8_000);
   try {
     const res = await fetch(
       `${host}/api/projects/${encodeURIComponent(projectId)}/query/`,
@@ -92,19 +98,24 @@ observability.get('/posthog/tiles', async (c) => {
             query: `SELECT count() AS total FROM events WHERE timestamp >= now() - INTERVAL 24 HOUR`,
           },
         }),
+        signal: phCt.signal,
       },
     );
     if (!res.ok) {
       return c.json({ configured: true, error: `posthog-${res.status}`, tiles: [] }, 502);
     }
-    const json: { results?: Array<[number]> } = await res.json();
-    const total = json.results?.[0]?.[0] ?? 0;
+    const json: { results?: unknown } = await res.json();
+    const rows = Array.isArray(json.results) ? json.results : [];
+    const firstRow = Array.isArray(rows[0]) ? (rows[0] as unknown[]) : [];
+    const total = typeof firstRow[0] === 'number' ? firstRow[0] : 0;
     const tiles: PostHogTile[] = [
       { id: 'events_24h', label: 'Events (24h)', value: total },
     ];
     return c.json({ configured: true, tiles });
   } catch (err) {
     return c.json({ configured: true, error: (err as Error).message, tiles: [] }, 502);
+  } finally {
+    clearTimeout(phTimer);
   }
 });
 
